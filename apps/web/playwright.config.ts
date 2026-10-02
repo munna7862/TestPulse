@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = process.env.PORT ?? "3000";
-const baseURL = process.env.NEXT_PUBLIC_APP_URL ?? `http://localhost:${port}`;
+const baseURL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,12 +20,10 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: "npm run start",
-        url: baseURL,
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+  webServer: {
+    command: "npm run start",
+    url: `${baseURL}/healthz`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });
