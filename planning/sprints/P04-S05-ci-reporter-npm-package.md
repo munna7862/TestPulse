@@ -1,105 +1,88 @@
-﻿# Phase 04 — Sprint 05: CI Reporter npm Package (Playwright/Vitest)
+# Phase 04 — Sprint 05: CI Reporter npm Package (Playwright + Vitest)
 
 ## Sprint Objective
 
-Build and publish an npm package that CI pipelines install to automatically report test results to TestPulse.
+Build `@testpulse/reporter`, which streams results to TestPulse while tests run and can never fail the customer's CI.
 
 ## Dependencies
 
 P04-S02 ingestion API.
 
+## Personas
+
+- **Lead:** `role-backend-engineer`
+- **Reviewers / sign-off:** `role-sdet-architect`, `role-growth-engineer`, `role-security-engineer`
+
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Create packages/reporter workspace for the npm package.
-2. Implement Playwright custom reporter that sends results to TestPulse API.
-3. Implement Vitest custom reporter that sends results to TestPulse API.
-4. Support configuration via environment variables (TESTPULSE_API_KEY, TESTPULSE_API_URL).
-5. Implement result batching (buffer results and send in chunks).
-6. Handle API failures gracefully (retry with backoff, never crash the test runner).
-7. Add metadata extraction (branch, commit SHA, CI provider auto-detection).
-8. Create README with installation and configuration instructions.
-9. Prepare for npm publish (package.json, exports, types).
+1. Set up packages/reporter with a tsup build (ESM + CJS + types) that bundles the `@testpulse/shared` code it uses. Peer dependencies: `@playwright/test`, `vitest`. No other runtime dependencies (use the global `fetch`).
+2. Playwright reporter: `onBegin` → start run (with `expectedTestCount` and shard info from the config); `onTestEnd` → buffer the final outcome per test (passed after retry → FLAKY, with `retryCount`); flush every ~1 s or 200 results; `onEnd` → final flush + complete.
+3. Vitest reporter with the equivalent lifecycle, including retry information.
+4. Configuration via `TESTPULSE_API_KEY`, `TESTPULSE_API_URL`, `TESTPULSE_RUN_ID` (override), `TESTPULSE_DISABLED`, plus typed reporter options.
+5. CI metadata auto-detection (GitHub Actions, GitLab CI, Jenkins, CircleCI, generic) and an `externalRunId` that is stable across shards (e.g. `github:<GITHUB_RUN_ID>:<GITHUB_RUN_ATTEMPT>`).
+6. Normalize paths (shared utility), truncate fields to the API limits, strip ANSI codes, and optionally redact common secret patterns from error output.
+7. Resilience: retries with backoff and jitter on 5xx/429, a bounded in-memory buffer, a final-flush timeout (10 s), never throw, never change the exit code, and print one summary warning on failure.
+8. Implement quarantine mode per the Q1 decision (if accepted).
+9. README, plus example projects under `examples/` that CI runs against a local API.
+10. Prepare for publishing (package.json `exports`, `files`, provenance). The npm publish itself happens at P10-S06.
 
 ## Expected Files / Areas
 
-`packages/reporter/`, `packages/reporter/README.md`
+`packages/reporter/`, `packages/reporter/README.md`, `examples/playwright/`, `examples/vitest/`
 
 ## Testing & Verification
 
-Unit tests for reporter logic. Integration tests running actual Playwright/Vitest suites with the reporter.
+Unit tests for buffering, batching, retry/backoff, truncation, and CI detection. Integration tests that run the example Playwright and Vitest suites (including sharded and retried tests) against a local API and assert stored results. Chaos tests: API down, slow, returning 500/429 — the test run's exit code is unchanged.
 
 ## Acceptance Criteria
 
-- [ ] Playwright reporter sends results to TestPulse API.
-- [ ] Vitest reporter sends results to TestPulse API.
-- [ ] Configuration via environment variables works.
-- [ ] API failures do not crash the test runner.
-- [ ] Metadata (branch, commit, CI provider) is auto-detected.
-- [ ] Package is publishable to npm.
+- [ ] Playwright and Vitest reporters stream results while tests run (visible before the run ends).
+- [ ] Sharded runs appear as one TestPulse run.
+- [ ] Retried-then-passed tests are reported as FLAKY with a retry count.
+- [ ] API failures, timeouts, and quota errors never crash the runner or change its exit code.
+- [ ] Metadata (branch, commit, CI provider, job URL) is auto-detected.
+- [ ] The package builds, type-checks, and is ready to publish.
 
 ## Risks / Guardrails
 
-Reporter crashing the test runner on API failure; missing result batching causing rate limits; incorrect metadata detection.
+Reporter crashing or hanging the test runner; unbounded memory on huge suites; incorrect shard/run correlation; leaking secrets from error output; depending on the unpublished `@testpulse/shared` at runtime.
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 04, Sprint 05: CI Reporter npm Package (Playwright/Vitest).
+You are the implementation agent for TestPulse, Phase 04 — Sprint 05: CI Reporter npm Package (Playwright + Vitest).
+Act as: role-backend-engineer (load .agents/skills/role-backend-engineer/SKILL.md). Reviewers: role-sdet-architect, role-growth-engineer, role-security-engineer.
 
-OBJECTIVE:
-Build and publish an npm package that CI pipelines install to automatically report test results to TestPulse.
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/04-phase-test-run-ingestion-data-model.md
+4. planning/sprints/P04-S05-ci-reporter-npm-package.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P04_S05.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Create packages/reporter workspace for the npm package.
-2. Implement Playwright custom reporter that sends results to TestPulse API.
-3. Implement Vitest custom reporter that sends results to TestPulse API.
-4. Support configuration via environment variables (TESTPULSE_API_KEY, TESTPULSE_API_URL).
-5. Implement result batching (buffer results and send in chunks).
-6. Handle API failures gracefully (retry with backoff, never crash the test runner).
-7. Add metadata extraction (branch, commit SHA, CI provider auto-detection).
-8. Create README with installation and configuration instructions.
-9. Prepare for npm publish (package.json, exports, types).
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-Unit tests for reporter logic. Integration tests running actual Playwright/Vitest suites with the reporter.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] Playwright reporter sends results to TestPulse API.
-- [ ] Vitest reporter sends results to TestPulse API.
-- [ ] Configuration via environment variables works.
-- [ ] API failures do not crash the test runner.
-- [ ] Metadata (branch, commit, CI provider) is auto-detected.
-- [ ] Package is publishable to npm.
-
-GUARDRAILS:
-Reporter crashing the test runner on API failure; missing result batching causing rate limits; incorrect metadata detection.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P04-S05.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

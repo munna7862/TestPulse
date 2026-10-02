@@ -1,10 +1,12 @@
-﻿# Phase 09 — UX Polish & Accessibility
+# Phase 09 — UX Polish & Accessibility
 
 ← [Phase 08](./08-phase-analytics-reporting.md) | [Phase 10 →](./10-phase-quality-engineering-release.md)
 
 ## Objective
 
-Elevate TestPulse from "works" to "delights." Polish the visual design, micro-interactions, responsive behavior, and accessibility compliance.
+Elevate TestPulse from "works" to "delights." Consolidate and audit the design system that every feature has used since P02-S06, polish micro-interactions and responsive behavior, and certify accessibility compliance.
+
+> The design-system foundation (tokens, theming, primitives, app shell) ships in **P02-S06**, and every UI sprint must ship loading/empty/error states and pass axe-core checks. This phase consolidates and audits; it does not retrofit.
 
 ## Outcome
 
@@ -12,12 +14,10 @@ TestPulse looks and feels like a premium product that teams are proud to use and
 
 ## Scope
 
-- Design system tokens (colors, typography, spacing, shadows, radii)
-- Dark mode and light mode with system preference detection
+- Design system consolidation and visual regression baselines
+- Theme QA across every screen and chart; cross-device theme preference
 - Micro-animations (skeleton loaders, transitions, hover states)
-- Loading states (skeleton screens, progress indicators)
-- Empty states (no projects, no runs, no results — with CTAs)
-- Error states (API errors, WebSocket disconnections, auth failures)
+- Audit and completion of loading, empty, and error states
 - Responsive layout (desktop-first, tablet-friendly)
 - Keyboard navigation and focus management
 - ARIA labels and screen reader support
@@ -47,8 +47,8 @@ The dashboard must feel:
 
 ## Acceptance Criteria
 
-- [ ] Design system is documented and consistently applied.
-- [ ] Dark mode and light mode work correctly.
+- [ ] Design system is documented and consistently applied (no one-off styles).
+- [ ] Every screen and chart works in dark and light mode (visual regression green).
 - [ ] All loading, empty, and error states are handled.
 - [ ] WCAG 2.1 AA compliance is verified.
 - [ ] Keyboard navigation works for all major flows.
@@ -61,8 +61,8 @@ A designer would approve the product's visual quality. An accessibility auditor 
 
 ## Sprint Decomposition
 
-- P09-S01: Design system tokens and theme implementation
-- P09-S02: Dark mode, light mode, and system preference detection
+- P09-S01: Design system consolidation and visual regression
+- P09-S02: Theme QA and chart theming
 - P09-S03: Micro-animations, skeleton loaders, and transitions
 - P09-S04: Error, empty, and loading state handling
 - P09-S05: Accessibility audit and keyboard navigation

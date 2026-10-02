@@ -1,6 +1,6 @@
 # TestPulse — Agent Knowledge & Engineering Guidelines
 
-This document serves as the **always-on memory and operational baseline** for all AI models, agent personas, and human engineers working on the `TestPulse` monorepo. It codifies the architecture, boundaries, environment constraints, and non-negotiable rules to maintain high quality and velocity.
+This document is the **always-on memory and operational baseline** for all AI models, agent personas, and human engineers working on the `TestPulse` monorepo. It codifies the architecture, boundaries, environment constraints, and non-negotiable rules to maintain high quality and velocity.
 
 ---
 
@@ -8,86 +8,108 @@ This document serves as the **always-on memory and operational baseline** for al
 
 `TestPulse` is a multi-tenant SaaS application for real-time test execution monitoring, collaborative flaky test triage, and automated quarantine lifecycle management.
 
+### Source of Truth
+
+[`planning/master/TestPulse_Master_Plan.md`](planning/master/TestPulse_Master_Plan.md) is the canonical contract for the **ingestion API (§4.2)**, **real-time fan-out and events (§4.3, §6)**, **domain model (§5)**, **RBAC and isolation rules (§7)**, **plan limits (§8)**, and **non-functional targets (§10)**. If a phase or sprint file disagrees with it, the master plan wins: fix the stale file in the same PR. Never silently pick one side of a conflict. Changing a canonical contract requires an ADR plus a master-plan update in the same PR.
+
 ### Monorepo Topology
 ```text
 testpulse/
 ├── apps/
-│   ├── web/               # Next.js 15 (App Router, React 19, Tailwind CSS v4, Radix UI)
-│   └── api/               # Fastify API & Socket.IO server, BullMQ background jobs
+│   ├── web/               # Next.js 15 (App Router, React 19, Tailwind CSS v4, Radix UI) — app, marketing, docs
+│   └── api/               # Fastify 5: src/server.ts (REST + Socket.IO gateway), src/worker.ts (BullMQ workers)
 ├── packages/
-│   ├── shared/            # Zod schemas, TypeScript types, typed event contracts, shared utils
-│   ├── db/                # Prisma ORM, PostgreSQL schema, tenant isolation client extension
+│   ├── shared/            # Isomorphic: Zod schemas, inferred types, event contracts, plan limits, pure utils
+│   ├── db/                # Prisma schema, migrations, tenant-scoped client (createTenantDb / systemDb)
 │   ├── ui/                # Shared design system primitive components (Radix + Tailwind)
-│   └── reporter/          # Standalone CI reporter npm package for test runners (Playwright, Jest, Vitest)
+│   └── reporter/          # Published CI reporter npm package (Playwright + Vitest in v1)
 ├── planning/              # Master plan, phase blueprints, sprint decomposition files
+├── docs/                  # Product, architecture, API, database, testing, security, ops docs
 ├── .agents/skills/        # Codified virtual persona skills and development standards
 └── task.md                # Centralized sprint and task execution tracking board
 ```
 
 ### Technology Stacks
+*   **Runtime**: Node.js 24 LTS everywhere (`.nvmrc`, CI, Railway). npm workspaces + Turborepo 2.
 *   **Frontend (`apps/web`)**: Next.js 15 (App Router), React 19, TanStack React Query v5, Zustand, Tailwind CSS v4, Radix UI primitives, Lucide React, Recharts.
-*   **Backend (`apps/api`)**: Fastify v4/v5, `@fastify/jwt`, `@fastify/cors`, `@fastify/rate-limit`, Zod validation, Socket.IO v4, BullMQ background jobs.
-*   **Database (`packages/db`)**: Prisma ORM, PostgreSQL (Neon / Supabase cloud-native with connection pooling).
-*   **Shared (`packages/shared`)**: Typed events, Zod schemas, domain models, Redis (ioredis) client helper.
-*   **Real-time Infrastructure**: Redis Pub/Sub (`@socket.io/redis-adapter`) for horizontally scalable WebSocket broadcasting.
-*   **Testing Toolchain**: Vitest (unit/integration), Playwright (E2E), Supertest (API), MSW (network mocking), `ioredis-mock` (local Redis mocking).
+*   **Backend (`apps/api`)**: Fastify 5, `fastify-type-provider-zod`, `@fastify/jwt`, `@fastify/cookie`, `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit`, Socket.IO v4, BullMQ v5, pino.
+*   **Database (`packages/db`)**: Prisma ORM, PostgreSQL 16 on Neon (pooled `DATABASE_URL` at runtime, `DIRECT_URL` for migrations).
+*   **Shared (`packages/shared`)**: Typed events, Zod schemas, domain models, plan limits. **Browser-safe only:** no `ioredis`, Prisma, or Node built-ins. The Redis client lives in `apps/api/src/lib/redis.ts`.
+*   **Real-time Infrastructure**: `@socket.io/redis-emitter` (API handlers and workers publish) → Redis → `@socket.io/redis-adapter` (each gateway instance delivers to its local sockets).
+*   **Testing Toolchain**: Vitest (unit/integration), Supertest (API), Playwright (E2E), MSW (component network mocking), `ioredis-mock` (unit tests only), `@axe-core/playwright`, k6.
+
+> Exact dependency majors are pinned by ADR-004 (P01-S03). Fastify 4 and Node 20 are end-of-life and must not be used.
 
 ---
 
 ## ⚡ Core Rules & Non-Negotiables (Must Follow)
 
 ### 1. Tenant Isolation (Critical Security Mandate)
-*   **Rule**: Every single database query must include tenant context (`orgId` and/or `projectId`).
-*   **Enforcement**: Data access must utilize the Prisma tenant-extension pattern or explicit repository scoping. Cross-tenant data leakage is a critical, release-blocking vulnerability.
-*   **Authorization**: API keys are project-scoped and ingestion-only; user sessions are organization- and project-scoped based on RBAC roles (`Owner`, `Admin`, `Member`, `Viewer`).
+*   **Rule**: Every query against a tenant-owned table is scoped by `projectId` and/or `orgId`. The only global tables are `User`, `OAuthAccount`, `Session`, and `VerificationToken`.
+*   **Enforcement**: Application code uses `createTenantDb(tenantContext)` from `@testpulse/db`. The unscoped `systemDb` is reserved for auth tables, migrations, and background jobs that then open a tenant-scoped client from the job's Zod-validated `orgId`/`projectId`. Importing `@prisma/client` outside `packages/db` is a lint error.
+*   **Routes**: User-facing resources are nested under `/api/v1/orgs/:orgId/...` or `/api/v1/projects/:projectId/...`. Handlers read tenant IDs only from `request.tenantContext`, never from the body.
+*   **Responses**: Cross-tenant access returns **404** (do not disclose existence). Insufficient role inside your own tenant returns **403**.
+*   **Authorization**: Roles (`Owner`, `Admin`, `Member`, `Viewer`) are organization-level and apply to all projects in the org (matrix: master plan §7). API keys are project-scoped and may only call `/api/v1/ingest/*` for their own project.
+*   Cross-tenant data leakage is a critical, release-blocking vulnerability.
 
 ### 2. Strict Typing & Schema Validation
-*   **Rule**: Zero `any` types. Strict mode must be enabled across all `tsconfig.json` files (`"strict": true`, `"noImplicitAny": true`).
-*   **Boundaries**: All data crossing boundaries (API requests, responses, WebSocket payloads, background job data) MUST be validated with Zod schemas defined in `packages/shared`.
-*   **Inference**: TypeScript types must be derived from Zod schemas via `z.infer<typeof Schema>` to prevent type/schema drift.
+*   **Rule**: Zero `any` types (including `as any` and `// @ts-ignore`). All `tsconfig.json` files extend a base with `"strict": true`, `"noUncheckedIndexedAccess": true`, and `"noImplicitOverride": true`.
+*   **Boundaries**: All data crossing boundaries (API requests and responses, WebSocket payloads, BullMQ job data, environment variables, reporter payloads) MUST be validated with Zod schemas defined in `packages/shared`.
+*   **Inference**: TypeScript types are derived from Zod schemas via `z.infer<typeof Schema>` to prevent type/schema drift. Fastify routes use `fastify-type-provider-zod` so the same schemas validate requests and generate OpenAPI.
 
 ### 3. Real-Time Architecture & Scaling
-*   **Rule**: API route handlers must NEVER emit events directly to Socket.IO clients.
-*   **Pattern**: API Handler -> DB Mutation -> Publish to Redis -> Socket.IO Server receives from Redis -> Broadcast to authorized project/organization rooms.
-*   **Payloads**: WebSocket payloads must be lean (entity IDs, status, diffs), prompting clients to fetch or patch state efficiently.
+*   **Rule**: API route handlers and workers NEVER hold a Socket.IO server reference and never call `io.emit`.
+*   **Pattern**: API handler → DB mutation **commits** → `RealtimePublisher.emit()` (Zod-validated, wraps `@socket.io/redis-emitter`) → Redis → `@socket.io/redis-adapter` on each gateway instance → authorized `project:{projectId}` / `user:{userId}` rooms.
+*   **Forbidden**: gateway instances subscribing to a custom Redis channel and re-broadcasting with `io.to(room).emit()`. With the Redis adapter, this delivers every event N times (once per instance).
+*   **Payloads**: WebSocket payloads are lean (entity IDs, status, counters) and use the shared envelope `{ eventId, type, version, occurredAt, orgId, projectId?, payload }`. Clients patch or refetch state.
 
 ### 4. Monorepo Package Boundaries
-*   `packages/shared` cannot import from `apps/*`, `packages/db`, or `packages/ui`.
+*   `packages/shared` cannot import from `apps/*`, `packages/db`, or `packages/ui`, and must stay browser-safe.
 *   `packages/db` cannot import from `apps/*` or `packages/ui`.
-*   `apps/web` (Frontend) cannot import from `packages/db` (Backend DB). All web data access must go through the API (`apps/api`).
-*   Internal package imports use the `@testpulse/*` namespace (`@testpulse/shared`, `@testpulse/db`, `@testpulse/ui`, `@testpulse/reporter`).
+*   `packages/ui` cannot import from `apps/*` or `packages/db`.
+*   `apps/web` cannot import from `packages/db`. All web data access goes through `apps/api`.
+*   `packages/reporter` bundles anything it uses from `@testpulse/shared` at build time. Its only runtime deps are test-runner peer deps.
+*   Internal package imports use the `@testpulse/*` namespace. Boundaries are enforced by ESLint, not only by review.
 
 ### 5. Cross-Platform & Environment Compatibility
-*   **Operating System**: The primary development environment includes Windows PowerShell.
+*   **Operating System**: The primary development environment is Windows PowerShell; CI runs on Linux.
 *   **Tooling Rules**:
-    *   Never use bash-specific command chains (`&&`, `export FOO=bar`, `/bin/sh`) in npm scripts. Use `cross-env`, `rimraf`, and Node-native CLI tools.
-    *   Avoid hardcoded POSIX paths (`/tmp`, `/etc`). Always use Node `path` module (`path.join()`, `path.resolve()`).
-    *   Ensure Git line endings are normalized (`core.autocrlf = true` or `.gitattributes` with `* text=auto eol=lf`).
+    *   Never use shell-specific syntax in npm scripts (`&&` chains that assume bash, `export FOO=bar`, `rm -rf`, `/bin/sh`). Use `cross-env`, `rimraf`, `npm-run-all2`/Turborepo, and Node scripts.
+    *   Avoid hardcoded POSIX paths (`/tmp`, `/etc`). Use `path.join()`, `path.resolve()`, and `os.tmpdir()`.
+    *   Normalize test file paths to POSIX separators before fingerprinting or storing them (Windows runners report `\`).
+    *   Line endings are normalized by `.gitattributes` (`* text=auto eol=lf`). Files are UTF-8 **without** BOM.
 *   **Docker-Free Local Development & Testing**:
-    *   Do not assume a local Docker daemon is running.
-    *   Local and CI test suites must run seamlessly using `ioredis-mock` for Redis and isolated PostgreSQL schemas / transactions / cloud database branches (Neon).
+    *   Do not assume a local Docker daemon is running on developer machines.
+    *   PostgreSQL: use a native local install or a personal Neon branch. Tests isolate by **schema per Vitest worker**, not by transaction rollback.
+    *   Redis: `ioredis-mock` is for unit tests only. BullMQ and Socket.IO-adapter behavior is covered by a `test:contract` suite that runs against real Redis (a GitHub Actions service container in CI; optional locally via `REDIS_URL`).
+    *   CI runners may use GitHub Actions service containers. The "no Docker" rule applies to developer machines.
 
-### 6. No Speculative Features
-*   Adhere strictly to the active sprint plan. Do not build features (such as Stripe billing, SSO/SAML, or AI-powered root-cause diagnosis) that are explicitly deferred to future phases.
+### 6. Security Hygiene
+*   Never log secrets: configure pino `redact` for `authorization`, `cookie`, `set-cookie`, API keys, tokens, and passwords.
+*   Treat CI-provided data (test titles, error messages, stack traces) and user comments as **untrusted**: render as text, cap sizes, and never inject them as HTML.
+*   Store only hashes of API keys, refresh tokens, and invitation/reset/verification tokens. Webhook secrets are encrypted at rest because they are needed for signing.
+
+### 7. No Speculative Features
+*   Adhere strictly to the active sprint plan. Do not build features that are explicitly deferred (master plan §1 "Non-MVP Exclusions"): Stripe billing, plan feature-gating, SSO/SAML, AI root-cause diagnosis, Slack bots, shareable public dashboards, reporters beyond Playwright/Vitest, or a server-side GitHub App.
 
 ---
 
 ## 🤖 Virtual Sprint Team & Agent Personas
 
-The monorepo operates with 10 specialized virtual agent personas to drive execution sprint-by-sprint. Their detailed instructions are located in `.agents/skills/`:
+The monorepo operates with 10 specialized virtual agent personas. Each sprint file lists its lead and reviewer personas under `## Personas`. Detailed instructions are in `.agents/skills/`:
 
 | Persona | Skill Directory | Primary Responsibilities |
 | :--- | :--- | :--- |
 | **Scrum Master** | [`.agents/skills/role-scrum-master`](.agents/skills/role-scrum-master/SKILL.md) | Sprint orchestration, `task.md` tracking, dependency routing, phase gates |
-| **Product Owner** | [`.agents/skills/role-product-owner`](.agents/skills/role-product-owner/SKILL.md) | Acceptance review, UX standards, pricing tier boundaries, release sign-off |
+| **Product Owner** | [`.agents/skills/role-product-owner`](.agents/skills/role-product-owner/SKILL.md) | Acceptance review, UX standards, plan-limit boundaries, release sign-off |
 | **Fullstack Architect** | [`.agents/skills/role-fullstack-architect`](.agents/skills/role-fullstack-architect/SKILL.md) | System design, monorepo boundaries, API contracts, data models, ADRs |
-| **Backend Engineer** | [`.agents/skills/role-backend-engineer`](.agents/skills/role-backend-engineer/SKILL.md) | Fastify API, Prisma migrations, BullMQ workers, ingestion pipeline |
-| **Frontend Engineer** | [`.agents/skills/role-frontend-engineer`](.agents/skills/role-frontend-engineer/SKILL.md) | Next.js 15 UI, React Query hooks, Zustand state, Tailwind v4, Radix components |
-| **Real-Time Engineer** | [`.agents/skills/role-realtime-engineer`](.agents/skills/role-realtime-engineer/SKILL.md) | Socket.IO gateway, Redis pub/sub adapter, room auth, connection resilience |
+| **Backend Engineer** | [`.agents/skills/role-backend-engineer`](.agents/skills/role-backend-engineer/SKILL.md) | Fastify API, Prisma migrations, BullMQ workers, ingestion pipeline, reporter |
+| **Frontend Engineer** | [`.agents/skills/role-frontend-engineer`](.agents/skills/role-frontend-engineer/SKILL.md) | Next.js UI, React Query hooks, Zustand state, Tailwind v4, Radix components |
+| **Real-Time Engineer** | [`.agents/skills/role-realtime-engineer`](.agents/skills/role-realtime-engineer/SKILL.md) | Socket.IO gateway, Redis adapter/emitter, room auth, connection resilience |
 | **SDET Architect** | [`.agents/skills/role-sdet-architect`](.agents/skills/role-sdet-architect/SKILL.md) | Test pyramid, test cases catalog, anti-flakiness, coverage, CI quality gates |
-| **Security Engineer** | [`.agents/skills/role-security-engineer`](.agents/skills/role-security-engineer/SKILL.md) | Tenant isolation audits, RBAC verification, API key hashing, OWASP compliance |
+| **Security Engineer** | [`.agents/skills/role-security-engineer`](.agents/skills/role-security-engineer/SKILL.md) | Tenant isolation audits, RBAC verification, credential handling, OWASP compliance |
 | **DevOps Engineer** | [`.agents/skills/role-devops-engineer`](.agents/skills/role-devops-engineer/SKILL.md) | Turborepo CI/CD pipelines, Vercel/Railway deploys, monitoring, environment configs |
-| **Growth Engineer** | [`.agents/skills/role-growth-engineer`](.agents/skills/role-growth-engineer/SKILL.md) | Landing page, SEO, analytics telemetry, onboarding time-to-first-value, GTM |
+| **Growth Engineer** | [`.agents/skills/role-growth-engineer`](.agents/skills/role-growth-engineer/SKILL.md) | Landing page, docs portal, SEO, privacy-first analytics, onboarding time-to-first-value |
 
 ### Additional Engineering Standards
 *   [**`dev-coding-standards`**](.agents/skills/dev-coding-standards/SKILL.md): Production standards for TypeScript, Fastify, Next.js, Prisma, and Zod.
@@ -103,28 +125,33 @@ A centralized `task.md` file at the root of the workspace tracks the lifecycle o
 *   `[ ]` **Pending / Backlog:** Not yet started; waiting for phase prerequisites or prior tasks to complete.
 *   `[/]` **In Progress:** Actively being executed by the assigned agent persona.
 *   `[x]` **Completed & Verified:** Fully implemented, tests passing, reviewed against quality gates, and signed off.
+*   `[!]` **Blocked:** Waiting on a decision or external dependency; the blocker is written next to the item.
 
 ### Sprint Lifecycle Steps:
-1.  **Kick-off (`role-scrum-master`)**: Create feature branch `feat/PXX-SYY-<description>`, initialize sprint tasks in `task.md`, verify prerequisites.
-2.  **Architecture & Test Contracts (`role-fullstack-architect` & `role-sdet-architect`)**: Document contracts in `docs/` and author `docs/testing/test_cases_catalog_PXX_SYY.md`.
-3.  **Implementation (`role-backend-engineer` / `role-frontend-engineer` / `role-realtime-engineer`)**: Implement code changes adhering to Zod schemas and tenant isolation.
+1.  **Kick-off (`role-scrum-master`)**: Create branch `feat/PXX-SYY-<description>` (`docs/PXX-SYY-<description>` for documentation-only sprints), expand sprint tasks in `task.md`, verify prerequisites, and confirm that the open decisions the sprint depends on (master plan §12) are closed.
+2.  **Architecture & Test Contracts (`role-fullstack-architect` & `role-sdet-architect`)**: Document contracts in `docs/` and author `docs/testing/test_cases_catalog_PXX_SYY.md` (code sprints only).
+3.  **Implementation (lead persona from the sprint's `## Personas`)**: Implement changes that adhere to Zod schemas and tenant isolation.
 4.  **Verification & Quality Gates (`role-sdet-architect` & `role-security-engineer`)**: Run test suites, verify zero flakiness, audit tenant isolation.
 5.  **Product Acceptance (`role-product-owner`)**: Verify functional requirements and UX quality.
-6.  **Release Preparation (`role-devops-engineer`)**: Validate build, verify CI workflow pass, and prepare PR.
+6.  **Release Preparation (`role-devops-engineer`)**: Validate the build, confirm the CI workflow passes, write `docs/walkthroughs/walkthrough-PXX-SYY.md`, and prepare the PR.
 
 ---
 
 ## 🚦 Quality Gate Verification Checklist
 
-Before any sprint is marked complete in `task.md`, the following gates must be validated via real command execution:
+Before any **code** sprint is marked complete in `task.md`, validate these gates by actually running the commands (they exist from P02-S01 onward):
 
 ```powershell
 # Turborepo Quality Gate Pipeline
-npm run lint          # 0 ESLint errors or warnings
-npm run typecheck     # 0 TypeScript compiler errors across all apps & packages
-npm run test          # 100% passing unit & integration tests
-npm run build         # Successful build of all packages and applications
-npm audit             # Zero critical or high security vulnerabilities
+npm run lint                  # 0 ESLint errors or warnings (includes boundary rules)
+npm run typecheck             # 0 TypeScript compiler errors across all apps & packages
+npm run test                  # 100% passing unit & integration tests, coverage thresholds met
+npm run test:contract         # Real-Redis/BullMQ contract tests (required in CI; locally when REDIS_URL is set)
+npm run test:e2e              # Playwright, required for sprints that change UI or user journeys
+npm run build                 # Successful build of all packages and applications
+npm audit --audit-level=high  # Zero critical or high security vulnerabilities
 ```
 
-Never mark a task `[x]` or claim acceptance unless verifiable test output was observed.
+**Documentation-only sprints** (Phase 01) are verified by review against their acceptance criteria and by cross-checking against the master plan. The code gates do not apply until P02-S01 creates the scripts.
+
+Never mark a task `[x]` or claim acceptance unless you observed verifiable command output. Never skip, `.only`, or delete a failing test to get a green run.

@@ -1,4 +1,4 @@
-﻿# Phase 11 — Landing Page, Documentation & Go-to-Market
+# Phase 11 — Landing Page, Documentation & Go-to-Market
 
 ← [Phase 10](./10-phase-quality-engineering-release.md) | ✅ End of v1 Roadmap
 
@@ -14,13 +14,13 @@ A potential customer can discover TestPulse, understand its value proposition in
 
 - Landing page (hero, features, pricing, testimonials placeholder, CTA)
 - Documentation site (getting started, API reference, CI integration guides)
-- Getting started guide (sign up -> API key -> first run in under 10 minutes)
+- Getting started guide (sign up -> API key -> first live run in under 10 minutes)
 - CI integration guides (GitHub Actions, GitLab CI, Jenkins)
-- API reference documentation (auto-generated from Zod schemas)
+- API reference documentation (OpenAPI generated from Zod route schemas via `@fastify/swagger`)
 - SEO optimization (meta tags, Open Graph, structured data)
 - Social media assets (Twitter/X card, LinkedIn banner, Product Hunt assets)
-- Product Hunt launch preparation
-- Analytics integration (PostHog or Plausible)
+- Public launch: remove the private-beta gate, Product Hunt / Show HN
+- Privacy-first analytics integration (PostHog or Plausible; no PII; consent-aware)
 - Feedback collection mechanism (in-app feedback widget)
 
 ## Landing Page Sections
@@ -31,7 +31,7 @@ A potential customer can discover TestPulse, understand its value proposition in
 3. Solution         — Live dashboard, collaborative annotations, quarantine
 4. Features         — Real-time streaming, flaky detection, team collaboration
 5. How it works     — 3-step visual (sign up -> integrate -> observe)
-6. Pricing          — Free / Pro / Enterprise comparison table
+6. Pricing          — Free / Pro / Enterprise quota table (from shared plan limits; Pro = contact/waitlist)
 7. Social proof     — Testimonials / logos (placeholder initially)
 8. CTA              — "Start for free" button
 9. Footer           — Links, legal, social
@@ -39,7 +39,7 @@ A potential customer can discover TestPulse, understand its value proposition in
 
 ## Testing
 
-- Lighthouse performance score > 90
+- Lighthouse Performance / Accessibility / SEO ≥ 95 (master plan §10)
 - SEO audit (title tags, meta descriptions, heading hierarchy)
 - Responsive layout tests (mobile, tablet, desktop)
 - Link verification (no broken links)
@@ -47,13 +47,12 @@ A potential customer can discover TestPulse, understand its value proposition in
 
 ## Acceptance Criteria
 
-- [ ] Landing page loads in < 1.5 seconds.
-- [ ] Landing page scores > 90 on Lighthouse.
+- [ ] Landing page meets master plan §10 (LCP < 1.5 s; Lighthouse ≥ 95).
 - [ ] Documentation covers sign-up to first test run.
 - [ ] CI integration guides work for GitHub Actions.
 - [ ] API reference is auto-generated and complete.
 - [ ] SEO meta tags and Open Graph tags are implemented.
-- [ ] Product Hunt launch materials are prepared.
+- [ ] Public sign-up is open, and the Product Hunt / Show HN launch is executed with monitoring in place.
 
 ## Exit Criteria
 
@@ -69,4 +68,4 @@ A developer who has never heard of TestPulse can:
 - P11-S02: Documentation site setup and getting started guide
 - P11-S03: CI integration guides and API reference
 - P11-S04: SEO, Open Graph, and analytics integration
-- P11-S05: Product Hunt launch preparation and social assets
+- P11-S05: Public launch (Product Hunt & GTM execution)

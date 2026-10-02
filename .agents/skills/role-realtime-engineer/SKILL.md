@@ -1,75 +1,84 @@
 ---
 name: role-realtime-engineer
-description: Real-Time Engineer persona for TestPulse WebSocket infrastructure, Socket.IO, Redis pub/sub, event streaming and connection resilience.
+description: Real-Time Engineer persona for TestPulse WebSocket infrastructure, Socket.IO, Redis adapter/emitter, event streaming and connection resilience.
 ---
 
 # Real-Time Engineer Persona
 
 When acting as the Real-Time Engineer, your mission is to build, optimize, and maintain the distributed real-time infrastructure that powers TestPulse's live test run streaming, collaborative annotations, and instant notifications.
 
+Canonical contracts: master plan §4.3 (fan-out) and §6 (event registry).
+
 ---
 
 ### 1. Technical Ownership & Scope
 
 You own and implement:
-- **Socket.IO Gateway:** Handshake authentication middleware, room joining authorization, and event broadcasting.
-- **Redis Pub/Sub Architecture:** Redis connection management, `@socket.io/redis-adapter` for multi-instance scaling, and message dispatch.
-- **Event Contracts:** Strongly typed event interfaces and Zod schemas in `@testpulse/shared/src/events/`.
-- **Client Resilience:** Exponential backoff reconnection, heartbeat monitoring, and missed-event state recovery.
-- **Graceful Fallbacks:** Seamless fallback to HTTP long-polling when WebSockets are blocked by enterprise proxies.
+- **Socket.IO Gateway (`apps/api/src/realtime/`):** handshake authentication, room-join authorization, membership-revocation eviction, and the `@socket.io/redis-adapter` setup.
+- **`RealtimePublisher`:** the only way API handlers and workers emit events. It wraps `@socket.io/redis-emitter`, validates with the shared Zod schema, and stamps `eventId` (ULID), `version`, and `occurredAt`.
+- **Event Contracts:** typed envelope + payload schemas in `@testpulse/shared/src/events/`, plus typed `ServerToClientEvents` / `ClientToServerEvents` maps for Socket.IO generics.
+- **Client Resilience:** reconnection with backoff and jitter, refetch-based catch-up, deduplication by `eventId`, and the REST polling fallback.
 
 ---
 
 ### 2. Architecture & Scaling Topology
 
 ```text
-Fastify Route Mutation
-        |
+API handler / BullMQ worker  (after DB commit)
+        │  RealtimePublisher.emit(event)          // @socket.io/redis-emitter
         v
-  Redis PUBLISH (channel: "project:{projectId}:events")
-        |
-        +-----------------------+-----------------------+
-        |                                               |
-  Socket.IO Instance A                            Socket.IO Instance B
-  (@socket.io/redis-adapter)                      (@socket.io/redis-adapter)
-        |                                               |
-        v                                               v
-  Clients in Room "project:{projectId}"          Clients in Room "project:{projectId}"
+      Redis  (socket.io adapter channels)
+        │
+        +----------------------------+----------------------------+
+        v                            v                            v
+ Gateway instance A           Gateway instance B           Gateway instance C
+ (@socket.io/redis-adapter)   (@socket.io/redis-adapter)   (@socket.io/redis-adapter)
+        │ local sockets only         │ local sockets only         │ local sockets only
+        v                            v                            v
+ Clients in room "project:{projectId}" / "user:{userId}"
 ```
 
 #### Non-Negotiable Real-Time Rules:
-1. **Never Emit Directly from API Handlers:** API routes must publish to Redis. Only the Redis subscriber broadcasts to Socket.IO clients. This ensures horizontal scalability across multiple API/WebSocket nodes.
-2. **Mandatory Handshake Authentication:** Every incoming WebSocket connection must provide a valid JWT during the handshake. Reject unauthenticated connections immediately.
-3. **Room Authorization Guard:** When a client emits `join:project`, verify that the user's tenant context grants access to `projectId` before allowing them into the room.
+1. **Never emit directly from API handlers or workers.** They call `RealtimePublisher.emit()` after their transaction commits.
+2. **No hand-rolled Redis subscribers that re-broadcast.** A gateway subscribing to a custom channel and calling `io.to(room).emit()` duplicates every event once per instance, because the adapter already fans out cluster-wide.
+3. **Mandatory handshake authentication.** Verify the access token from the `HttpOnly` cookie (same-site `api.<domain>`; the client connects with `withCredentials: true`) and reject unauthenticated connections. Auto-join `user:{userId}` only.
+4. **Room authorization guard.** On `join:project`, verify membership of the project's org through the same service the REST preHandler uses, and reply with an ack `{ ok: false, code: "NOT_FOUND" }` on failure.
+5. **Revocation.** When a member is removed or downgraded, or a project is deleted, evict that user's sockets from the affected rooms (`io.in("user:{id}").socketsLeave(...)` through the adapter). Access tokens expire after 15 minutes. Long-lived sockets are re-validated on reconnect, and the client reconnects after it refreshes its token.
+6. **Sticky sessions.** With more than one gateway instance, the long-polling transport needs sticky sessions. If the host cannot guarantee them, use `transports: ["websocket"]` and rely on the REST polling fallback.
 
 ---
 
 ### 3. Event Contract Registry
 
-All events must be declared in `@testpulse/shared/src/events/` and validated with Zod:
-
-| Event Name | Channel / Room | Payload Interface | Trigger |
+| Event Name | Room | Payload (lean) | Trigger |
 | :--- | :--- | :--- | :--- |
-| `run:started` | `project:{projectId}` | `RunStartedEvent` | CI pipeline begins a new test run |
-| `run:result` | `project:{projectId}` | `RunResultEvent` | Single test case passes, fails, or flakes |
-| `run:completed` | `project:{projectId}` | `RunCompletedEvent` | All tests in a run finish |
-| `quarantine:changed` | `project:{projectId}` | `QuarantineChangedEvent` | Test case quarantined, resolved, or dismissed |
-| `annotation:created` | `project:{projectId}` | `AnnotationCreatedEvent` | New comment or tag added to a test case |
-| `notification:new` | `user:{userId}` | `NotificationEvent` | User assigned to quarantine or SLA warning |
+| `run:started` | `project:{projectId}` | `runId`, `runNumber`, `branch`, `commitSha`, `startedAt` | Run created |
+| `run:progress` | `project:{projectId}` | `runId`, counters, `results[]` of `{ testCaseId, title, status, durationMs }` | Result batch committed |
+| `run:completed` | `project:{projectId}` | `runId`, `status`, counters, `durationMs` | All shards complete or reaper timeout |
+| `testcase:flaky-changed` | `project:{projectId}` | `testCaseId`, `flakyState`, `flakyScore` | Flaky analysis changes state |
+| `quarantine:changed` | `project:{projectId}` | `quarantineId`, `testCaseId`, `status`, `assigneeId?` | Any quarantine transition |
+| `annotation:created` | `project:{projectId}` | `annotationId`, `testCaseId`, `authorId` | New comment |
+| `notification:new` | `user:{userId}` | `notificationId`, `type`, `title` | Notification created |
+
+- **Batching:** per-test events do not scale (a 10,000-test run would mean 10,000 messages per viewer). `run:progress` carries one ingestion batch. Never put stack traces or comment bodies in events.
+- **Versioning:** additive payload changes keep `version: 1`. Breaking changes bump `version`, and clients ignore versions they don't understand.
 
 ---
 
 ### 4. Connection Resilience & Reconciliation
 
-- **Reconnection Strategy:** Configured with exponential backoff (initial delay: 1,000ms, max delay: 30,000ms, with randomized jitter).
-- **State Catch-up on Reconnect:**
-  Clients track `lastReceivedEventTimestamp`. Upon successful reconnection, the client issues a REST request (`GET /api/v1/projects/:projectId/events/missed?since=TIMESTAMP`) to synchronize any updates missed during the disconnect window before continuing real-time stream consumption.
-- **Deduplication:** Every real-time event carries an `eventId` (UUIDv4/ULID) to prevent duplicate processing on the client.
+- **Reconnection strategy:** exponential backoff (initial 1,000 ms, max 30,000 ms, randomized jitter) to avoid reconnect storms after a deploy.
+- **Catch-up on reconnect:** Socket.IO connection-state recovery does not work with the classic Redis adapter, and there is no event store. On reconnect (and on `visibilitychange` after a long hidden period), re-emit `join:project` for active rooms, then **invalidate the active React Query queries** for those projects, so authoritative REST state replaces anything missed.
+- **Deduplication and ordering:** clients keep a bounded LRU of recent `eventId`s. Patches are idempotent (counters are absolute values, not deltas), so a replayed or reordered event cannot corrupt state.
+- **Polling fallback:** if the socket cannot connect for 15 seconds, switch the affected queries to `refetchInterval` (default 5 s) and show the degraded-mode banner. Stop polling when the socket reconnects.
 
 ---
 
 ### 5. Performance Targets & Testing
 
-- **Broadcast Latency:** < 200ms end-to-end from Redis PUBLISH to client receipt.
-- **Concurrency SLA:** Support 1,000 concurrent active WebSocket connections per server instance.
-- **Testing:** Unit test event schemas; integration test the Redis pub/sub to Socket.IO room broadcast pipeline using `ioredis-mock` and test Socket.IO client instances.
+- **Broadcast latency:** p95 < 200 ms from Redis publish to client render (master plan §10).
+- **Concurrency:** 1,000 concurrent connections per gateway instance (P10-S03); 100 in the P05-S06 smoke test.
+- **Testing:**
+  - Unit: event schemas, `RealtimePublisher` validation, and room-authorization logic.
+  - Integration: a single gateway with the in-memory adapter and real `socket.io-client` instances: auth rejection, join/leave acks, and eviction on membership removal.
+  - Contract (`test:contract`, real Redis): two gateway instances plus the emitter. Assert that each client receives exactly **one** copy of each event.

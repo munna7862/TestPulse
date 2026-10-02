@@ -1,4 +1,4 @@
-﻿# Phase 10 — Quality Engineering & Release
+# Phase 10 — Quality Engineering & Release
 
 ← [Phase 09](./09-phase-ux-polish-accessibility.md) | [Phase 11 →](./11-phase-landing-page-docs-gtm.md)
 
@@ -8,7 +8,7 @@ Harden the application for production. Achieve comprehensive test coverage, fix 
 
 ## Outcome
 
-TestPulse v1 is production-ready with a clean CI pipeline, comprehensive test coverage, no known critical bugs, and verified deployment.
+TestPulse v1.0 runs in production for invited design partners (private beta), with a clean CI pipeline, comprehensive test coverage, no known critical bugs, a published reporter, and a tested rollback plan. The public launch follows in P11-S05 (master plan D-11).
 
 ## Scope
 
@@ -17,47 +17,48 @@ TestPulse v1 is production-ready with a clean CI pipeline, comprehensive test co
 - E2E regression suite (all critical user journeys)
 - Performance testing (API throughput, WebSocket concurrency, dashboard render)
 - Security audit (OWASP, dependency vulnerabilities, tenant isolation)
-- Load testing (k6 or Artillery for API and WebSocket)
+- Load testing (k6 for API, ingestion, and WebSocket)
 - Database query optimization (slow query analysis)
-- Error monitoring setup (Sentry)
-- Production deployment validation (staging -> production)
-- Release checklist and sign-off
+- Error monitoring verification (Sentry was set up in P02-S05)
+- Staging validation (api + worker, multi-instance WebSockets, migrations)
+- Reporter 1.0.0 publish, production deploy (private beta), release checklist and sign-off
 
 ## Quality Gates
 
 ```text
-Gate 1: All tests pass (unit + integration + E2E)
+Gate 1: All tests pass (unit + integration + contract + E2E), coverage thresholds met
 Gate 2: TypeScript strict mode with zero errors
 Gate 3: ESLint with zero warnings
-Gate 4: No critical/high dependency vulnerabilities
+Gate 4: No critical/high dependency vulnerabilities, no leaked secrets
 Gate 5: WCAG 2.1 AA accessibility compliance
-Gate 6: API p95 < 300ms under load
-Gate 7: WebSocket latency < 200ms under 100 concurrent connections
-Gate 8: Production deployment verified on staging
+Gate 6: All master plan §10 performance targets met (API p95, WS latency at
+        1,000 connections/instance, ingestion throughput, dashboard LCP)
+Gate 7: Tenant isolation suite covers every route and passes
+Gate 8: Staging deployment validated, rollback tested
 ```
 
 ## Testing
 
 - Regression test suite covering all user journeys
-- Load test: 1000 concurrent API requests
-- Load test: 100 concurrent WebSocket connections
-- Security scan with npm audit + Snyk
+- Load test: 1,000 concurrent API requests
+- Load test: 1,000 concurrent WebSocket connections per gateway instance
+- Security scan with npm audit + gitleaks (Snyk optional)
 - Lighthouse performance and accessibility audit
 - Cross-browser testing (Chrome, Firefox, Safari, Edge)
 
 ## Acceptance Criteria
 
-- [ ] Test coverage > 80% (unit + integration).
+- [ ] Coverage meets the master plan §10 targets.
 - [ ] All critical user journeys have E2E tests.
 - [ ] No critical or high severity bugs open.
 - [ ] Performance SLAs are met under load.
 - [ ] Security audit passes with no critical findings.
-- [ ] Production deployment is validated on staging.
+- [ ] Production deployment is validated on staging, and v1.0 is live for design partners.
 - [ ] Release checklist is fully complete.
 
 ## Exit Criteria
 
-TestPulse v1 can be confidently shipped to real users.
+TestPulse v1.0 is in real users' hands (private beta) and can be confidently opened to the public.
 
 ## Sprint Decomposition
 
@@ -66,4 +67,4 @@ TestPulse v1 can be confidently shipped to real users.
 - P10-S03: Performance and load testing
 - P10-S04: Security audit and dependency review
 - P10-S05: Production deployment validation (staging)
-- P10-S06: Release candidate build and sign-off
+- P10-S06: v1.0 release candidate and private beta launch

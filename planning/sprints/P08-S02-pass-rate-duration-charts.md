@@ -1,4 +1,4 @@
-﻿# Phase 08 — Sprint 02: Pass Rate and Duration Trend Charts
+# Phase 08 — Sprint 02: Pass Rate and Duration Trend Charts
 
 ## Sprint Objective
 
@@ -8,17 +8,23 @@ Build interactive trend charts for pass rate and test duration over time, powere
 
 P08-S01 aggregation pipeline.
 
+## Personas
+
+- **Lead:** `role-frontend-engineer`
+- **Reviewers / sign-off:** `role-sdet-architect`, `role-product-owner`
+
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Create PassRateTrendChart component (line chart, daily/weekly/monthly granularity).
-2. Create DurationTrendChart component (average and p95 duration over time).
-3. Implement date range selector (last 7 days, 30 days, 90 days, custom).
-4. Add branch filter to charts (compare main vs feature branches).
-5. Implement chart interactivity (tooltips, zoom, click-through to specific day).
-6. Create project overview dashboard card with key metrics summary.
-7. Add chart loading skeletons and error states.
+1. Create PassRateTrendChart (line chart, daily/weekly/monthly granularity) with Recharts.
+2. Create DurationTrendChart (average and p95 over time).
+3. Date range selector (7, 30, 90 days, custom), capped by the plan's retention.
+4. Branch filter (compare the default branch with others).
+5. Chart interactivity: tooltips, brush/zoom, and click-through to a specific day's runs.
+6. Project overview dashboard card with a key metrics summary.
+7. Charts read colors from theme tokens, avoid color-only encoding, and offer an accessible data-table alternative.
+8. Loading skeletons and error states for charts.
 
 ## Expected Files / Areas
 
@@ -30,72 +36,52 @@ E2E tests for chart rendering with real data. Visual regression tests for chart 
 
 ## Acceptance Criteria
 
-- [ ] Pass rate trend chart renders correctly with real data.
-- [ ] Duration trend chart shows average and p95.
-- [ ] Date range selector changes chart data.
-- [ ] Branch filter works correctly.
-- [ ] Tooltips display detailed information.
+- [ ] The pass rate trend chart renders correctly with real data.
+- [ ] The duration trend chart shows average and p95.
+- [ ] The date range selector and branch filter change chart data.
+- [ ] Tooltips display detailed information, and each chart has an accessible data-table alternative.
+- [ ] Charts render correctly in light and dark themes.
 - [ ] Loading and error states are handled.
 
 ## Risks / Guardrails
 
-Chart performance with large datasets; inconsistent chart rendering across browsers; timezone mismatch in date labels.
+Chart performance with large datasets; inconsistent rendering across browsers; time zone mismatch in date labels (aggregates are UTC, so label accordingly).
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 08, Sprint 02: Pass Rate and Duration Trend Charts.
+You are the implementation agent for TestPulse, Phase 08 — Sprint 02: Pass Rate and Duration Trend Charts.
+Act as: role-frontend-engineer (load .agents/skills/role-frontend-engineer/SKILL.md). Reviewers: role-sdet-architect, role-product-owner.
 
-OBJECTIVE:
-Build interactive trend charts for pass rate and test duration over time, powered by the aggregation pipeline.
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/08-phase-analytics-reporting.md
+4. planning/sprints/P08-S02-pass-rate-duration-charts.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P08_S02.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Create PassRateTrendChart component (line chart, daily/weekly/monthly granularity).
-2. Create DurationTrendChart component (average and p95 duration over time).
-3. Implement date range selector (last 7 days, 30 days, 90 days, custom).
-4. Add branch filter to charts (compare main vs feature branches).
-5. Implement chart interactivity (tooltips, zoom, click-through to specific day).
-6. Create project overview dashboard card with key metrics summary.
-7. Add chart loading skeletons and error states.
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-E2E tests for chart rendering with real data. Visual regression tests for chart appearance.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high; npm run test:e2e (with axe-core checks on new/changed pages) — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] Pass rate trend chart renders correctly with real data.
-- [ ] Duration trend chart shows average and p95.
-- [ ] Date range selector changes chart data.
-- [ ] Branch filter works correctly.
-- [ ] Tooltips display detailed information.
-- [ ] Loading and error states are handled.
-
-GUARDRAILS:
-Chart performance with large datasets; inconsistent chart rendering across browsers; timezone mismatch in date labels.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P08-S02.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
+- [ ] New or changed screens have loading, empty and error states and pass the axe-core check in light and dark themes.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

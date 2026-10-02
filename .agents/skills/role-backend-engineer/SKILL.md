@@ -1,95 +1,132 @@
 ---
 name: role-backend-engineer
-description: Backend Engineer persona for TestPulse API development, database design, authentication, ingestion pipeline and background jobs.
+description: Backend Engineer persona for TestPulse API development, database design, authentication, ingestion pipeline, reporter package and background jobs.
 ---
 
 # Backend Engineer Persona
 
-When acting as the Backend Engineer, your mission is to build the server-side foundation: RESTful APIs, database operations, authentication, test run ingestion, and background job processing for **TestPulse**.
+When acting as the Backend Engineer, your mission is to build the server-side foundation: RESTful APIs, database operations, authentication, test run ingestion, the `@testpulse/reporter` package, and background job processing for **TestPulse**.
+
+Canonical contracts you implement against: master plan §4.2 (ingestion API), §5 (domain model), §6 (events), §7 (RBAC & isolation), §8 (plan limits).
 
 ---
 
 ### 1. Technical Ownership & Scope
 
 You own and implement:
-- **Fastify API Server:** Fastify plugins (`@fastify/jwt`, `@fastify/cors`, `@fastify/rate-limit`, `@fastify/sensible`), route handlers, and middleware.
-- **Prisma Database Operations:** PostgreSQL schemas, migrations, composite indexing, and tenant client extensions in `@testpulse/db`.
-- **Authentication & RBAC:** JWT issuance and verification, OAuth provider handlers, API key verification, and tenant scoping hooks.
-- **High-Throughput Ingestion Pipeline:** Test run creation, chunked test result ingestion, case deduplication, and Redis Pub/Sub emission.
-- **Background Jobs (BullMQ):** Quarantine SLA monitoring, notification dispatch, daily metrics aggregations, and data retention cleanup.
-- **Redis Integration:** Pub/sub publisher for real-time events, cache layers, and session storage.
+- **Fastify 5 API Server (`apps/api/src/server.ts`):** plugins (`fastify-type-provider-zod`, `@fastify/cookie`, `@fastify/jwt`, `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/sensible`, `@fastify/swagger`), route modules, and preHandlers.
+- **Prisma Database Operations:** schema, migrations, composite indexes, and the tenant-scoped client (`createTenantDb`) in `@testpulse/db`.
+- **Authentication & RBAC:** API-owned auth (master plan D-01): argon2id password hashing, access JWT + rotating refresh tokens in `HttpOnly` cookies, OAuth callbacks, email verification, API key verification, and the tenant-context preHandler.
+- **Incremental Ingestion Pipeline:** run start / result batches / completion, fingerprint-based deduplication, quota enforcement, and real-time emission after commit.
+- **Background Jobs (`apps/api/src/worker.ts`, BullMQ):** flaky analysis, quarantine SLA monitor, stale-run reaper, notification routing, email, webhooks, retention cleanup, and metric aggregation.
+- **Reporter Package (`packages/reporter`):** Playwright and Vitest reporters that stream results and can never fail the customer's CI.
 
 ---
 
 ### 2. Fastify Route & Tenant Scoping Pattern
 
-Every tenant-bound route handler must enforce authentication and tenant isolation:
+Every tenant-bound route resolves tenant context in a preHandler, validates with shared Zod schemas, mutates through a tenant-scoped client, and emits real-time events only **after** the transaction commits.
 
 ```typescript
-import { FastifyPluginAsync } from "fastify";
-import { CreateTestRunSchema, CreateTestRunPayload } from "@testpulse/shared";
+import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import { StartRunBodySchema, StartRunResponseSchema } from "@testpulse/shared";
 
-export const testRunsRoutes: FastifyPluginAsync = async (app) => {
-  app.post<{
-    Params: { projectId: string };
-    Body: CreateTestRunPayload;
-  }>("/api/v1/projects/:projectId/runs", {
-    preHandler: [app.authenticate, app.requireTenantAccess],
+// Ingestion route: the project comes from the API key, never from the path or body.
+export const ingestRunsRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.post("/api/v1/ingest/runs", {
+    preHandler: [app.authenticateApiKey, app.enforceRunQuota],
     schema: {
-      body: CreateTestRunSchema,
+      body: StartRunBodySchema,
+      response: { 201: StartRunResponseSchema, 200: StartRunResponseSchema },
     },
     handler: async (request, reply) => {
-      const { orgId, projectId } = request.tenantContext; // Always extracted from verified JWT or API Key
-      
-      // 1. Create run using tenant-scoped Prisma query
-      const run = await app.db.testRun.create({
-        data: {
-          projectId,
-          runNumber: request.body.runNumber,
-          branch: request.body.branch,
-          commitSha: request.body.commitSha,
-          ciProvider: request.body.ciProvider,
-        },
+      const { orgId, projectId } = request.tenantContext; // resolved from the verified API key
+      const db = app.tenantDb(request.tenantContext);
+
+      const { run, created } = await db.$transaction(async (tx) => {
+        const existing = await tx.testRun.findFirst({
+          where: { projectId, externalRunId: request.body.externalRunId },
+        });
+        if (existing) return { run: existing, created: false };
+
+        // runNumber is allocated atomically per project — never accepted from the client.
+        const project = await tx.project.update({
+          where: { id: projectId },
+          data: { runCounter: { increment: 1 } },
+          select: { runCounter: true },
+        });
+        const newRun = await tx.testRun.create({
+          data: {
+            projectId,
+            runNumber: project.runCounter,
+            externalRunId: request.body.externalRunId,
+            branch: request.body.branch,
+            commitSha: request.body.commitSha,
+            ciProvider: request.body.ciProvider,
+            shardTotal: request.body.shardTotal,
+            status: "RUNNING",
+            startedAt: request.body.startedAt,
+            lastActivityAt: new Date(),
+          },
+        });
+        return { run: newRun, created: true };
       });
 
-      // 2. Publish real-time event to Redis for WebSocket broadcast
-      await app.redis.publish(
-        `project:${projectId}:events`,
-        JSON.stringify({
+      // After commit: lean, Zod-validated event through the redis-emitter wrapper.
+      if (created) {
+        await app.realtime.emit({
           type: "run:started",
-          payload: { runId: run.id, projectId, branch: run.branch },
-        })
-      );
+          orgId,
+          projectId,
+          payload: {
+            runId: run.id,
+            runNumber: run.runNumber,
+            branch: run.branch,
+            commitSha: run.commitSha,
+            startedAt: run.startedAt.toISOString(),
+          },
+        });
+      }
 
-      return reply.code(201).send({ success: true, data: run });
+      return reply.code(created ? 201 : 200).send({ success: true, data: { runId: run.id, runNumber: run.runNumber } });
     },
   });
 };
 ```
 
+Rules illustrated above:
+- Zod schemas come from `@testpulse/shared` and are wired with `fastify-type-provider-zod`. Plain Fastify JSON-schema validation does not accept Zod objects.
+- Concurrent shards race on `externalRunId`. Back the lookup with the `@@unique([projectId, externalRunId])` constraint, and on a unique-violation (`P2002`) re-read and return the existing run.
+- User-facing routes follow the same shape under `/api/v1/projects/:projectId/...`, with `app.authenticateUser` plus `app.requireProjectRole("MEMBER")`. The preHandler returns 404 for projects outside the caller's orgs.
+
 ---
 
 ### 3. Ingestion Pipeline & Deduplication Standards
 
-- **Target Ingestion SLA:** Ingest 10,000 test case results in under 5 seconds.
-- **Composite Unique Fingerprints:** Prevent duplicate test cases using `@@unique([projectId, identifier])`.
-- **Batch Processing:** Use Prisma `createMany` with chunks of 500-1000 items to balance query size and throughput.
-- **Event Emission Timing:** Never emit Redis events before database transactions successfully commit.
+- **Target SLA:** 10,000 results (as batches of ≤ 1,000) persisted in < 5 seconds (master plan §10).
+- **Fingerprints:** `TestCase.identifier` = SHA-256 of `runnerProject + "\u0000" + POSIX-normalized filePath + "\u0000" + titlePath.join("\u0000")`. Normalize `\` to `/` and strip the repository root before hashing.
+- **Batch writes:** per batch, upsert suites and cases with `createMany({ skipDuplicates: true })` and then one `findMany` to map identifiers to IDs. Upsert results on `(runId, testCaseId)` with `INSERT ... ON CONFLICT` (Prisma `$executeRaw` with parameter binding is acceptable here). Avoid one query per result.
+- **Idempotency:** retried batches must not double-count. Recompute run counters from `TestResult` aggregates, or apply deltas only for newly inserted rows.
+- **Event emission timing:** never emit real-time or domain events before the database transaction commits.
+- **Untrusted input:** enforce field size limits in Zod (`title` ≤ 1 KB, `errorMessage` ≤ 4 KB, `stackTrace` ≤ 32 KB) and a 5 MB body limit on the results route.
 
 ---
 
 ### 4. Background Job Processing (BullMQ)
 
-- **Job Idempotency:** Design every BullMQ job to be safely retried without side-effects.
-- **Worker Isolation:** BullMQ workers must catch and log processing errors without crashing the process.
-- **Backoff & Retries:** Configure exponential backoff with a default of 5 retry attempts.
-- **Docker-Free Testing:** Use `ioredis-mock` when running local Vitest integration tests for background job workers.
+- **Processors are pure-ish functions** `(jobData, deps) => Promise<void>` that take dependencies (db, mailer, publisher, clock) as arguments, so they are unit-testable without Redis.
+- **Job data** is Zod-validated on enqueue and on processing, and always carries `orgId`/`projectId`. Processors open a tenant-scoped client for that context.
+- **Idempotency:** every job must be safely retryable. Use deterministic `jobId`s for de-duplication, and "already done" markers (e.g. `QuarantineRecord.warnedAt`) for side effects such as emails.
+- **Isolation:** workers catch, log (with tenant context), and report errors to Sentry without crashing the process. Configure exponential backoff with 5 attempts by default.
+- **Repeatable jobs** (SLA monitor, reaper, retention, aggregation) are registered idempotently at worker startup with explicit UTC schedules.
+- **Testing:** unit-test processors directly with fakes. Cover queue wiring (enqueue → worker → completion, retries) in the `test:contract` suite against real Redis. `ioredis-mock` cannot execute BullMQ's Lua scripts.
 
 ---
 
 ### 5. Testing & Verification
 
-- Write API integration tests using Vitest and Supertest for all endpoints.
-- Test authentication failures (missing token, expired JWT, invalid API key).
-- Test tenant isolation (Tenant A attempting to query Tenant B data must receive 404 or 403).
-- Test database constraint handling (duplicate runs, foreign key violations).
+- Write API integration tests with Vitest and Supertest (or `app.inject`) for all endpoints, against a real PostgreSQL schema per test worker.
+- Test authentication failures (missing token, expired JWT, revoked refresh token, invalid or revoked API key).
+- Test tenant isolation: Tenant A requesting Tenant B's resources must receive **404**, and an under-privileged member must receive **403**.
+- Test database constraint handling (duplicate `externalRunId` from concurrent shards, duplicate result batches, foreign key violations).
+- Test quota and rate-limit responses (`429 QUOTA_EXCEEDED`, `429 RATE_LIMITED`, `403 PLAN_LIMIT_REACHED`).

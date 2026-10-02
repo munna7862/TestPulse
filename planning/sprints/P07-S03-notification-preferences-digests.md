@@ -1,101 +1,85 @@
-﻿# Phase 07 — Sprint 03: Notification Preferences and Digest Batching
+# Phase 07 — Sprint 03: Notification Preferences and Digest Batching
 
 ## Sprint Objective
 
-Implement per-user, per-project notification preferences and digest batching for noisy projects.
+Let users choose which notifications they receive and where, and batch noisy events into digests.
 
 ## Dependencies
 
 P07-S02 email notifications.
 
+## Personas
+
+- **Lead:** `role-backend-engineer`, `role-frontend-engineer`
+- **Reviewers / sign-off:** `role-sdet-architect`, `role-product-owner`
+
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Create NotificationPreference model (userId, projectId, eventType, channels: in_app/email/none).
-2. Create notification preferences UI page.
-3. Implement preference-aware notification routing.
-4. Implement digest batching (collect events over N minutes, send as single email).
-5. Add project-level default notification settings (Admin configurable).
-6. Create 'quiet hours' option (suppress non-critical notifications).
-7. Add notification volume indicator per project.
+1. Add the `NotificationPreference` model per master plan §5.
+2. Notification preferences page (per project × event type × channel), with sensible defaults.
+3. The router honors preferences. Security emails are always sent.
+4. Email digests (hourly or daily) for high-volume event types (`run.failed`, `test.new_failure`). SLA escalations are always immediate.
+5. Project-level defaults (Admin+) that apply to members without explicit preferences.
+6. A per-user hourly cap on non-critical emails; overflow rolls into the next digest.
+7. Deferred (post-MVP, do not build): quiet hours and the per-project volume indicator.
 
 ## Expected Files / Areas
 
-`apps/api/src/modules/notifications/preferences/`, `apps/web/src/features/settings/`
+`apps/api/src/modules/notifications/preferences/`, `apps/api/src/jobs/digest.ts`, `apps/web/src/features/settings/notifications/`
 
 ## Testing & Verification
 
-Integration tests for preference-based routing. Tests for digest batching logic. E2E tests for preferences UI.
+Integration tests for preference-based routing and defaults. Tests for digest batching with a fake clock. E2E for the preferences UI.
 
 ## Acceptance Criteria
 
-- [ ] Users can configure notification preferences per project and event type.
-- [ ] Preferences correctly route notifications to chosen channels.
-- [ ] Digest batching groups events into a single email.
-- [ ] Project-level defaults apply to new members.
-- [ ] Quiet hours suppress non-critical notifications.
-- [ ] Volume indicator helps users identify noisy projects.
+- [ ] Users can configure preferences per project and event type.
+- [ ] Preferences route notifications to the chosen channels.
+- [ ] Digest batching groups events into a single email on schedule.
+- [ ] Project-level defaults apply to members without their own preferences.
+- [ ] Critical notifications are never delayed by digests.
 
 ## Risks / Guardrails
 
-Digest batching delaying critical notifications; preference migration when new event types are added.
+Digest batching delaying critical notifications; preference migration when new event types are added (default new types explicitly).
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 07, Sprint 03: Notification Preferences and Digest Batching.
+You are the implementation agent for TestPulse, Phase 07 — Sprint 03: Notification Preferences and Digest Batching.
+Act as: role-backend-engineer + role-frontend-engineer (load .agents/skills/role-backend-engineer/SKILL.md, .agents/skills/role-frontend-engineer/SKILL.md). Reviewers: role-sdet-architect, role-product-owner.
 
-OBJECTIVE:
-Implement per-user, per-project notification preferences and digest batching for noisy projects.
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/07-phase-notifications-integrations.md
+4. planning/sprints/P07-S03-notification-preferences-digests.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P07_S03.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Create NotificationPreference model (userId, projectId, eventType, channels: in_app/email/none).
-2. Create notification preferences UI page.
-3. Implement preference-aware notification routing.
-4. Implement digest batching (collect events over N minutes, send as single email).
-5. Add project-level default notification settings (Admin configurable).
-6. Create 'quiet hours' option (suppress non-critical notifications).
-7. Add notification volume indicator per project.
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-Integration tests for preference-based routing. Tests for digest batching logic. E2E tests for preferences UI.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high; npm run test:e2e (with axe-core checks on new/changed pages) — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] Users can configure notification preferences per project and event type.
-- [ ] Preferences correctly route notifications to chosen channels.
-- [ ] Digest batching groups events into a single email.
-- [ ] Project-level defaults apply to new members.
-- [ ] Quiet hours suppress non-critical notifications.
-- [ ] Volume indicator helps users identify noisy projects.
-
-GUARDRAILS:
-Digest batching delaying critical notifications; preference migration when new event types are added.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P07-S03.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
+- [ ] New or changed screens have loading, empty and error states and pass the axe-core check in light and dark themes.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.
