@@ -5,7 +5,7 @@ description: TestPulse production coding standards for TypeScript, React, Fastif
 
 # Universal Dev Coding Standards for TestPulse
 
-When writing production code for **TestPulse**, the following standards must be applied to guarantee application performance, strict type safety, clean architecture, and maintainability across **TypeScript (Next.js 15 / Fastify)**.
+When writing production code for **TestPulse**, the following standards must be applied to guarantee application performance, strict type safety, clean architecture, and maintainability across **TypeScript (Next.js 16 / Fastify 5)**. Exact versions are pinned in [ADR-004](../../../docs/architecture/adr-004-dependency-baseline.md).
 
 ---
 
@@ -84,7 +84,7 @@ export interface ApiResponse<T> {
 
 ---
 
-### 4. Frontend & React Standards (Next.js 15 App Router)
+### 4. Frontend & React Standards (Next.js 16 App Router)
 
 - **Server vs. Client Components:**
   - Default to Next.js Server Components for layout, static presentation, and initial data fetching.

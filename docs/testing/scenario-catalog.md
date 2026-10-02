@@ -1,6 +1,6 @@
 # Test Scenario Catalog (Master)
 
-> **Status:** Seeded during the planning review (2026-10). P01-S05 refines it; every sprint extends it.
+> **Status:** Refined in P01-S05 (2026-10) against the PRD, API contracts, and security model. Every sprint extends it.
 > **Purpose:** The single list of behaviors TestPulse must keep proving. Each scenario has a permanent `SC-*` ID that links to features (`FR-*`, see [feature catalog](../product/feature-catalog.md)), sprint test catalogs, and automated tests (master plan D-15).
 
 ## How to use this file
@@ -35,6 +35,7 @@
 | SC-AUTH-016 | OAuth email matches an existing account, but the local or provider email is unverified | Not linked; the user is told to sign in with the existing method and link from settings | I | FR-AUTH-08 | — |
 | SC-AUTH-017 | Repeated failed logins for one account from rotating IPs, and for one IP across accounts | 429 once either per-account or per-IP limit is exceeded | I | FR-AUTH-09 | — |
 | SC-AUTH-018 | A cookie-authenticated POST arrives with a foreign `Origin` header | 403; no state change | I | FR-AUTH-10 | — |
+| SC-AUTH-019 | An unverified user tries to create an org, accept an invitation, or link an OAuth account | 403 with `EMAIL_NOT_VERIFIED` guidance; verify/resend/logout still work | I | FR-AUTH-02 | — |
 
 ## ORG — Organizations, projects, membership
 
@@ -87,6 +88,7 @@
 | SC-ING-012 | A project has open, closed, and other-project quarantines | `GET /ingest/quarantined-tests` returns only the open ones for the key's project | I | FR-ING-06 | — |
 | SC-ING-013 | A Free org starts its 501st run of the month | 429 `QUOTA_EXCEEDED`; batches for already-started runs are still accepted | I | FR-ING-07 | — |
 | SC-ING-014 | A run has had no activity for 30 minutes | The reaper sets TIMED_OUT and publishes `run:completed` exactly once | I | FR-ING-08 | — |
+| SC-ING-015 | A second shard starts with a different `shardTotal`; a start call reuses the `externalRunId` of a completed run | `409 SHARD_MISMATCH`; `409 RUN_COMPLETED` | I | FR-ING-02 | — |
 
 ## REP — Reporter
 
@@ -101,7 +103,8 @@
 | SC-REP-007 | The first API request takes 45 s (simulated cold start) | Reporter keeps buffering, then delivers all results; overhead stays within the final-flush timeout | I | FR-REP-06 | — |
 | SC-REP-008 | `TESTPULSE_DISABLED=1`, or no API key is configured | Reporter no-ops with a single info message | U | FR-REP-06 | — |
 | SC-REP-009 | A 100 KB error message containing ANSI codes and a `ghp_…` token | Truncated to the limits; ANSI stripped; token redacted when redaction is enabled | U | FR-REP-07 | — |
-| SC-REP-010 | Quarantine mode is on and a quarantined test fails (if Q1 accepts it) | Failure is reported; it does not fail the CI exit code | I | FR-REP-08 | — |
+| SC-REP-010 | Playwright with `quarantineMode: "non-blocking"`: (a) all failures quarantined; (b) one quarantined + one new failure; (c) quarantine list endpoint unavailable | (a) runner reports passed, results still stored as FAILED; (b) runner fails; (c) fail-open to advisory, runner fails | I | FR-REP-08 | — |
+| SC-REP-012 | Default (advisory) mode: a quarantined test fails | Runner exit code is failed exactly as without TestPulse | I | FR-REP-08 | — |
 | SC-REP-011 | The packed tarball is installed in a clean project (ESM and CJS) | Imports resolve; no runtime dependency on `@testpulse/shared` | I | FR-REP-09 | — |
 
 ## QRY — Query APIs
@@ -172,6 +175,7 @@
 | SC-QUA-010 | The SLA job is retried or runs concurrently | No duplicate markers or events | I | FR-QUA-05 | — |
 | SC-QUA-011 | The process sleeps across both the 80% and 100% thresholds (free-tier catch-up) | On wake, both markers are set in order, once each | I | FR-QUA-05, FR-OPS-03 | — |
 | SC-QUA-012 | MTTR is calculated over resolved, dismissed, and no records | Uses RESOLVED only; dismissed reported separately; no data → null (not 0) | U | FR-QUA-06 | — |
+| SC-QUA-013 | A run has 1 new failure and 2 failures of quarantined tests | Run status FAILED; `quarantinedFailedCount = 2`; UI shows "1 new, 2 known (quarantined)"; GitHub summary lists new failures first | I | FR-QUA-08 | — |
 
 ## ANN — Annotations
 
