@@ -1,3 +1,177 @@
 @import "tailwindcss";
 
-/* Design tokens and theming are introduced in P02-S06. */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #0f172a;
+
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+
+    --primary: #4f46e5;
+    --primary-foreground: #ffffff;
+    --primary-link: #4f46e5;
+
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+
+    --muted: #f1f5f9;
+    --muted-foreground: #475569;
+
+    --accent: #f8fafc;
+    --accent-foreground: #0f172a;
+
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+
+    --border: #e2e8f0;
+    --input: #cbd5e1;
+    --ring: #6366f1;
+
+    --radius: 0.5rem;
+
+    /* Status Tokens - Light */
+    --status-passed: #047857;
+    --status-passed-bg: #ecfdf5;
+    --status-passed-border: #a7f3d0;
+
+    --status-failed: #b91c1c;
+    --status-failed-bg: #fef2f2;
+    --status-failed-border: #fecaca;
+
+    --status-skipped: #475569;
+    --status-skipped-bg: #f1f5f9;
+    --status-skipped-border: #cbd5e1;
+
+    --status-flaky: #b45309;
+    --status-flaky-bg: #fffbeb;
+    --status-flaky-border: #fde68a;
+
+    --status-quarantined: #7e22ce;
+    --status-quarantined-bg: #faf5ff;
+    --status-quarantined-border: #e9d5ff;
+
+    --status-running: #0369a1;
+    --status-running-bg: #f0f9ff;
+    --status-running-border: #bae6fd;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: #0b0f19;
+    --foreground: #f8fafc;
+
+    --card: #111827;
+    --card-foreground: #f8fafc;
+
+    --popover: #111827;
+    --popover-foreground: #f8fafc;
+
+    --primary: #4f46e5;
+    --primary-foreground: #ffffff;
+    --primary-link: #818cf8;
+
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+
+    --accent: #1e293b;
+    --accent-foreground: #f8fafc;
+
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+
+    --border: #1e293b;
+    --input: #334155;
+    --ring: #818cf8;
+
+    /* Status Tokens - Dark */
+    --status-passed: #34d399;
+    --status-passed-bg: rgba(6, 78, 59, 0.35);
+    --status-passed-border: rgba(16, 185, 129, 0.4);
+
+    --status-failed: #f87171;
+    --status-failed-bg: rgba(127, 29, 29, 0.35);
+    --status-failed-border: rgba(239, 68, 68, 0.4);
+
+    --status-skipped: #94a3b8;
+    --status-skipped-bg: rgba(30, 41, 59, 0.5);
+    --status-skipped-border: rgba(100, 116, 139, 0.4);
+
+    --status-flaky: #fbbf24;
+    --status-flaky-bg: rgba(120, 53, 15, 0.35);
+    --status-flaky-border: rgba(245, 158, 11, 0.4);
+
+    --status-quarantined: #c084fc;
+    --status-quarantined-bg: rgba(88, 28, 135, 0.35);
+    --status-quarantined-border: rgba(168, 85, 247, 0.4);
+
+    --status-running: #38bdf8;
+    --status-running-bg: rgba(12, 74, 110, 0.35);
+    --status-running-border: rgba(14, 165, 233, 0.4);
+  }
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-link: var(--primary-link);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-passed: var(--status-passed);
+  --color-status-passed-bg: var(--status-passed-bg);
+  --color-status-passed-border: var(--status-passed-border);
+
+  --color-status-failed: var(--status-failed);
+  --color-status-failed-bg: var(--status-failed-bg);
+  --color-status-failed-border: var(--status-failed-border);
+
+  --color-status-skipped: var(--status-skipped);
+  --color-status-skipped-bg: var(--status-skipped-bg);
+  --color-status-skipped-border: var(--status-skipped-border);
+
+  --color-status-flaky: var(--status-flaky);
+  --color-status-flaky-bg: var(--status-flaky-bg);
+  --color-status-flaky-border: var(--status-flaky-border);
+
+  --color-status-quarantined: var(--status-quarantined);
+  --color-status-quarantined-bg: var(--status-quarantined-bg);
+  --color-status-quarantined-border: var(--status-quarantined-border);
+
+  --color-status-running: var(--status-running);
+  --color-status-running-bg: var(--status-running-bg);
+  --color-status-running-border: var(--status-running-border);
+
+  --font-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

@@ -258,11 +258,11 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-UX-001 | The component catalog is rendered in both themes | Every primitive appears; no axe critical/serious violations; visual snapshots match | E | FR-UX-01 | — |
-| SC-UX-002 | The page loads with a dark system preference | The first paint uses dark tokens (no flash) | E | FR-UX-02 | — |
-| SC-UX-003 | The user picks a theme, reloads, then logs in on another device | Choice persists locally and (from P09-S02) across devices | E | FR-UX-02 | — |
-| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | — |
-| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | — |
+| SC-UX-001 | The component catalog is rendered in both themes | Every primitive appears; no axe critical/serious violations; visual snapshots match | E | FR-UX-01 | apps/web/e2e/catalog.spec.ts |
+| SC-UX-002 | The page loads with a dark system preference | The first paint uses dark tokens (no flash) | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
+| SC-UX-003 | The user picks a theme, reloads, then logs in on another device | Choice persists locally and (from P09-S02) across devices | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
+| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts |
+| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-006 | The quarantine workflow and live run view are used keyboard-only and with a screen reader | Completable; focus visible; live-region announcements are throttled and meaningful | M | FR-UX-04 | — |
 | SC-UX-007 | `prefers-reduced-motion: reduce` is set | Non-essential animations are disabled | E | FR-UX-05 | — |
 

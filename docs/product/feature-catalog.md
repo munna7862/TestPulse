@@ -209,8 +209,8 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-UX-01 | Design tokens, primitives, app shell | P02-S06, P09-S01 | SC-UX-001 | Planned |
-| FR-UX-02 | Dark/light/system theme without flash; per-user persistence | P02-S06, P09-S02 | SC-UX-002, SC-UX-003 | Planned |
+| FR-UX-01 | Design tokens, primitives, app shell | P02-S06, P09-S01 | SC-UX-001 | Done |
+| FR-UX-02 | Dark/light/system theme without flash; per-user persistence | P02-S06, P09-S02 | SC-UX-002, SC-UX-003 | Done |
 | FR-UX-03 | Loading, empty, error, read-only, plan-limit states on every screen | All UI sprints, P09-S04 | SC-UX-004 | Planned |
 | FR-UX-04 | WCAG 2.1 AA, keyboard navigation, screen-reader live regions | All UI sprints, P09-S05 | SC-UX-005, SC-UX-006 | Planned |
 | FR-UX-05 | Reduced-motion support | P09-S03 | SC-UX-007 | Planned |
