@@ -1,0 +1,23 @@
+import { booleanString, DeploymentProfile, parseEnv } from "@testpulse/shared";
+import { z } from "zod";
+
+/**
+ * API environment (docs/ops/environment.md). Server-only: never import this from shared code.
+ * Variables for later sprints (database, Redis, auth, mail) are added by those sprints.
+ */
+export const ApiEnvSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  DEPLOYMENT_PROFILE: DeploymentProfile.default("free"),
+  HOST: z.string().default("0.0.0.0"),
+  PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  RUN_WORKERS_IN_PROCESS: booleanString.default(true),
+  WEB_ORIGIN: z.url().default("http://localhost:3000"),
+  TRUST_PROXY: booleanString.default(false),
+  GIT_COMMIT_SHA: z.string().optional(),
+});
+export type ApiEnv = z.infer<typeof ApiEnvSchema>;
+
+export function loadApiEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
+  return parseEnv(ApiEnvSchema, source);
+}
