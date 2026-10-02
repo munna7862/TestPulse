@@ -3,7 +3,7 @@
 **Project codename:** `TestPulse`\
 **Target platform:** Web SaaS (responsive, cloud-native)\
 **Development approach:** AI-assisted, agent-first development with Google Antigravity\
-**Primary developer stack:** Next.js 15 (React 19) + Fastify 5 + TypeScript + PostgreSQL (Neon) + Redis\
+**Primary developer stack:** Next.js 16 (React 19) + Fastify 5 + TypeScript 6 + Prisma 7 + PostgreSQL (Neon) + Redis (pinned in ADR-004)\
 **Runtime baseline:** Node.js 24 LTS (Node 20 reached end-of-life in April 2026)\
 **Real-time engine:** WebSockets (Socket.IO v4) with Redis adapter for horizontal scaling\
 **Hosting:** **free-tier profile** until the product is feature-complete (§4.4); the paid production setup is decided in P10-S06\
@@ -114,7 +114,7 @@ The monorepo codifies 10 specialized agent personas mapped to skills in `.agents
 ```text
 testpulse/
 ├── apps/
-│   ├── web/               # Next.js 15 (App Router, React 19, Tailwind CSS v4, Radix UI) — app, marketing & docs
+│   ├── web/               # Next.js 16 (App Router, React 19, Tailwind CSS v4, Radix UI) — app, marketing & docs
 │   └── api/               # Fastify 5: two entrypoints
 │       ├── src/server.ts  #   HTTP API + Socket.IO gateway
 │       └── src/worker.ts  #   BullMQ workers (SLA, flaky analysis, notifications, webhooks, retention, aggregation)
@@ -149,15 +149,15 @@ testpulse/
 
 ### 3.3 Target Technology Stacks
 
-- **Frontend:** Next.js 15, React 19, TypeScript (strict), TanStack React Query v5, Zustand, Tailwind CSS v4 (CSS-first `@theme` tokens), Radix UI primitives, Recharts, Lucide React, `next/font` (self-hosted Inter + JetBrains Mono).
+- **Frontend:** Next.js 16, React 19, TypeScript 6 (strict), TanStack React Query v5, Zustand, Tailwind CSS v4 (CSS-first `@theme` tokens), Radix UI primitives, Recharts, Lucide React, `next/font` (self-hosted Inter + JetBrains Mono).
 - **Backend:** Node.js 24 LTS, Fastify 5, `fastify-type-provider-zod`, `@fastify/cookie`, `@fastify/jwt`, `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit` (Redis store), `@fastify/sensible`, `@fastify/swagger` (OpenAPI from Zod), Socket.IO v4, BullMQ v5, pino (with redaction).
-- **Database:** PostgreSQL 16 on Neon (pooled `DATABASE_URL` for runtime, `DIRECT_URL` for migrations), Prisma ORM with a tenant-scoped client.
+- **Database:** PostgreSQL 16 on Neon, Prisma 7.10 with a tenant-scoped client: `@prisma/adapter-pg` on the pooled `DATABASE_URL` at runtime, and `prisma.config.ts` on `DIRECT_URL` for migrations.
 - **Real-Time & Queues:** Redis, `@socket.io/redis-adapter` (gateway) + `@socket.io/redis-emitter` (API handlers and workers). See [Open Decision Q3](#12-open-decisions) for the Redis provider.
 - **Email:** A `Mailer` interface with a console/file transport for dev and test, and Resend or SMTP in staging/production.
 - **Testing:** Vitest (unit/integration), Supertest (HTTP), Playwright (E2E), MSW (component network mocking), `@axe-core/playwright` (accessibility), k6 (load).
 - **Observability:** Sentry (web + api + worker), structured JSON logs with tenant context, uptime probe on `/health`.
 
-> **Version pinning:** newer majors than some of those listed above have shipped (for example Next.js 16, Prisma 7, Zod 4). ADR-004 (P01-S03) pins exact majors before P02-S01, so the project does not start on a superseded major. Fastify 4 and Node 20 are end-of-life and must not be used.
+> **Version pinning:** [ADR-004](../../docs/architecture/adr-004-dependency-baseline.md) pins every major, based on npm on 2026-10-02 plus peer-compatibility checks: TypeScript 6.0 (not 7), Prisma 7.10 (not the 8.0 RC tagged `latest`), ioredis 5 (for `ioredis-mock`), BullMQ 6, Zod 4, Vitest 5, ESLint 10. P02-S01 re-validates the versions before installing. Fastify 4 and Node 20 are end-of-life and must not be used.
 
 ---
 
@@ -215,8 +215,9 @@ All ingestion routes authenticate with `Authorization: Bearer tp_live_<key>`. Th
 | Start | `POST /api/v1/ingest/runs` | `externalRunId`, `branch`, `commitSha`, `ciProvider`, `ciJobUrl?`, `environment?`, `shardIndex`, `shardTotal`, `expectedTestCount?`, `startedAt` | Creates the run, or returns the existing run for `(projectId, externalRunId)` so parallel shards join one run. Allocates `runNumber` atomically. Emits `run:started` on create only. Counts toward the monthly run quota on create only. |
 | Results | `POST /api/v1/ingest/runs/:runId/results` | `batchId`, `results[]` (≤ 1,000 items and ≤ 5 MB) | Upserts `TestSuite`/`TestCase` by fingerprint and `TestResult` on `(runId, testCaseId)`, so retried batches are idempotent. Rejects the whole batch on validation failure (400 with per-index details). Updates `lastActivityAt` and counters. Emits `run:progress`. |
 | Complete | `POST /api/v1/ingest/runs/:runId/complete` | `shardIndex`, `outcome` (`passed`/`failed`/`interrupted`) | Marks the shard done. When all shards are done: computes the final status, emits `run:completed`, and enqueues the `flaky-analysis` job. |
-| Quarantine list | `GET /api/v1/ingest/quarantined-tests` | — | Returns the fingerprints of tests with an open quarantine, so reporters can mark those failures as non-blocking (see Q1). |
+| Quarantine list | `GET /api/v1/ingest/quarantined-tests` | — | Returns the fingerprints of tests with an open quarantine, so reporters in opt-in non-blocking mode can unblock CI when every failure is quarantined (D-16). |
 
+- **Full wire contract** (all fields, responses, error handling, examples): [`docs/api/ingestion.md`](../../docs/api/ingestion.md).
 - **Field limits** (the reporter truncates before sending; the server validates): `title` ≤ 1 KB, `errorMessage` ≤ 4 KB, `stackTrace` ≤ 32 KB.
 - **Errors:** `400 VALIDATION_ERROR`, `401 INVALID_API_KEY`, `404 RUN_NOT_FOUND` (also returned for runs in another project), `409 RUN_COMPLETED`, `413 PAYLOAD_TOO_LARGE`, `429 RATE_LIMITED` / `429 QUOTA_EXCEEDED`.
 - **Stale runs:** a scheduled reaper marks `RUNNING` runs with no activity for 30 minutes as `TIMED_OUT`.
@@ -290,10 +291,10 @@ Every tenant-owned table carries `projectId` and/or `orgId` directly (denormaliz
 | :--- | :--- | :--- |
 | `TestSuite` | `id`, `projectId`, `filePath` (POSIX-normalized), `name`; `@@unique([projectId, filePath])` | P04-S01 |
 | `TestCase` | `id`, `projectId`, `suiteId`, `identifier` (fingerprint, see P04-S03), `title`, `titlePath[]`, `runnerProject?`, `tags[]` (from runner), `labels[]` (user-applied), `lastStatus`, `lastSeenAt`, `flakyState` [STABLE, SUSPECTED, FLAKY], `flakyScore` (0–100), `lastFlakyAt?`, `isQuarantined` (denormalized, written in the same transaction as quarantine transitions); `@@unique([projectId, identifier])` | P04-S01 / P06-S01 |
-| `TestRun` | `id`, `projectId`, `runNumber`, `externalRunId`, `status` [RUNNING, PASSED, FAILED, CANCELLED, TIMED_OUT], `branch`, `commitSha`, `ciProvider`, `ciJobUrl?`, `environment?`, `shardTotal`, `shardsCompleted`, `totalCount`, `passedCount`, `failedCount`, `skippedCount`, `flakyCount`, `startedAt`, `finishedAt?`, `lastActivityAt`, `durationMs?`; `@@unique([projectId, runNumber])`, `@@unique([projectId, externalRunId])` | P04-S01 |
+| `TestRun` | `id`, `projectId`, `runNumber`, `externalRunId`, `status` [RUNNING, PASSED, FAILED, CANCELLED, TIMED_OUT], `branch`, `commitSha`, `ciProvider`, `ciJobUrl?`, `environment?`, `runner`, `reporterVersion`, `shardTotal`, `shardsCompleted`, `expectedTestCount?`, `totalCount`, `passedCount`, `failedCount`, `skippedCount`, `flakyCount`, `quarantinedFailedCount`, `quarantineUnblocked`, `startedAt`, `finishedAt?`, `lastActivityAt`, `durationMs?`; `@@unique([projectId, runNumber])`, `@@unique([projectId, externalRunId])` | P04-S01 |
 | `TestResult` | `id`, `projectId`, `runId`, `testCaseId`, `status` [PASSED, FAILED, SKIPPED, FLAKY], `retryCount`, `durationMs`, `errorMessage?`, `stackTrace?`, `shardIndex`, `createdAt`; `@@unique([runId, testCaseId])` | P04-S01 |
 
-`TestResult.status = FLAKY` means the test failed at least once and then passed on retry within the same run. A run's final status is `FAILED` if any result is `FAILED` (quarantined tests are reported separately; see Q1). Otherwise it is `PASSED`. Flaky results do not fail a run.
+`TestResult.status = FLAKY` means the test failed at least once and then passed on retry within the same run. A run's final status is `CANCELLED` if any shard was interrupted; otherwise `FAILED` if any result is `FAILED` (failures of quarantined tests count, and are reported separately via `quarantinedFailedCount`; D-16); otherwise `PASSED`. Flaky results do not fail a run.
 
 **Triage & collaboration**
 
@@ -343,7 +344,7 @@ All events are defined in `@testpulse/shared/src/events/` with Zod schemas and u
 
 Handshake: the client obtains a single-use ticket from `POST /api/v1/realtime/ticket` (cookie-authenticated, same origin) and connects with `auth: { ticket }`. The gateway redeems the ticket atomically from Redis.
 
-Client → server: `join:project { projectId }` and `leave:project { projectId }`, each with an ack `{ ok: true } | { ok: false, code }`. The server re-checks membership on every join. When a member is removed or downgraded, the server evicts that user's sockets from the org's project rooms.
+Client → server: `join:project { projectId }` and `leave:project { projectId }`, each with an ack `{ ok: true } | { ok: false, code }`. The server re-checks membership on every join. When a member is removed or downgraded, the server evicts that user's sockets from the org's project rooms and sends the control event `access:revoked`. The full dictionary is in [`docs/api/realtime-events.md`](../../docs/api/realtime-events.md).
 
 ### 6.2 Domain events (internal, BullMQ `domain-events` queue)
 
@@ -456,6 +457,11 @@ Decisions resolved during the planning review (2026-10). Each will be written up
 | D-12 | **Notifications are decoupled through domain events** (§6.2). | Phase 06 needs to notify users before the Phase 07 notification system exists. |
 | D-13 | **A minimal transactional `Mailer` ships in P03-S01.** | Email verification, password reset, and invitations are needed in Phase 03; P07-S02 extends it. |
 | D-14 | **Free-tier hosting until feature-complete** (§4.4). A dedicated sprint (P10-S06) decides and executes the paid production setup before any real users are onboarded. | Product owner decision (2026-10): no cloud spend during development. The free profile forces a same-origin proxy, ticket-based socket auth, in-process workers, and catch-up-safe jobs; all of these also work in the paid profile. |
+| D-16 | **Quarantine is advisory by default; opt-in non-blocking mode** in the reporter (Playwright in v1). Failures stay `FAILED` and are labeled "known" (closes Q1, PRD §6). | Never silently turn red builds green; teams can opt in per pipeline. |
+| D-17 | **Dependency baseline per ADR-004** (closes Q2). | npm on 2026-10-02 showed incompatible or prerelease `latest` tags (TypeScript 7, Prisma 8 RC). |
+| D-18 | **No PostgreSQL RLS in v1**; five-layer isolation per ADR-006 (closes Q4). | RLS with pooled Prisma connections adds risk and latency on the hot path; app-level layers are testable in CI. |
+| D-19 | **Resend behind the `Mailer` interface**; console/file transport in dev and test (closes Q5). | Simple API and a free tier; swappable. |
+| D-20 | **Renamed or moved tests are new test cases** (closes Q6, ADR-007). | Stable fingerprints over heuristics; manual merge is post-MVP. |
 | D-15 | **Traceability by ID.** Features have `FR-*` IDs (`docs/product/feature-catalog.md`) and test scenarios have `SC-*` IDs (`docs/testing/scenario-catalog.md`). Tests, PRs, and sprint catalogs reference them. | Keeps functionality and its tests from drifting apart across 60 sprints and many agent sessions. |
 
 ---
@@ -464,9 +470,9 @@ Decisions resolved during the planning review (2026-10). Each will be written up
 
 | ID | Question | Owner sprint | Recommendation |
 | :--- | :--- | :--- | :--- |
-| Q1 | Does quarantine affect CI outcomes, or is it advisory only? | P01-S01 | Advisory by default. The reporter can optionally mark failures of quarantined tests as non-blocking (`quarantineMode: "non-blocking"`) using `GET /api/v1/ingest/quarantined-tests`. Playwright reporters can override the final status in `onEnd`; confirm Vitest feasibility in P04-S05. |
-| Q2 | Exact dependency majors (Next.js, Prisma, Zod, Tailwind, Socket.IO) | P01-S03 (ADR-004) | Choose the current stable majors at kickoff; do not start on a superseded major. |
+| ~~Q1~~ | ~~Does quarantine affect CI outcomes?~~ **Closed → D-16** | P01-S01 | Advisory by default. The reporter can optionally mark failures of quarantined tests as non-blocking (`quarantineMode: "non-blocking"`) using `GET /api/v1/ingest/quarantined-tests`. Playwright reporters can override the final status in `onEnd`; confirm Vitest feasibility in P04-S05. |
+| ~~Q2~~ | ~~Exact dependency majors~~ **Closed → D-17 / ADR-004** | P01-S03 | Choose the current stable majors at kickoff; do not start on a superseded major. |
 | Q3 | Paid production hosting & Redis provider (free profile is fixed by D-14) | P10-S06 | BullMQ polling and adapter traffic make per-command pricing expensive. Prefer fixed-price Redis co-located with the API. Candidates: Render paid, Railway, or Fly.io; decide on real usage data. |
-| Q4 | PostgreSQL Row-Level Security as defense in depth | P01-S04 | Not required for v1 if D-04 controls and isolation tests pass. Revisit after launch. |
-| Q5 | Email provider (Resend vs SMTP) and sending domain | P01-S03 | Resend, behind the `Mailer` interface. |
-| Q6 | Test-case identity when tests are renamed or moved | P01-S03 | Treat it as a new test case in v1 (documented limitation). Manual merge is post-MVP. |
+| ~~Q4~~ | ~~PostgreSQL RLS~~ **Closed → D-18 / ADR-006** | P01-S04 | Not required for v1 if D-04 controls and isolation tests pass. Revisit after launch. |
+| ~~Q5~~ | ~~Email provider~~ **Closed → D-19** (sending domain is verified in P10-S06) | P01-S03 | Resend, behind the `Mailer` interface. |
+| ~~Q6~~ | ~~Test identity on rename/move~~ **Closed → D-20 / ADR-007** | P01-S03 | Treat it as a new test case in v1 (documented limitation). Manual merge is post-MVP. |

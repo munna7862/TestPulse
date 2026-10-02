@@ -17,7 +17,7 @@ P02-S02 frontend and backend scaffolding.
 
 ### Granular Implementation Tasks
 
-1. Initialize Prisma in packages/db with the pooled `DATABASE_URL` for runtime and `directUrl = DIRECT_URL` for migrations.
+1. Initialize Prisma 7.10 in packages/db (pin `prisma`, `@prisma/client`, and `@prisma/adapter-pg` to the same version; never `prisma@latest`). Use `prisma.config.ts` with `DIRECT_URL` for migrations, and create the runtime client with `@prisma/adapter-pg` on the pooled `DATABASE_URL`.
 2. Create skeleton `User` and `Organization` models (fields are extended in Phase 03) and run the initial migration.
 3. Implement and export `createTenantDb(ctx)` and `systemDb` (no bare PrismaClient export), with unit tests for scoping, cross-tenant write blocking, and forbidden operations.
 4. Build the test database harness: one schema per Vitest worker (`prisma migrate deploy` into it), a truncate helper between test files, and docs for running PostgreSQL locally without Docker (native Windows install or a personal Neon branch).

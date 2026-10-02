@@ -1,6 +1,6 @@
 # Feature Catalog (Functional Requirements Register)
 
-> **Status:** Seeded during the planning review (2026-10). P01-S01 refines it; every sprint keeps it current.
+> **Status:** Refined in P01-S01 (2026-10) against [prd.md](prd.md). Every sprint keeps it current.
 > **Purpose:** One ID per feature, so requirements, sprints, test scenarios, PRs, and bugs can always be traced to each other (master plan D-15).
 
 ## How to use this file
@@ -18,7 +18,7 @@
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | FR-AUTH-01 | Email/password registration with generic (non-enumerating) responses | P03-S01 | SC-AUTH-001, SC-AUTH-002, SC-AUTH-003 | Planned |
-| FR-AUTH-02 | Email verification with single-use, expiring tokens | P03-S01 | SC-AUTH-004, SC-AUTH-005 | Planned |
+| FR-AUTH-02 | Email verification with single-use, expiring tokens; unverified users restricted (ADR-005) | P03-S01 | SC-AUTH-004, SC-AUTH-005, SC-AUTH-019 | Planned |
 | FR-AUTH-03 | Login with first-party `HttpOnly` cookie session (access 15 min, refresh 30 days) | P03-S01 | SC-AUTH-006, SC-AUTH-007 | Planned |
 | FR-AUTH-04 | Refresh-token rotation with reuse detection (family revocation) | P03-S01 | SC-AUTH-008, SC-AUTH-009 | Planned |
 | FR-AUTH-05 | Logout (current session) and logout everywhere | P03-S01 | SC-AUTH-010 | Planned |
@@ -56,7 +56,7 @@
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | FR-ING-01 | Start run, idempotent on `externalRunId`; atomic `runNumber` | P04-S02 | SC-ING-001, SC-ING-002 | Planned |
-| FR-ING-02 | Shards join one run and complete independently | P04-S02 | SC-ING-003, SC-ING-008 | Planned |
+| FR-ING-02 | Shards join one run and complete independently | P04-S02 | SC-ING-003, SC-ING-008, SC-ING-015 | Planned |
 | FR-ING-03 | Result batches (≤1,000 items, ≤5 MB) upserted idempotently | P04-S02 | SC-ING-004, SC-ING-005, SC-ING-006 | Planned |
 | FR-ING-04 | Run completion computes final status and enqueues analysis + domain events | P04-S02 | SC-ING-007, SC-ING-008 | Planned |
 | FR-ING-05 | Cross-platform test fingerprinting and auto-discovery of suites/cases | P04-S03 | SC-ING-009, SC-ING-010, SC-ING-011 | Planned |
@@ -77,7 +77,7 @@
 | FR-REP-05 | CI metadata auto-detection (GitHub, GitLab, Jenkins, CircleCI, generic) | P04-S05 | SC-REP-005 | Planned |
 | FR-REP-06 | Never fails or hangs customer CI (network errors, 4xx/5xx, quota, cold start) | P04-S05 | SC-REP-006, SC-REP-007, SC-REP-008 | Planned |
 | FR-REP-07 | Truncation, ANSI stripping, optional secret redaction | P04-S05 | SC-REP-009 | Planned |
-| FR-REP-08 | Quarantine mode (non-blocking quarantined failures), if Q1 accepts it | P04-S05 | SC-REP-010 | Planned |
+| FR-REP-08 | Advisory quarantine by default; opt-in `quarantineMode: "non-blocking"` (Playwright in v1) unblocks CI only when every failure is quarantined (PRD §6) | P04-S05 | SC-REP-010, SC-REP-012 | Planned |
 | FR-REP-09 | Published to npm with provenance | P10-S07 | SC-REP-011 | Planned |
 
 ## QRY — Query APIs
@@ -133,6 +133,7 @@
 | FR-QUA-05 | SLA markers at 80/100/200% (once each, catch-up safe) | P06-S05 | SC-QUA-009, SC-QUA-010, SC-QUA-011 | Planned |
 | FR-QUA-06 | Quarantine metrics (MTTR, resolution rate, open count) | P06-S05, P08-S04 | SC-QUA-012 | Planned |
 | FR-QUA-07 | Quarantine CSV export (injection-safe) | P06-S04 | SC-SEC-010 | Planned |
+| FR-QUA-08 | Known-failure labeling: quarantined failures shown separately from new failures in runs, dashboard and GitHub summary; `quarantinedFailedCount` on runs (PRD §6) | P04-S02, P05-S03, P06-S02, P07-S04 | SC-QUA-013 | Planned |
 
 ## ANN — Annotations
 

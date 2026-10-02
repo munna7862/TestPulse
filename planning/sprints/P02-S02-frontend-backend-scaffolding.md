@@ -2,7 +2,7 @@
 
 ## Sprint Objective
 
-Scaffold the Next.js 15 frontend application and Fastify backend API server within the monorepo.
+Scaffold the Next.js 16 frontend application and the Fastify 5 backend API server within the monorepo, using the versions pinned in ADR-004.
 
 ## Dependencies
 

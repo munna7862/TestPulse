@@ -16,7 +16,7 @@ This document is the **always-on memory and operational baseline** for all AI mo
 ```text
 testpulse/
 ├── apps/
-│   ├── web/               # Next.js 15 (App Router, React 19, Tailwind CSS v4, Radix UI) — app, marketing, docs
+│   ├── web/               # Next.js 16 (App Router, React 19, Tailwind CSS v4, Radix UI) — app, marketing, docs
 │   └── api/               # Fastify 5: src/server.ts (REST + Socket.IO gateway), src/worker.ts (BullMQ workers)
 ├── packages/
 │   ├── shared/            # Isomorphic: Zod schemas, inferred types, event contracts, plan limits, pure utils
@@ -32,14 +32,16 @@ testpulse/
 ### Technology Stacks
 *   **Runtime**: Node.js 24 LTS everywhere (`.nvmrc`, CI, hosting). npm workspaces + Turborepo 2.
 *   **Hosting**: the **free-tier profile** (Vercel Hobby + Render free + Neon free + Render Key Value) is used until the product is feature-complete. The paid setup is decided in P10-S06 (master plan §4.4, D-14). Code must work in both profiles through configuration only: same-origin `/api` proxy, ticket-based socket auth, `RUN_WORKERS_IN_PROCESS`, and catch-up-safe scheduled jobs.
-*   **Frontend (`apps/web`)**: Next.js 15 (App Router), React 19, TanStack React Query v5, Zustand, Tailwind CSS v4, Radix UI primitives, Lucide React, Recharts.
+*   **Frontend (`apps/web`)**: Next.js 16 (App Router; `proxy.ts` replaces `middleware.ts`), React 19, TanStack React Query v5, Zustand, Tailwind CSS v4, Radix UI primitives, Lucide React, Recharts.
 *   **Backend (`apps/api`)**: Fastify 5, `fastify-type-provider-zod`, `@fastify/jwt`, `@fastify/cookie`, `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit`, Socket.IO v4, BullMQ v5, pino.
 *   **Database (`packages/db`)**: Prisma ORM, PostgreSQL 16 on Neon (pooled `DATABASE_URL` at runtime, `DIRECT_URL` for migrations).
 *   **Shared (`packages/shared`)**: Typed events, Zod schemas, domain models, plan limits. **Browser-safe only:** no `ioredis`, Prisma, or Node built-ins. The Redis client lives in `apps/api/src/lib/redis.ts`.
 *   **Real-time Infrastructure**: `@socket.io/redis-emitter` (API handlers and workers publish) → Redis → `@socket.io/redis-adapter` (each gateway instance delivers to its local sockets).
 *   **Testing Toolchain**: Vitest (unit/integration), Supertest (API), Playwright (E2E), MSW (component network mocking), `ioredis-mock` (unit tests only), `@axe-core/playwright`, k6.
 
-> Exact dependency majors are pinned by ADR-004 (P01-S03). Fastify 4 and Node 20 are end-of-life and must not be used.
+> Exact dependency majors are pinned by [ADR-004](docs/architecture/adr-004-dependency-baseline.md): Node 24, TypeScript **6.0** (not 7 until typescript-eslint supports it), Next.js 16, Fastify 5, Zod 4, **Prisma 7.10** (never `prisma@latest` while it points at an RC), BullMQ 6 with **ioredis 5** (for `ioredis-mock`), Vitest 5, ESLint 10. Fastify 4 and Node 20 are end-of-life and must not be used. Upgrading a major requires an ADR-004 amendment.
+
+> **Phase 01 reference docs:** [PRD](docs/product/prd.md) · [glossary](docs/product/glossary.md) · [IA & wireframes](docs/ux/information-architecture.md) · [architecture overview & ADRs](docs/architecture/overview.md) · [API contracts](docs/api/rest-api.md) · [schema](docs/database/schema.md) · [security model](docs/security/security-model.md) · [testing strategy](docs/testing/testing-strategy.md) · [environment](docs/ops/environment.md).
 
 ---
 

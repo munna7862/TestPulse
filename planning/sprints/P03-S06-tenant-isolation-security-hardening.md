@@ -29,7 +29,7 @@ P03-S05 API key management.
 
 ## Expected Files / Areas
 
-`apps/api/src/plugins/`, `apps/api/test/security/`, `apps/web/next.config.ts` / `middleware.ts`, `docs/security/`
+`apps/api/src/plugins/`, `apps/api/test/security/`, `apps/web/next.config.ts` / `proxy.ts` (Next.js 16), `docs/security/`
 
 ## Testing & Verification
 
