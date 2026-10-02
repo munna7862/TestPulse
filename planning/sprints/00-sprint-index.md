@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This is the master execution directory for all 59 sprints across 11 phases in the `TestPulse` engineering lifecycle. Each sprint is granular, self-contained, and names its lead and reviewer personas from `.agents/skills/` in a `## Personas` section.
+This is the master execution directory for all 60 sprints across 11 phases in the `TestPulse` engineering lifecycle. Each sprint is granular, self-contained, and names its lead and reviewer personas from `.agents/skills/` in a `## Personas` section.
 
-Canonical contracts (ingestion API, events, domain model, RBAC, plan limits, performance targets) live in the [Master Plan](../master/TestPulse_Master_Plan.md) §0–§10. Sprint files reference them instead of redefining them.
+Canonical contracts (ingestion API, events, domain model, RBAC, plan limits, deployment profiles, performance targets) live in the [Master Plan](../master/TestPulse_Master_Plan.md) §0–§10. Sprint files reference them instead of redefining them. Features (`FR-*`) and test scenarios (`SC-*`) are tracked in the [feature catalog](../../docs/product/feature-catalog.md) and [scenario catalog](../../docs/testing/scenario-catalog.md).
 
 ---
 
@@ -51,9 +51,9 @@ Master Plan (planning/master/TestPulse_Master_Plan.md)   ← canonical contracts
 | **07** | [`07-phase-notifications-integrations.md`](../phases/07-phase-notifications-integrations.md) | 5 | Notification router, in-app, email, preferences, GitHub CI reporting, webhooks |
 | **08** | [`08-phase-analytics-reporting.md`](../phases/08-phase-analytics-reporting.md) | 4 | Aggregations, trends, leaderboards, MTTR, exports |
 | **09** | [`09-phase-ux-polish-accessibility.md`](../phases/09-phase-ux-polish-accessibility.md) | 5 | Design-system consolidation, theme QA, motion, states, WCAG audit |
-| **10** | [`10-phase-quality-engineering-release.md`](../phases/10-phase-quality-engineering-release.md) | 6 | E2E hardening, load tests, security audit, staging, v1.0 private beta |
+| **10** | [`10-phase-quality-engineering-release.md`](../phases/10-phase-quality-engineering-release.md) | 7 | E2E hardening, load tests, security audit, free-tier staging, paid migration, v1.0 private beta |
 | **11** | [`11-phase-landing-page-docs-gtm.md`](../phases/11-phase-landing-page-docs-gtm.md) | 5 | Marketing site, docs portal, SEO/analytics, public launch |
-| **Total** | | **59** | Complete Production SaaS Release |
+| **Total** | | **60** | Complete Production SaaS Release |
 
 ---
 
@@ -71,7 +71,7 @@ Master Plan (planning/master/TestPulse_Master_Plan.md)   ← canonical contracts
 - [`P02-S02-frontend-backend-scaffolding.md`](./P02-S02-frontend-backend-scaffolding.md) — Next.js + Fastify 5 (server + worker entrypoints)
 - [`P02-S03-database-setup.md`](./P02-S03-database-setup.md) — Prisma, tenant client, test DB harness, Redis, BullMQ skeleton
 - [`P02-S04-developer-tooling-code-quality.md`](./P02-S04-developer-tooling-code-quality.md) — ESLint flat config + boundary rules, Prettier, strict TS
-- [`P02-S05-cicd-pipeline-deployment.md`](./P02-S05-cicd-pipeline-deployment.md) — GitHub Actions, Vercel, Railway api/worker, Sentry
+- [`P02-S05-cicd-pipeline-deployment.md`](./P02-S05-cicd-pipeline-deployment.md) — GitHub Actions, free-tier staging (Vercel Hobby, Render, Neon), Sentry, traceability check
 - [`P02-S06-design-system-foundation-app-shell.md`](./P02-S06-design-system-foundation-app-shell.md) — Tokens, dark/light theming, primitives, app shell
 
 ### Phase 03: Authentication & Multi-Tenancy
@@ -130,8 +130,9 @@ Master Plan (planning/master/TestPulse_Master_Plan.md)   ← canonical contracts
 - [`P10-S02-integration-e2e-hardening.md`](./P10-S02-integration-e2e-hardening.md) — Critical-journey E2E suite
 - [`P10-S03-performance-load-testing.md`](./P10-S03-performance-load-testing.md) — k6 load tests against master plan §10
 - [`P10-S04-security-audit-dependency-review.md`](./P10-S04-security-audit-dependency-review.md) — Security audit & supply chain review
-- [`P10-S05-staging-deployment-validation.md`](./P10-S05-staging-deployment-validation.md) — Staging validation & runbook
-- [`P10-S06-release-candidate-signoff.md`](./P10-S06-release-candidate-signoff.md) — v1.0 RC, reporter publish, private beta launch
+- [`P10-S05-staging-deployment-validation.md`](./P10-S05-staging-deployment-validation.md) — Free-tier staging validation & runbook
+- [`P10-S06-paid-production-migration.md`](./P10-S06-paid-production-migration.md) — Decision gate: choose and build paid production, re-verify NFRs
+- [`P10-S07-release-candidate-signoff.md`](./P10-S07-release-candidate-signoff.md) — v1.0 RC, reporter publish, private beta launch
 
 ### Phase 11: Landing Page, Docs & Go-to-Market
 - [`P11-S01-landing-page.md`](./P11-S01-landing-page.md) — Marketing landing page

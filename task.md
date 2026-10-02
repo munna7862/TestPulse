@@ -1,6 +1,6 @@
 # TestPulse — Master Task & Sprint Execution Tracker
 
-This centralized board tracks the execution progress across all 11 phases and 59 sprints of the `TestPulse` project.
+This centralized board tracks the execution progress across all 11 phases and 60 sprints of the `TestPulse` project.
 Status indicators:
 - `[ ]` **Pending / Backlog:** Not yet started; waiting on prior sprint/phase prerequisites.
 - `[/]` **In Progress:** Actively being executed by assigned virtual persona(s).
@@ -17,7 +17,9 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 - **Current Active Sprint:** P01-S01: Product Requirements Baseline
 - **Assigned Personas:** Lead `role-product-owner`; reviewers `role-scrum-master`, `role-fullstack-architect`
 - **Current Status:** Ready for Kick-Off
-- **Open decisions to close in Phase 01:** Q1 (P01-S01), Q2/Q3/Q5/Q6 (P01-S03), Q4 (P01-S04)
+- **Open decisions to close in Phase 01:** Q1 (P01-S01), Q2/Q5/Q6 (P01-S03), Q4 (P01-S04). Q3 (paid hosting) is deferred to P10-S06.
+- **Hosting:** free-tier profile until feature-complete (master plan §4.4)
+- **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
 
 ---
 
@@ -28,7 +30,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [ ] Confirm plan limits & over-limit UX (master plan §8)
   - [ ] Close Q1: quarantine CI semantics
   - [ ] Define run / result / flaky / quarantine status semantics
-  - [ ] Create `docs/product/prd.md` and `docs/product/glossary.md`
+  - [ ] Create `docs/product/prd.md` and `docs/product/glossary.md`; refine `docs/product/feature-catalog.md`
 - [ ] **P01-S02:** UX Journeys & Information Architecture (`planning/sprints/P01-S02-ux-journeys-and-information-architecture.md`)
   - [ ] Author information architecture and route map
   - [ ] Wireframe key screens incl. settings, with loading / empty / error / read-only / plan-limit states
@@ -38,7 +40,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [ ] Document package & process topology (web, api server, worker, Neon, Redis)
   - [ ] Specify ingestion, REST and real-time contracts (`docs/api/`)
   - [ ] ER diagram for master plan §5 entities
-  - [ ] ADR-001 (monorepo), ADR-002 (real-time), ADR-003 (hosting/Redis — Q3), ADR-004 (dependency majors — Q2), ADR-007 (ingestion — Q6); record Q5
+  - [ ] ADR-001 (monorepo), ADR-002 (real-time), ADR-003 (free-tier hosting profile), ADR-004 (dependency majors — Q2), ADR-007 (ingestion — Q6); record Q5
 - [ ] **P01-S04:** Security & Permissions Model (`planning/sprints/P01-S04-security-and-permissions-model.md`)
   - [ ] ADR-005 auth & session design; ADR-006 tenant isolation (closes Q4)
   - [ ] RBAC matrix mapped to endpoints & socket events
@@ -47,6 +49,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [ ] Testing pyramid, coverage targets & ratchet policy
   - [ ] Docker-free test infrastructure (schema-per-worker Postgres, `test:contract` real Redis)
   - [ ] Update AGENTS.md and skills to match Phase 01 decisions
+  - [ ] Refine `docs/testing/scenario-catalog.md` (critical journeys, gaps found in Phase 01)
 
 ---
 
@@ -130,8 +133,9 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 - [ ] **P10-S02:** Integration & End-to-End Test Hardening (`planning/sprints/P10-S02-integration-e2e-hardening.md`)
 - [ ] **P10-S03:** Performance & Load Testing — k6 (`planning/sprints/P10-S03-performance-load-testing.md`)
 - [ ] **P10-S04:** Security Audit & Supply Chain Review (`planning/sprints/P10-S04-security-audit-dependency-review.md`)
-- [ ] **P10-S05:** Staging Deployment & Environment Validation (`planning/sprints/P10-S05-staging-deployment-validation.md`)
-- [ ] **P10-S06:** v1.0 Release Candidate & Private Beta Launch (`planning/sprints/P10-S06-release-candidate-signoff.md`)
+- [ ] **P10-S05:** Free-Tier Staging Deployment & Validation (`planning/sprints/P10-S05-staging-deployment-validation.md`)
+- [ ] **P10-S06:** Paid Production Infrastructure Decision & Migration (`planning/sprints/P10-S06-paid-production-migration.md`)
+- [ ] **P10-S07:** v1.0 Release Candidate & Private Beta Launch (`planning/sprints/P10-S07-release-candidate-signoff.md`)
 
 ---
 

@@ -17,8 +17,8 @@ You own and implement:
 - **State Management:** TanStack React Query v5 for server data caching and synchronization; Zustand for client UI state.
 - **Design System & Styling:** Tailwind CSS v4 tokens (CSS-first `@theme`), Radix UI primitives, Lucide React icons, and shared UI primitives in `@testpulse/ui`. The token, theme, and app-shell foundation is built in P02-S06 and used by every later UI sprint; never hardcode colors.
 - **Data Visualization:** Recharts for pass rate trends, execution duration histograms, and flaky test leaderboards.
-- **Real-Time Streaming UI:** Socket.IO client integration (cookie-authenticated, `withCredentials: true`), live status indicators, and optimistic UI mutations.
-- **Authenticated API access:** a single typed API client (`credentials: "include"`) that parses responses with the shared Zod schemas, refreshes the session once on `401`, and is used by every React Query hook.
+- **Real-Time Streaming UI:** Socket.IO client integration (single-use ticket from `POST /api/v1/realtime/ticket`, passed in the `auth` payload; websocket transport), live status indicators, and optimistic UI mutations.
+- **Authenticated API access:** a single typed API client that calls the **same-origin** `/api` path (proxied to the API in the free profile), uses `credentials: "include"`, that parses responses with the shared Zod schemas, refreshes the session once on `401`, and is used by every React Query hook.
 
 ---
 
@@ -100,9 +100,10 @@ export function useProjectEvents(projectId: string) {
 2. **Skeleton Loaders:** Every data-fetching screen must render accurate skeleton loaders during initial fetch to avoid layout shift.
 3. **Empty States:** Every table and list must render an informative empty state with a clear call-to-action (e.g. "Run your first CI test with `@testpulse/reporter`").
 4. **Theme Support:** Support seamless dark and light modes using Tailwind CSS variables with zero theme flash on load.
-5. **Accessibility (WCAG 2.1 AA) from day one:** full keyboard navigation (`Tab`, `Enter`, `Escape`), proper ARIA attributes, live regions for streaming updates (polite, throttled), and sufficient contrast. New and changed pages pass an `@axe-core/playwright` check in the same sprint. Phase 09 audits; it does not retrofit.
-6. **Untrusted content:** test titles, error messages, stack traces (including ANSI escape codes), and comments are rendered as text. Never use `dangerouslySetInnerHTML` for CI- or user-provided content.
-7. **Plan limits:** when the API returns `403 PLAN_LIMIT_REACHED` or the org is over quota, show the shared upgrade modal (contact us / Pro waitlist), never a raw error.
+5. **Cold starts (free profile):** if the API is waking up (slow or `502`/`503`/`504` on the first request), show a "waking up the server…" state and retry with backoff instead of an error page.
+6. **Accessibility (WCAG 2.1 AA) from day one:** full keyboard navigation (`Tab`, `Enter`, `Escape`), proper ARIA attributes, live regions for streaming updates (polite, throttled), and sufficient contrast. New and changed pages pass an `@axe-core/playwright` check in the same sprint. Phase 09 audits; it does not retrofit.
+7. **Untrusted content:** test titles, error messages, stack traces (including ANSI escape codes), and comments are rendered as text. Never use `dangerouslySetInnerHTML` for CI- or user-provided content.
+8. **Plan limits:** when the API returns `403 PLAN_LIMIT_REACHED` or the org is over quota, show the shared upgrade modal (contact us / Pro waitlist), never a raw error.
 
 ---
 

@@ -24,10 +24,11 @@ P01-S03 system architecture, P01-S04 security model.
 5. List the critical E2E journeys (sign-up → first live run, two-browser live collaboration, quarantine lifecycle, invitation, notification delivery).
 6. Review and update the existing AGENTS.md and `.agents/skills/` so they match the decisions made in P01-S01 to P01-S04.
 7. Define conventional commit format, PR template, and branch strategy (trunk-based: short-lived `feat/` and `docs/` branches, release tags).
+8. Refine the seeded scenario catalog (`docs/testing/scenario-catalog.md`) and the traceability rules (master plan D-15): every FR has at least one scenario, and every critical journey has an E2E scenario.
 
 ## Expected Files / Areas
 
-`docs/testing/testing-strategy.md`, `AGENTS.md` (update), `.agents/skills/*` (update), `CONTRIBUTING.md`
+`docs/testing/testing-strategy.md`, `docs/testing/scenario-catalog.md` (refined), `AGENTS.md` (update), `.agents/skills/*` (update), `CONTRIBUTING.md`
 
 ## Testing & Verification
 
@@ -74,5 +75,6 @@ AT COMPLETION:
 - [ ] Every deliverable exists at the path listed in Expected Files / Areas.
 - [ ] Content is consistent with the master plan; any change to a canonical contract is reflected in the master plan (§11 Decision Log / §12 Open Decisions).
 - [ ] Open questions are listed with an owner sprint.
+- [ ] New or changed requirements have `FR-*` IDs in `docs/product/feature-catalog.md`, with at least one `SC-*` scenario each.
 - [ ] Reviewer personas have reviewed the deliverables against the acceptance criteria.
 - [ ] `task.md` updated.

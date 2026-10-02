@@ -76,5 +76,6 @@ AT COMPLETION:
 - [ ] Every deliverable exists at the path listed in Expected Files / Areas.
 - [ ] Content is consistent with the master plan; any change to a canonical contract is reflected in the master plan (§11 Decision Log / §12 Open Decisions).
 - [ ] Open questions are listed with an owner sprint.
+- [ ] New or changed requirements have `FR-*` IDs in `docs/product/feature-catalog.md`, with at least one `SC-*` scenario each.
 - [ ] Reviewer personas have reviewed the deliverables against the acceptance criteria.
 - [ ] `task.md` updated.

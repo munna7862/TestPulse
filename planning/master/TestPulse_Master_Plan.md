@@ -6,6 +6,7 @@
 **Primary developer stack:** Next.js 15 (React 19) + Fastify 5 + TypeScript + PostgreSQL (Neon) + Redis\
 **Runtime baseline:** Node.js 24 LTS (Node 20 reached end-of-life in April 2026)\
 **Real-time engine:** WebSockets (Socket.IO v4) with Redis adapter for horizontal scaling\
+**Hosting:** **free-tier profile** until the product is feature-complete (§4.4); the paid production setup is decided in P10-S06\
 **Initial release:** MVP — live test run streaming, flaky-test triage, quarantine lifecycle, team workspaces\
 **Future releases:** Billing, CI integrations marketplace, mobile companion, AI-powered failure diagnosis
 
@@ -22,7 +23,10 @@ This file is the **canonical contract** for the items below. Phase blueprints an
 | Domain model & indexes | [§5](#5-domain-model--multi-tenant-data-schema) |
 | RBAC matrix & tenant isolation rules | [§7](#7-authorization--tenant-isolation) |
 | Plan limits | [§8](#8-plans--limits) |
+| Deployment profiles (free → paid) | [§4.4](#44-deployment-profiles) |
 | Non-functional targets | [§10](#10-non-functional-targets) |
+| Feature catalog (FR IDs) | [`docs/product/feature-catalog.md`](../../docs/product/feature-catalog.md) |
+| Test scenario catalog (SC IDs) | [`docs/testing/scenario-catalog.md`](../../docs/testing/scenario-catalog.md) |
 
 **Rules:**
 1. If a phase or sprint file conflicts with this document, this document wins. Fix the conflicting file in the same PR.
@@ -98,7 +102,7 @@ The monorepo codifies 10 specialized agent personas mapped to skills in `.agents
 | **Real-Time Engineer** | [`.agents/skills/role-realtime-engineer`](../../.agents/skills/role-realtime-engineer/SKILL.md) | Socket.IO gateway, Redis adapter/emitter, room auth, connection resilience |
 | **SDET Architect** | [`.agents/skills/role-sdet-architect`](../../.agents/skills/role-sdet-architect/SKILL.md) | Test pyramid, test cases catalog, anti-flakiness, coverage, CI quality gates |
 | **Security Engineer** | [`.agents/skills/role-security-engineer`](../../.agents/skills/role-security-engineer/SKILL.md) | Tenant isolation audits, RBAC verification, credential handling, OWASP compliance |
-| **DevOps Engineer** | [`.agents/skills/role-devops-engineer`](../../.agents/skills/role-devops-engineer/SKILL.md) | Turborepo CI/CD pipelines, Vercel/Railway deploys, monitoring, environment configs |
+| **DevOps Engineer** | [`.agents/skills/role-devops-engineer`](../../.agents/skills/role-devops-engineer/SKILL.md) | Turborepo CI/CD pipelines, free-tier then paid deploys, monitoring, environment configs |
 | **Growth Engineer** | [`.agents/skills/role-growth-engineer`](../../.agents/skills/role-growth-engineer/SKILL.md) | Landing page, docs portal, SEO, privacy-first analytics, onboarding time-to-first-value |
 
 ---
@@ -162,20 +166,21 @@ testpulse/
 ```text
                                 TestPulse Architecture Overview
 
-   Browser (Next.js app on Vercel)                          CI Runner (@testpulse/reporter)
+   Browser (Next.js app — Vercel)                           CI Runner (@testpulse/reporter)
         │  HTTPS (cookies)     │ WSS                                  │ HTTPS (Bearer API key)
         v                      v                                      v
  ┌───────────────────────────────────────────────────────────────────────────────┐
- │ apps/api  server.ts (Railway, N instances)                                     │
+ │ apps/api  server.ts (free: 1 Render instance · paid: N instances)              │
  │   Fastify REST  ── RealtimePublisher (redis-emitter) ──┐                       │
  │   Socket.IO gateway  <── @socket.io/redis-adapter <────┤                       │
  └───────────────┬────────────────────────────────────────┼───────────────────────┘
                  │ Prisma                                  │ Redis (pub/sub + BullMQ)
                  v                                         v
-        PostgreSQL 16 (Neon)  <──── Prisma ──── apps/api worker.ts (Railway, M instances)
+        PostgreSQL 16 (Neon)  <──── Prisma ──── apps/api worker.ts (free: in-process · paid: M instances)
 ```
 
-- The app is served from `app.<domain>` and the API from `api.<domain>` so they are **same-site**: auth cookies use `SameSite=Lax`, `HttpOnly`, `Secure`.
+- **Auth cookies are first-party.** They are `HttpOnly`, `Secure`, `SameSite=Lax`, and host-only on the origin that serves `/api`. In the free profile, the web app proxies `/api/*` to the API (same origin). In the paid profile, `app.<domain>` and `api.<domain>` share one registrable domain. See §4.4.
+- **Sockets authenticate with a short-lived ticket**, not cookies: `POST /api/v1/realtime/ticket` returns a 60-second, single-use token (stored in Redis) that the client passes in the Socket.IO `auth` payload. This works in both profiles, even when the gateway is on a different site.
 - With more than one gateway instance, Socket.IO's HTTP long-polling transport requires sticky sessions. If the host cannot provide them, configure clients for `transports: ["websocket"]` and rely on the REST polling fallback (P05-S06).
 
 ### 4.1 Ingestion Flow & Real-Time Broadcast
@@ -230,6 +235,31 @@ API handler / BullMQ worker
 - API route handlers and workers never hold a Socket.IO server reference. They emit through `RealtimePublisher`.
 - **Anti-pattern (forbidden):** gateway instances subscribing to a custom Redis channel and calling `io.to(room).emit(...)`. With the Redis adapter, every instance would re-broadcast to the whole cluster, and clients would receive the event N times.
 - Socket.IO connection-state recovery is not available with the classic Redis adapter. Catch-up after reconnect is done by refetching (P05-S06).
+
+### 4.4 Deployment Profiles
+
+TestPulse runs on the **free profile** for the whole of product development (Phases 02–10, up to P10-S05). In P10-S06, a decision gate chooses the paid production setup (D-14). Application code supports both profiles through configuration only; there are no code forks.
+
+| Concern | Free profile (development → P10-S05) | Paid profile (P10-S06 onward, provider decided then) |
+| :--- | :--- | :--- |
+| Web (Next.js) | Vercel Hobby (non-commercial use only; fine while nobody pays) | Vercel Pro or equivalent commercial host |
+| API + gateway | One Render free web service (sleeps after ~15 min idle; ~1 min cold start) | Always-on instances (N ≥ 2) with sticky sessions or websocket-only transport |
+| Workers | Run **in-process** in the API service (`RUN_WORKERS_IN_PROCESS=true`) | Separate worker service (`node dist/worker.js`) |
+| PostgreSQL | Neon free (≈0.5 GB per project; autosuspend) | Neon paid (PITR backups) or equivalent |
+| Redis | Render Key Value free (≈25 MB, no persistence, internal network) | Persistent, fixed-price Redis co-located with the API |
+| REST + cookies | Next.js rewrites proxy `/api/:path*` → API, so cookies are first-party on the web origin | `api.<domain>` on the same registrable domain (custom domain) |
+| WebSocket | Browser connects directly to the Render URL with a ticket; `transports: ["websocket"]` | Same, on `api.<domain>` |
+| Email | Console transport, or Resend free (sends only to verified/owner addresses until a domain is verified) | Resend/SMTP with a verified sending domain (SPF, DKIM, DMARC) |
+| Errors / uptime | Sentry free; optional scheduled GitHub Actions ping | Sentry paid as needed; uptime monitoring and alerting |
+| CI | GitHub Actions (service containers) | Same |
+
+**Rules for the free period:**
+1. **Design for sleep.** Scheduled jobs (SLA monitor, run reaper, retention, aggregation) must be *catch-up safe*. They select work by state and timestamps (e.g. `slaDueAt <= now AND warnedAt IS NULL`), not by "what changed since the last tick". Repeatable jobs are re-registered idempotently at startup, because free Redis is not persistent.
+2. **Cold starts are expected.** The reporter allows a long first-request timeout (60 s) and retries. The web app shows a "waking up the server" state instead of an error.
+3. **Performance targets (§10) are verified locally or in CI service containers** during the free period. Hosted free-tier numbers are not acceptance evidence; they are re-verified on paid infrastructure in P10-S06.
+4. **No real customers or commercial use** on the free profile. Use synthetic or demo data only, and treat the Neon free storage cap as a hard limit (short retention on staging).
+5. **Rate limiting behind the proxy:** with `trustProxy` configured for the web host, derive the client IP from `x-forwarded-for`. Ingestion limits rely on API keys, not IPs.
+6. Free-tier terms change. Verify current limits when executing P02-S05, and record them in `docs/ops/free-tier-deployment.md`.
 
 ---
 
@@ -311,6 +341,8 @@ All events are defined in `@testpulse/shared/src/events/` with Zod schemas and u
 | `annotation:created` | `project:{projectId}` | `annotationId`, `testCaseId`, `authorId` | Comment added (P06-S03) |
 | `notification:new` | `user:{userId}` | `notificationId`, `type`, `title` | Notification created (P07-S01) |
 
+Handshake: the client obtains a single-use ticket from `POST /api/v1/realtime/ticket` (cookie-authenticated, same origin) and connects with `auth: { ticket }`. The gateway redeems the ticket atomically from Redis.
+
 Client → server: `join:project { projectId }` and `leave:project { projectId }`, each with an ack `{ ok: true } | { ok: false, code }`. The server re-checks membership on every join. When a member is removed or downgraded, the server evicts that user's sockets from the org's project rooms.
 
 ### 6.2 Domain events (internal, BullMQ `domain-events` queue)
@@ -368,7 +400,7 @@ v1 has **no payment flow**. `Organization.planTier` defaults to `FREE` and is ch
 
 ---
 
-## 9. Implementation Roadmap (11 phases, 59 sprints)
+## 9. Implementation Roadmap (11 phases, 60 sprints)
 
 - **Phase 01: Product & Architecture Foundation** (5 sprints) — Requirements, IA, system design and ADRs, security model, testing strategy.
 - **Phase 02: Project Bootstrap & DevOps** (6 sprints) — Turborepo, Next.js, Fastify, Prisma, Redis/BullMQ skeleton, tooling, CI/CD, **design-system foundation & app shell**.
@@ -379,14 +411,14 @@ v1 has **no payment flow**. `Organization.planTier` defaults to `FREE` and is ch
 - **Phase 07: Notifications & Integrations** (5 sprints) — In-app notifications, email, preferences/digests, GitHub CI reporting, webhooks.
 - **Phase 08: Analytics & Reporting** (4 sprints) — Aggregation pipeline, trend charts, leaderboards, MTTR, branch comparison, exports.
 - **Phase 09: UX Polish & Accessibility** (5 sprints) — Design-system consolidation, theme QA, motion, states, WCAG 2.1 AA audit.
-- **Phase 10: Quality Engineering & Release** (6 sprints) — Coverage audit, E2E hardening, load tests, security audit, staging, **v1.0 production release (private beta)**.
+- **Phase 10: Quality Engineering & Release** (7 sprints) — Coverage audit, E2E hardening, load tests, security audit, free-tier staging validation, **paid production migration (decision gate)**, **v1.0 production release (private beta)**.
 - **Phase 11: Landing Page, Docs & Go-to-Market** (5 sprints) — Marketing site, docs portal, CI guides and API reference, SEO/analytics, **public launch**.
 
 ---
 
 ## 10. Non-Functional Targets
 
-These are the single source for performance and quality numbers. Sprint files reference them instead of restating different values.
+These are the single source for performance and quality numbers. Sprint files reference them instead of restating different values. During the free-tier period, performance targets are measured locally or in CI service containers, then re-verified on paid infrastructure in P10-S06 (§4.4).
 
 | Area | Target | Verified in |
 | :--- | :--- | :--- |
@@ -410,7 +442,7 @@ Decisions resolved during the planning review (2026-10). Each will be written up
 
 | ID | Decision | Rationale |
 | :--- | :--- | :--- |
-| D-01 | **Auth is owned by the API (Fastify)**, not Auth.js/Clerk. Short-lived access JWT (15 min) plus a rotating refresh token, both in `HttpOnly` same-site cookies. OAuth callbacks are handled by the API. | The REST API, Socket.IO gateway, and workers all need one token format. Next.js-owned sessions would split auth across two deployments. |
+| D-01 | **Auth is owned by the API (Fastify)**, not Auth.js/Clerk. Short-lived access JWT (15 min) plus a rotating refresh token, both in first-party `HttpOnly` cookies (same-origin proxy in the free profile, same-site subdomains in the paid profile). Sockets use single-use tickets. OAuth callbacks are handled by the API. | The REST API, Socket.IO gateway, and workers all need one token format. Next.js-owned sessions would split auth across two deployments. |
 | D-02 | **Incremental ingestion** (start / results batches / complete), with the project derived from the API key and idempotency on `externalRunId` + `(runId, testCaseId)`. | A single end-of-run POST makes "live" streaming impossible, and parallel CI shards need to join one run. |
 | D-03 | **Real-time fan-out uses `@socket.io/redis-emitter` → `@socket.io/redis-adapter`.** | Prevents N× duplicate broadcasts and lets workers emit without a Socket.IO server. |
 | D-04 | **Tenant isolation** by `projectId`/`orgId` on every tenant table, plus a tenant-scoped DB client, nested routes, and a 404 policy for cross-tenant access. | The original extension example was a no-op placeholder, and several routes lacked tenant context. |
@@ -420,9 +452,11 @@ Decisions resolved during the planning review (2026-10). Each will be written up
 | D-08 | **Design-system foundation moves to P02-S06.** Phase 09 becomes consolidation, QA, and audit. | Building Phases 03–08 UI before tokens and theming exist guarantees rework. |
 | D-09 | **Test infrastructure:** real PostgreSQL with schema-per-worker isolation; `ioredis-mock` for unit tests only; BullMQ and Socket.IO adapter contract tests against real Redis in CI. | `ioredis-mock` cannot run BullMQ's Lua scripts. Transaction-rollback isolation conflicts with Prisma interactive transactions. |
 | D-10 | **Node 24 LTS, Fastify 5, npm workspaces, ESLint flat config, Turborepo 2 `tasks`.** | Node 20 and Fastify 4 are EOL, and every doc already uses `npm run`. |
-| D-11 | **P10-S06 ships v1.0 to production as a private beta.** The public launch is P11-S05. | The original plan launched publicly before the landing page and docs existed. |
+| D-11 | **P10-S07 ships v1.0 to production as a private beta**, after the P10-S06 paid migration. The public launch is P11-S05. | The original plan launched publicly before the landing page and docs existed. |
 | D-12 | **Notifications are decoupled through domain events** (§6.2). | Phase 06 needs to notify users before the Phase 07 notification system exists. |
 | D-13 | **A minimal transactional `Mailer` ships in P03-S01.** | Email verification, password reset, and invitations are needed in Phase 03; P07-S02 extends it. |
+| D-14 | **Free-tier hosting until feature-complete** (§4.4). A dedicated sprint (P10-S06) decides and executes the paid production setup before any real users are onboarded. | Product owner decision (2026-10): no cloud spend during development. The free profile forces a same-origin proxy, ticket-based socket auth, in-process workers, and catch-up-safe jobs; all of these also work in the paid profile. |
+| D-15 | **Traceability by ID.** Features have `FR-*` IDs (`docs/product/feature-catalog.md`) and test scenarios have `SC-*` IDs (`docs/testing/scenario-catalog.md`). Tests, PRs, and sprint catalogs reference them. | Keeps functionality and its tests from drifting apart across 60 sprints and many agent sessions. |
 
 ---
 
@@ -432,7 +466,7 @@ Decisions resolved during the planning review (2026-10). Each will be written up
 | :--- | :--- | :--- | :--- |
 | Q1 | Does quarantine affect CI outcomes, or is it advisory only? | P01-S01 | Advisory by default. The reporter can optionally mark failures of quarantined tests as non-blocking (`quarantineMode: "non-blocking"`) using `GET /api/v1/ingest/quarantined-tests`. Playwright reporters can override the final status in `onEnd`; confirm Vitest feasibility in P04-S05. |
 | Q2 | Exact dependency majors (Next.js, Prisma, Zod, Tailwind, Socket.IO) | P01-S03 (ADR-004) | Choose the current stable majors at kickoff; do not start on a superseded major. |
-| Q3 | Redis provider | P01-S03 (ADR-003) | BullMQ polling and adapter traffic make per-command pricing expensive. Prefer a fixed-price Redis co-located with the API (e.g. Railway Redis, or an Upstash fixed plan). |
+| Q3 | Paid production hosting & Redis provider (free profile is fixed by D-14) | P10-S06 | BullMQ polling and adapter traffic make per-command pricing expensive. Prefer fixed-price Redis co-located with the API. Candidates: Render paid, Railway, or Fly.io; decide on real usage data. |
 | Q4 | PostgreSQL Row-Level Security as defense in depth | P01-S04 | Not required for v1 if D-04 controls and isolation tests pass. Revisit after launch. |
 | Q5 | Email provider (Resend vs SMTP) and sending domain | P01-S03 | Resend, behind the `Mailer` interface. |
 | Q6 | Test-case identity when tests are renamed or moved | P01-S03 | Treat it as a new test case in v1 (documented limitation). Manual merge is post-MVP. |

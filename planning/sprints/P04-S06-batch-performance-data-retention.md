@@ -23,7 +23,8 @@ P04-S05 CI reporter (used to drive realistic load), P02-S03 job queue skeleton.
 4. Tune the per-key and per-project ingestion rate limits.
 5. Retention: effective retention = `min(project.retentionDays, plan maximum)`. A daily BullMQ job deletes expired `TestResult`/`TestRun` rows in chunks, avoiding long locks.
 6. Stale-run reaper (every 5 minutes): `RUNNING` runs with no activity for 30 minutes become `TIMED_OUT` and emit `run:completed`.
-7. Slow-query logging (Prisma query events > 200 ms) with tenant context.
+7. Make every scheduled job catch-up safe (master plan §4.4): it selects work by persisted state, so it produces correct results after the free-tier process wakes from sleep or Redis loses its schedules.
+8. Slow-query logging (Prisma query events > 200 ms) with tenant context.
 
 ## Expected Files / Areas
 
@@ -60,7 +61,7 @@ READ FIRST:
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P04_S06.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P04_S06.md (positive, negative, boundary, multi-tenant scenarios). Start from this sprint's FR-* entries in docs/product/feature-catalog.md and their SC-* scenarios in docs/testing/scenario-catalog.md; reference those IDs and add any new SC-* IDs to the master scenario catalog.
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -70,6 +71,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
 - Write docs/walkthroughs/walkthrough-P04-S06.md and update task.md.
+- Update the FR status in docs/product/feature-catalog.md and the "Automated by" column in docs/testing/scenario-catalog.md; automated tests carry their [SC-*] ID in the test title.
 - Never suppress, skip, or bypass failing tests.
 ```
 
@@ -80,5 +82,6 @@ AT COMPLETION:
 - [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
 - [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
+- [ ] Feature catalog status and scenario catalog "Automated by" entries updated; tests carry `[SC-*]` IDs in their titles.
 - [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
 - [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

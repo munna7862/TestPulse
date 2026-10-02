@@ -13,14 +13,14 @@ Every architectural change, API contract, and completed feature sprint must be d
 
 Maintain the repository `docs/` structure. Sprint files reference these exact paths:
 
-- **`docs/product/`**: PRD (`prd.md`), personas and journeys, glossary (`glossary.md`), plan limits rationale.
+- **`docs/product/`**: Feature catalog (`feature-catalog.md`, `FR-*` IDs), PRD (`prd.md`), personas and journeys, glossary (`glossary.md`), plan limits rationale.
 - **`docs/architecture/`**: System overview (`overview.md`), module boundaries, data flows, and Architecture Decision Records (`adr-XXX-<title>.md`).
 - **`docs/api/`**: REST contracts (`rest-api.md`), ingestion protocol (`ingestion.md`), WebSocket event dictionary (`realtime-events.md`), error codes. Generated OpenAPI output is linked, not duplicated.
 - **`docs/database/`**: Prisma schema notes, ER diagram (`schema.md`), indexing strategy, and migration guides.
 - **`docs/security/`**: Security model (`security-model.md`), RBAC matrix (`rbac-matrix.md`), threat model, audit reports.
-- **`docs/testing/`**: Test strategy (`testing-strategy.md`), coverage audits, performance baselines, and pre-implementation test case catalogs (`test_cases_catalog_PXX_SYY.md`).
+- **`docs/testing/`**: Master scenario catalog (`scenario-catalog.md`, `SC-*` IDs), test strategy (`testing-strategy.md`), coverage audits, performance baselines, and pre-implementation test case catalogs (`test_cases_catalog_PXX_SYY.md`) that reference `SC-*` IDs.
 - **`docs/ux/`**: Information architecture, wireframes, design system tokens, and accessibility notes.
-- **`docs/ops/`**: Environment variable catalog (`environment.md`), deployment runbooks, release plans, and disaster recovery.
+- **`docs/ops/`**: Environment variable catalog (`environment.md`), free-tier runbook (`free-tier-deployment.md`), deployment runbooks, release plans, and disaster recovery.
 - **`docs/integrations/`**: Setup documentation for `@testpulse/reporter`, GitHub Actions, and webhooks.
 - **`docs/walkthroughs/`**: One walkthrough per completed code sprint (`walkthrough-PXX-SYY.md`).
 - **`docs/launch/`**: GTM and launch materials (Phase 11).
@@ -58,22 +58,30 @@ Save to `docs/testing/test_cases_catalog_PXX_SYY.md`:
 ```markdown
 # Test Cases Catalog: Phase XX — Sprint YY ([Sprint Title])
 
+**Features:** FR-XXX-NN, FR-XXX-NN (from docs/product/feature-catalog.md)
+**Master scenarios covered:** SC-XXX-NNN, SC-XXX-NNN (from docs/testing/scenario-catalog.md)
+**New master scenarios added in this sprint:** SC-XXX-NNN (or "none")
+
+Each case links to a master scenario. Sprint-local cases (TC-*) add concrete data, fixtures, and edge values.
+
 ## 1. Positive Test Scenarios (Happy Path)
-- [ ] **TC-P01:** [Description of valid operation and expected outcome]
-- [ ] **TC-P02:** [Description of valid operation and expected outcome]
+- [ ] **TC-P01** (SC-XXX-NNN): [Valid operation, concrete input, expected outcome]
 
 ## 2. Negative Test Scenarios (Error Handling)
-- [ ] **TC-N01:** [Invalid payload triggers Zod 400 Bad Request]
-- [ ] **TC-N02:** [Missing or expired JWT triggers 401 Unauthorized]
+- [ ] **TC-N01** (SC-XXX-NNN): [Invalid payload → 400 VALIDATION_ERROR with field details]
+- [ ] **TC-N02** (SC-XXX-NNN): [Missing or expired session → 401]
 
 ## 3. Boundary & Edge Case Scenarios
-- [ ] **TC-B01:** [Empty list / 0 items returns 200 with empty array]
-- [ ] **TC-B02:** [Batch payload at maximum threshold (10,000 items)]
+- [ ] **TC-B01** (SC-XXX-NNN): [Empty list → 200 with empty array]
+- [ ] **TC-B02** (SC-XXX-NNN): [Batch at maximum size (1,000 items); one over the maximum is rejected]
 
 ## 4. Multi-Tenant Security Scenarios
-- [ ] **TC-S01:** [Tenant A cannot read Tenant B test runs (404)]
-- [ ] **TC-S02:** [Viewer cannot quarantine a test in their own org (403)]
-- [ ] **TC-S03:** [Project API key cannot access organization membership endpoints (401)]
+- [ ] **TC-S01** (SC-SEC-001): [Tenant A cannot read Tenant B test runs (404)]
+- [ ] **TC-S02** (SC-SEC-002): [Viewer cannot quarantine a test in their own org (403)]
+- [ ] **TC-S03** (SC-KEY-005): [Project API key cannot access organization membership endpoints (401)]
+
+## 5. Free-Profile Behavior (if applicable)
+- [ ] **TC-F01** (SC-OPS-00N): [Behavior after cold start / Redis restart]
 ```
 
 #### C. Sprint Walkthrough Template

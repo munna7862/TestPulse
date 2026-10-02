@@ -118,7 +118,8 @@ Rules illustrated above:
 - **Job data** is Zod-validated on enqueue and on processing, and always carries `orgId`/`projectId`. Processors open a tenant-scoped client for that context.
 - **Idempotency:** every job must be safely retryable. Use deterministic `jobId`s for de-duplication, and "already done" markers (e.g. `QuarantineRecord.warnedAt`) for side effects such as emails.
 - **Isolation:** workers catch, log (with tenant context), and report errors to Sentry without crashing the process. Configure exponential backoff with 5 attempts by default.
-- **Repeatable jobs** (SLA monitor, reaper, retention, aggregation) are registered idempotently at worker startup with explicit UTC schedules.
+- **Repeatable jobs** (SLA monitor, reaper, retention, aggregation) are registered idempotently at worker startup with explicit UTC schedules. They must be **catch-up safe** (master plan §4.4): select work by persisted state and timestamps, because in the free profile the process sleeps and Redis is not persistent.
+- **Process model:** `worker.ts` exports `startWorkers()`. `server.ts` calls it when `RUN_WORKERS_IN_PROCESS=true` (free profile), and the paid profile runs `worker.ts` as its own service.
 - **Testing:** unit-test processors directly with fakes. Cover queue wiring (enqueue → worker → completion, retries) in the `test:contract` suite against real Redis. `ioredis-mock` cannot execute BullMQ's Lua scripts.
 
 ---

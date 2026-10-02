@@ -20,7 +20,7 @@ A developer on Windows (no Docker) or macOS/Linux can clone the repository, run 
 - Developer tooling (ESLint flat config with boundary rules, Prettier, TypeScript strict)
 - Vitest + Playwright test infrastructure with coverage thresholds
 - GitHub Actions CI pipeline (with PostgreSQL/Redis service containers)
-- Vercel + Railway (api + worker) deployment targets, Sentry
+- Free-tier deployment profile (Vercel Hobby, Render free with in-process workers, Neon free, Render Key Value), Sentry free
 - Design-system foundation: tokens, dark/light theming, base primitives, app shell
 
 ## Architecture
@@ -59,7 +59,7 @@ testpulse/
 - [ ] ESLint (including boundary rules) + Prettier + TypeScript strict are enforced.
 - [ ] Vitest and Playwright are configured and pass smoke tests.
 - [ ] GitHub Actions CI pipeline is green, with coverage thresholds enforced.
-- [ ] Deployment targets are configured (Vercel + Railway api/worker) and Sentry receives errors.
+- [ ] The free-tier staging environment deploys automatically from main, and Sentry receives errors.
 - [ ] Design tokens, dark/light theming, base primitives, and the app shell exist.
 
 ## Exit Criteria

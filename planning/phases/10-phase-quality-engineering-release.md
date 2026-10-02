@@ -20,7 +20,8 @@ TestPulse v1.0 runs in production for invited design partners (private beta), wi
 - Load testing (k6 for API, ingestion, and WebSocket)
 - Database query optimization (slow query analysis)
 - Error monitoring verification (Sentry was set up in P02-S05)
-- Staging validation (api + worker, multi-instance WebSockets, migrations)
+- Staging validation on the free-tier profile (cold starts, in-process workers, migrations)
+- **Paid production migration (decision gate, D-14):** choose providers, build the production environment, and re-verify the §10 targets on paid infrastructure
 - Reporter 1.0.0 publish, production deploy (private beta), release checklist and sign-off
 
 ## Quality Gates
@@ -66,5 +67,6 @@ TestPulse v1.0 is in real users' hands (private beta) and can be confidently ope
 - P10-S02: Integration and E2E test hardening
 - P10-S03: Performance and load testing
 - P10-S04: Security audit and dependency review
-- P10-S05: Production deployment validation (staging)
-- P10-S06: v1.0 release candidate and private beta launch
+- P10-S05: Staging deployment validation (free-tier profile)
+- P10-S06: Paid production infrastructure decision and migration
+- P10-S07: v1.0 release candidate and private beta launch
