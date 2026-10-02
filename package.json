@@ -25,7 +25,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:traceability": "node scripts/check-traceability.mjs"
+    "check:traceability": "node scripts/check-traceability.mjs",
+    "audit": "node scripts/audit-gate.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

@@ -5,6 +5,12 @@ import { z } from "zod";
  * API environment (docs/ops/environment.md). Server-only: never import this from shared code.
  * Variables for later sprints (database, Redis, auth, mail) are added by those sprints.
  */
+/** Blank values (e.g. `GOOGLE_CLIENT_ID=` in a .env file) count as "not configured". */
+const optionalSecret = z
+  .string()
+  .optional()
+  .transform((value) => (value === undefined || value.trim() === "" ? undefined : value.trim()));
+
 export const ApiEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DEPLOYMENT_PROFILE: DeploymentProfile.default("free"),
@@ -20,6 +26,16 @@ export const ApiEnvSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
   REDIS_URL: z.string().min(1).optional(),
   GIT_COMMIT_SHA: z.string().optional(),
+  GOOGLE_CLIENT_ID: optionalSecret,
+  GOOGLE_CLIENT_SECRET: optionalSecret,
+  GITHUB_CLIENT_ID: optionalSecret,
+  GITHUB_CLIENT_SECRET: optionalSecret,
+  /** Origin that providers redirect back to. Defaults to WEB_ORIGIN (same-origin `/api` proxy, first-party cookies). */
+  OAUTH_REDIRECT_BASE_URL: optionalSecret,
+  /** Upper bound for each outbound provider call (token exchange, profile). */
+  OAUTH_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(10_000),
+  /** Per-IP limit for OAuth start/callback (security model §5). */
+  OAUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(30),
 });
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 

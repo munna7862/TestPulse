@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input } from "@testpulse/ui";
+import { SocialSignInButtons } from "@/components/SocialSignInButtons";
 import { ApiError, authClient } from "@/lib/auth-client";
 
 export default function RegisterPage() {
@@ -76,6 +77,10 @@ export default function RegisterPage() {
         </CardTitle>
         <CardDescription>Start monitoring and triaging tests in real-time</CardDescription>
       </CardHeader>
+
+      <CardContent className="pb-0">
+        <SocialSignInButtons />
+      </CardContent>
 
       <form
         onSubmit={(e) => {

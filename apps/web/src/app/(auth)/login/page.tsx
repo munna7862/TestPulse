@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input } from "@testpulse/ui";
+import { SocialSignInButtons } from "@/components/SocialSignInButtons";
 import { ApiError, authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -40,6 +41,10 @@ export default function LoginPage() {
         </CardTitle>
         <CardDescription>Enter your email and password to access your team workspaces</CardDescription>
       </CardHeader>
+
+      <CardContent className="pb-0">
+        <SocialSignInButtons />
+      </CardContent>
 
       <form
         onSubmit={(e) => {
