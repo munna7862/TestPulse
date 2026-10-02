@@ -1,4 +1,4 @@
-﻿# Phase 02 — Sprint 05: CI/CD Pipeline and Deployment Targets
+# Phase 02 — Sprint 05: CI/CD Pipeline and Deployment Targets
 
 ## Sprint Objective
 
@@ -8,96 +8,81 @@ Set up GitHub Actions CI pipeline and configure deployment targets (Vercel for f
 
 P02-S04 developer tooling.
 
+## Personas
+
+- **Lead:** `role-devops-engineer`
+- **Reviewers / sign-off:** `role-sdet-architect`, `role-security-engineer`
+
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Create GitHub Actions CI workflow (.github/workflows/ci.yml).
-2. CI pipeline: install, lint, typecheck, test, build.
-3. Configure Vercel project for Next.js frontend deployment.
-4. Configure Railway project for Fastify API deployment.
-5. Set up preview deployments for pull requests.
-6. Configure GitHub branch protection rules (require CI pass).
-7. Add deployment status badges to README.
-8. Create .env.example with all required environment variables.
+1. Create `.github/workflows/ci.yml` per the DevOps skill: runs on PRs and pushes to main, with a concurrency group and PostgreSQL + Redis service containers.
+2. CI `verify` job: npm ci, lint, typecheck, test (with coverage thresholds), test:contract, build, `npm audit --audit-level=high`, and secret scanning (gitleaks).
+3. CI `e2e` job: start api, worker, and web against the service containers, run the Playwright smoke suite, and upload traces on failure.
+4. Configure initial Vitest coverage thresholds (ratchet towards master plan §10).
+5. Configure the Vercel project for apps/web with preview deployments per PR.
+6. Configure Railway services `api` and `worker` from the same codebase (different start commands), with health checks and `prisma migrate deploy` as the pre-deploy step.
+7. Provision Neon branches for preview/staging, and Redis per ADR-003.
+8. Integrate Sentry in web, api, and worker with release tagging.
+9. Configure branch protection on main (require `verify` and `e2e`).
+10. Create `.env.example` files and `docs/ops/environment.md`, and add status badges to README.
 
 ## Expected Files / Areas
 
-`.github/workflows/ci.yml`, `vercel.json`, `README.md`
+`.github/workflows/ci.yml`, `vercel.json` (if needed), `railway.json` / service config, `docs/ops/environment.md`, `README.md`
 
 ## Testing & Verification
 
-Push to a branch, verify CI pipeline runs and passes, verify preview deployment triggers.
+Open a PR and verify both CI jobs run and pass; verify the preview deployment triggers; trigger a test error and confirm Sentry receives it.
 
 ## Acceptance Criteria
 
-- [ ] CI pipeline runs on every push and PR.
-- [ ] All CI stages pass (lint, typecheck, test, build).
-- [ ] Vercel deploys the frontend on merge to main.
-- [ ] Railway deploys the API on merge to main.
+- [ ] CI runs on every PR and push to main, with all gates passing.
+- [ ] Coverage thresholds are enforced in CI.
+- [ ] Vercel deploys the frontend, and Railway deploys the api and worker services on merge to main.
 - [ ] Preview deployments work for pull requests.
-- [ ] README has deployment status badges.
+- [ ] Sentry receives errors from web, api, and worker.
+- [ ] README has CI and deployment status badges.
 
 ## Risks / Guardrails
 
-Secrets not configured in GitHub; deployment target misconfiguration; missing environment variables.
+Secrets not configured in GitHub; migrations run from multiple instances at once (run them once, pre-deploy); flaky E2E smoke tests in CI; missing environment variables.
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 02, Sprint 05: CI/CD Pipeline and Deployment Targets.
+You are the implementation agent for TestPulse, Phase 02 — Sprint 05: CI/CD Pipeline and Deployment Targets.
+Act as: role-devops-engineer (load .agents/skills/role-devops-engineer/SKILL.md). Reviewers: role-sdet-architect, role-security-engineer.
 
-OBJECTIVE:
-Set up GitHub Actions CI pipeline and configure deployment targets (Vercel for frontend, Railway for backend).
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/02-phase-project-bootstrap-devops.md
+4. planning/sprints/P02-S05-cicd-pipeline-deployment.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P02_S05.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Create GitHub Actions CI workflow (.github/workflows/ci.yml).
-2. CI pipeline: install, lint, typecheck, test, build.
-3. Configure Vercel project for Next.js frontend deployment.
-4. Configure Railway project for Fastify API deployment.
-5. Set up preview deployments for pull requests.
-6. Configure GitHub branch protection rules (require CI pass).
-7. Add deployment status badges to README.
-8. Create .env.example with all required environment variables.
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-Push to a branch, verify CI pipeline runs and passes, verify preview deployment triggers.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] CI pipeline runs on every push and PR.
-- [ ] All CI stages pass (lint, typecheck, test, build).
-- [ ] Vercel deploys the frontend on merge to main.
-- [ ] Railway deploys the API on merge to main.
-- [ ] Preview deployments work for pull requests.
-- [ ] README has deployment status badges.
-
-GUARDRAILS:
-Secrets not configured in GitHub; deployment target misconfiguration; missing environment variables.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P02-S05.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

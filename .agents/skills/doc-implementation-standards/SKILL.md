@@ -11,15 +11,21 @@ Every architectural change, API contract, and completed feature sprint must be d
 
 ### 1. Required Documentation Directory Structure
 
-Maintain the repository `docs/` structure:
+Maintain the repository `docs/` structure. Sprint files reference these exact paths:
 
-- **`docs/architecture/`**: High-level designs, module boundaries, system flows, and Architecture Decision Records (ADRs).
-- **`docs/api/`**: OpenAPI/REST specifications, Zod schemas, error codes, and WebSocket event dictionaries.
-- **`docs/database/`**: Prisma schema notes, ER diagrams, indexing strategies, and migration guides.
-- **`docs/testing/`**: Test strategy, coverage metrics, and pre-implementation Test Cases Catalogs (`test_cases_catalog_PXX_SYY.md`).
-- **`docs/ux/`**: User journey flows, wireframes, design system tokens, and accessibility notes.
-- **`docs/ops/`**: Environment variable catalogs, deployment runbooks, and disaster recovery plans.
+- **`docs/product/`**: PRD (`prd.md`), personas and journeys, glossary (`glossary.md`), plan limits rationale.
+- **`docs/architecture/`**: System overview (`overview.md`), module boundaries, data flows, and Architecture Decision Records (`adr-XXX-<title>.md`).
+- **`docs/api/`**: REST contracts (`rest-api.md`), ingestion protocol (`ingestion.md`), WebSocket event dictionary (`realtime-events.md`), error codes. Generated OpenAPI output is linked, not duplicated.
+- **`docs/database/`**: Prisma schema notes, ER diagram (`schema.md`), indexing strategy, and migration guides.
+- **`docs/security/`**: Security model (`security-model.md`), RBAC matrix (`rbac-matrix.md`), threat model, audit reports.
+- **`docs/testing/`**: Test strategy (`testing-strategy.md`), coverage audits, performance baselines, and pre-implementation test case catalogs (`test_cases_catalog_PXX_SYY.md`).
+- **`docs/ux/`**: Information architecture, wireframes, design system tokens, and accessibility notes.
+- **`docs/ops/`**: Environment variable catalog (`environment.md`), deployment runbooks, release plans, and disaster recovery.
 - **`docs/integrations/`**: Setup documentation for `@testpulse/reporter`, GitHub Actions, and webhooks.
+- **`docs/walkthroughs/`**: One walkthrough per completed code sprint (`walkthrough-PXX-SYY.md`).
+- **`docs/launch/`**: GTM and launch materials (Phase 11).
+
+Customer-facing documentation (quickstart, guides, API reference) lives in the docs portal under `apps/web` (Phase 11). It may source content from `docs/integrations/`.
 
 ---
 
@@ -65,8 +71,9 @@ Save to `docs/testing/test_cases_catalog_PXX_SYY.md`:
 - [ ] **TC-B02:** [Batch payload at maximum threshold (10,000 items)]
 
 ## 4. Multi-Tenant Security Scenarios
-- [ ] **TC-S01:** [Tenant A cannot read Tenant B test runs (404/403)]
-- [ ] **TC-S02:** [Project API key cannot access organization membership endpoints]
+- [ ] **TC-S01:** [Tenant A cannot read Tenant B test runs (404)]
+- [ ] **TC-S02:** [Viewer cannot quarantine a test in their own org (403)]
+- [ ] **TC-S03:** [Project API key cannot access organization membership endpoints (401)]
 ```
 
 #### C. Sprint Walkthrough Template
@@ -119,10 +126,10 @@ sequenceDiagram
     participant Redis as Redis Pub/Sub
     participant Client as Web Client
 
-    CI->>API: POST /api/v1/projects/:id/runs
-    API->>DB: Persist Run & Results
-    API->>Redis: PUBLISH run:result
-    Redis->>Client: Socket.IO broadcast
+    CI->>API: POST /api/v1/ingest/runs/:runId/results (Bearer API key)
+    API->>DB: Upsert cases & results (transaction)
+    API->>Redis: redis-emitter run:progress (after commit)
+    Redis->>Client: redis-adapter delivers to project room
 ```
 
 - **Relative Links:** Use relative markdown links so links resolve correctly in GitHub and local editors.

@@ -1,4 +1,4 @@
-﻿# Phase 01 — Product & Architecture Foundation
+# Phase 01 — Product & Architecture Foundation
 
 ← [Master Plan](../master/TestPulse_Master_Plan.md) | [Phase 02 →](./02-phase-project-bootstrap-devops.md)
 
@@ -8,16 +8,18 @@ Define what TestPulse is, who it serves, and how it will be built — before wri
 
 ## Outcome
 
-A comprehensive, implementation-ready product specification and architecture blueprint that any engineer (human or AI agent) can pick up and execute against.
+A comprehensive, implementation-ready product specification and architecture blueprint that any engineer (human or AI agent) can pick up and execute against. All open decisions in master plan §12 are closed.
 
 ## Scope
 
 - Product requirements document (PRD) with user personas and journey maps
 - UX wireframes and information architecture
-- System architecture document with module boundaries and data flow
-- Security model and tenant isolation strategy
+- System architecture document with module boundaries, data flows, and ADRs
+- Security model, RBAC matrix, threat model, and tenant isolation strategy
 - Testing strategy and quality gates
-- Agent operating contract (AGENTS.md)
+- Review and update of the agent operating contract (AGENTS.md and `.agents/skills/`)
+
+This phase produces **documentation only**. Code quality gates (`npm run lint`, etc.) start in Phase 02.
 
 ## Architecture
 
@@ -28,10 +30,10 @@ Product Requirements
 UX Journeys & Wireframes
         |
         v
-System Architecture & Module Boundaries
+System Architecture & Module Boundaries (ADR-001..004, 007)
         |
         v
-Security & Permissions Model
+Security & Permissions Model (ADR-005, 006)
         |
         v
 Testing Strategy & Agent Contract
@@ -39,16 +41,29 @@ Testing Strategy & Agent Contract
 
 ## Key Decisions
 
-1. Monorepo vs multi-repo (recommend: monorepo with Turborepo)
-2. Auth provider selection (Auth.js vs Clerk vs custom)
-3. Database hosting (Neon vs Supabase vs PlanetScale)
-4. Real-time strategy (Socket.IO vs native WebSocket vs SSE)
-5. Deployment targets (Vercel + Railway vs full AWS/GCP)
+Already resolved in the planning review (master plan §11 — record each as an ADR in this phase):
+
+1. Monorepo: npm workspaces + Turborepo 2 (D-10) → ADR-001
+2. Real-time: Socket.IO with redis-adapter + redis-emitter (D-03) → ADR-002
+3. Auth: API-owned auth with cookie sessions, no Auth.js/Clerk (D-01) → ADR-005
+4. Tenant isolation: tenant-scoped client, nested routes, 404 policy (D-04) → ADR-006
+5. Ingestion: incremental batches with shard support (D-02) → ADR-007
+6. Deployment targets: Vercel (web) + Railway (api + worker) + Neon → ADR-003
+
+Still open and owned by this phase (master plan §12):
+
+- Q1 Quarantine CI semantics (P01-S01)
+- Q2 Exact dependency majors (P01-S03, ADR-004)
+- Q3 Redis provider (P01-S03, ADR-003)
+- Q4 PostgreSQL RLS as defense in depth (P01-S04)
+- Q5 Email provider (P01-S03)
+- Q6 Test identity on rename/move (P01-S03)
 
 ## Testing
 
 Review all specification documents for:
 - Ambiguity and conflicting requirements
+- Contradictions with the master plan (fix the master plan or the document — never leave both)
 - Missing acceptance criteria
 - Security gaps
 - Scalability bottlenecks
@@ -57,11 +72,12 @@ Review all specification documents for:
 
 - [ ] Product requirements are unambiguous and implementation-ready.
 - [ ] User personas and journeys are documented.
-- [ ] System architecture diagram covers all major components.
-- [ ] Data model covers all core entities.
-- [ ] Security model ensures tenant isolation.
-- [ ] Testing strategy is defined with coverage targets.
-- [ ] AGENTS.md is authored and committed.
+- [ ] System architecture diagram covers all major components, including the worker process.
+- [ ] Data model covers all master plan §5 entities.
+- [ ] Security model ensures tenant isolation and defines the auth design.
+- [ ] Testing strategy is defined with coverage targets and Docker-free infrastructure.
+- [ ] AGENTS.md and skills are consistent with the Phase 01 decisions.
+- [ ] Master plan §12 has no open items left for Phase 01.
 
 ## Exit Criteria
 

@@ -1,12 +1,12 @@
-# Phase 09 — Sprint 03: Micro-Animations, Skeleton Loaders, and Transitions
+# Phase 09 — Sprint 02: Theme QA & Chart Theming
 
 ## Sprint Objective
 
-Add polish: skeleton loading screens, page transitions, hover effects, and micro-animations that make the UI feel premium.
+Verify that every screen, chart, and state works in both themes, and fix the gaps found. Theme switching itself ships in P02-S06.
 
 ## Dependencies
 
-P09-S02 dark/light mode.
+P09-S01 design system tokens.
 
 ## Personas
 
@@ -17,52 +17,48 @@ P09-S02 dark/light mode.
 
 ### Granular Implementation Tasks
 
-1. Audit and complete skeleton loaders for all major views (most exist from feature sprints).
-2. Page and panel transitions with CSS or the `motion` library (formerly Framer Motion), only where they aid orientation.
-3. Hover and focus effects on interactive elements (cards, buttons, table rows).
-4. Pulse animation for live / in-progress indicators.
-5. Entry animation for streamed results, coalesced so it never animates thousands of rows.
-6. Toast notifications with enter and exit animations.
-7. Respect `prefers-reduced-motion` everywhere.
-8. Use GPU-friendly properties only (transform, opacity).
+1. Run visual regression for every screen in light and dark themes and fix the issues found.
+2. Theme charts entirely through tokens, and make status colors distinguishable for color-blind users (icons or patterns, not color alone).
+3. Persist the theme preference to the user profile (cross-device), in addition to the local preference.
+4. Add a regression test for theme flash on load.
+5. Fix every contrast issue found (WCAG 2.1 AA).
 
 ## Expected Files / Areas
 
-`apps/web/src/components/`, `apps/web/src/styles/`
+`apps/web/src/`, `packages/ui/`
 
 ## Testing & Verification
 
-Visual regression tests for skeleton screens. Accessibility tests for reduced motion. Performance tests for animation frame rate.
+Visual regression in both themes. A FOUC regression test. Automated contrast checks.
 
 ## Acceptance Criteria
 
-- [ ] Skeleton loaders appear during data fetching.
-- [ ] Page transitions are smooth and consistent.
-- [ ] Hover effects provide visual feedback.
-- [ ] Live indicators pulse with animation.
-- [ ] Reduced-motion preference disables animations.
-- [ ] Animations run at 60fps without jank.
+- [ ] Every screen renders correctly in both themes (visual regression green).
+- [ ] Charts adapt to the current theme and do not rely on color alone.
+- [ ] The theme preference follows the user across devices.
+- [ ] There is no flash of the wrong theme on load.
+- [ ] There are no contrast violations.
 
 ## Risks / Guardrails
 
-Animations causing layout shifts; performance degradation on low-end devices; motion sickness for sensitive users.
+Chart colors unreadable in dark mode; regressions in screens without baselines; preference sync conflicting with the local choice.
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 09 — Sprint 03: Micro-Animations, Skeleton Loaders, and Transitions.
+You are the implementation agent for TestPulse, Phase 09 — Sprint 02: Theme QA & Chart Theming.
 Act as: role-frontend-engineer (load .agents/skills/role-frontend-engineer/SKILL.md). Reviewers: role-product-owner, role-sdet-architect.
 
 READ FIRST:
 1. AGENTS.md
 2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
 3. planning/phases/09-phase-ux-polish-accessibility.md
-4. planning/sprints/P09-S03-micro-animations-skeletons.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
+4. planning/sprints/P09-S02-theme-qa-chart-theming.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P09_S03.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P09_S02.md (positive, negative, boundary, multi-tenant scenarios).
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -71,7 +67,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
-- Write docs/walkthroughs/walkthrough-P09-S03.md and update task.md.
+- Write docs/walkthroughs/walkthrough-P09-S02.md and update task.md.
 - Never suppress, skip, or bypass failing tests.
 ```
 

@@ -1,101 +1,84 @@
-﻿# Phase 07 — Sprint 02: Email Notification System
+# Phase 07 — Sprint 02: Email Notification System
 
 ## Sprint Objective
 
-Implement email notification delivery with HTML templates, SMTP configuration, and user preferences.
+Send notification emails reliably through a queue, building on the P03-S01 Mailer, with templates and one-click unsubscribe.
 
 ## Dependencies
 
 P07-S01 in-app notifications.
 
+## Personas
+
+- **Lead:** `role-backend-engineer`
+- **Reviewers / sign-off:** `role-security-engineer`, `role-sdet-architect`
+
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Set up email delivery service (Resend, SendGrid, or Nodemailer with SMTP).
-2. Create HTML email templates for key events (run failed, quarantine escalation, invitation).
-3. Implement email sending via background job (BullMQ) for reliability.
-4. Add retry logic with exponential backoff for failed deliveries.
-5. Create email preview route for template development (dev only).
-6. Implement unsubscribe links in all emails.
-7. Add email delivery logging and monitoring.
+1. Extend the P03-S01 `Mailer` with an email BullMQ queue and the provider chosen in Q5.
+2. Templates (React Email or MJML) for quarantine SLA warning and escalation, mention, run failed (opt-in), and invitation. Migrate the P03 verification and reset emails to the template system.
+3. Retry with exponential backoff, with an idempotency key per notification.
+4. Dev-only email preview route.
+5. One-click unsubscribe per category (signed token, `List-Unsubscribe` headers). Security emails (verification, reset, invitations) cannot be unsubscribed.
+6. Delivery logging (provider message ID) and basic bounce handling (mark the address undeliverable).
+7. Configure the sending domain (SPF, DKIM, DMARC) for staging and production.
 
 ## Expected Files / Areas
 
-`apps/api/src/modules/notifications/email/`, `apps/api/src/jobs/email.ts`
+`apps/api/src/lib/mailer/`, `apps/api/src/jobs/email.ts`, `apps/api/src/emails/`
 
 ## Testing & Verification
 
-Integration tests for email sending (mock SMTP). Template rendering tests. Unsubscribe flow tests.
+Integration tests with a fake provider (retries, idempotency, unsubscribe honored). Template rendering snapshot tests. An unsubscribe flow test.
 
 ## Acceptance Criteria
 
-- [ ] Email notifications are sent for configured events.
-- [ ] HTML templates render correctly across email clients.
-- [ ] Failed emails are retried with backoff.
-- [ ] Unsubscribe links work correctly.
+- [ ] Notification emails are sent for configured events.
+- [ ] Templates render correctly (snapshot-tested, checked in common clients).
+- [ ] Failed sends are retried with backoff, without duplicate emails.
+- [ ] Unsubscribe links work, and no non-security email reaches an unsubscribed user.
 - [ ] Email delivery is logged for monitoring.
-- [ ] No emails sent to users who unsubscribed.
 
 ## Risks / Guardrails
 
-Email delivery delays; HTML rendering inconsistency across clients; unsubscribe link not honored.
+Email delivery delays; landing in spam (domain authentication); duplicate sends on retry; unsubscribe not honored.
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 07, Sprint 02: Email Notification System.
+You are the implementation agent for TestPulse, Phase 07 — Sprint 02: Email Notification System.
+Act as: role-backend-engineer (load .agents/skills/role-backend-engineer/SKILL.md). Reviewers: role-security-engineer, role-sdet-architect.
 
-OBJECTIVE:
-Implement email notification delivery with HTML templates, SMTP configuration, and user preferences.
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/07-phase-notifications-integrations.md
+4. planning/sprints/P07-S02-email-notification-system.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P07_S02.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Set up email delivery service (Resend, SendGrid, or Nodemailer with SMTP).
-2. Create HTML email templates for key events (run failed, quarantine escalation, invitation).
-3. Implement email sending via background job (BullMQ) for reliability.
-4. Add retry logic with exponential backoff for failed deliveries.
-5. Create email preview route for template development (dev only).
-6. Implement unsubscribe links in all emails.
-7. Add email delivery logging and monitoring.
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-Integration tests for email sending (mock SMTP). Template rendering tests. Unsubscribe flow tests.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] Email notifications are sent for configured events.
-- [ ] HTML templates render correctly across email clients.
-- [ ] Failed emails are retried with backoff.
-- [ ] Unsubscribe links work correctly.
-- [ ] Email delivery is logged for monitoring.
-- [ ] No emails sent to users who unsubscribed.
-
-GUARDRAILS:
-Email delivery delays; HTML rendering inconsistency across clients; unsubscribe link not honored.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P07-S02.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

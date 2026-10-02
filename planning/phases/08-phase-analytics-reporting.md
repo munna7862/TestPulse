@@ -1,4 +1,4 @@
-﻿# Phase 08 — Analytics & Reporting
+# Phase 08 — Analytics & Reporting
 
 ← [Phase 07](./07-phase-notifications-integrations.md) | [Phase 09 →](./09-phase-ux-polish-accessibility.md)
 
@@ -20,25 +20,25 @@ Project dashboards display pass rate trends, MTTR for flaky tests, top failing t
 - Mean Time to Resolution (MTTR) for quarantined tests
 - Run frequency chart (runs per day/week)
 - Branch comparison view
-- CSV/JSON data export
-- Materialized views / pre-computed aggregations for performance
+- CSV/JSON data export (authenticated and injection-safe; no public shareable links in v1)
+- Pre-computed daily aggregation tables (incremental on run completion + nightly reconciliation)
 
 ## Architecture
 
 ```text
-Raw Data (RunResults)
+Raw Data (TestResult rows)
         |
         v
-Background Aggregation Jobs (BullMQ)
+Aggregation Jobs (BullMQ: incremental on run completion + nightly UTC reconciliation)
         |
         v
-Materialized Metrics (daily_pass_rates, test_stability_scores, etc.)
+Daily Metric Tables (ProjectDailyMetric, TestCaseDailyMetric — master plan §5)
         |
         v
 Analytics API Endpoints
         |
         v
-Dashboard Charts (Recharts/Nivo)
+Dashboard Charts (Recharts, themed via design tokens)
 ```
 
 ## Testing
@@ -55,7 +55,7 @@ Dashboard Charts (Recharts/Nivo)
 - [ ] MTTR metric is calculated for quarantined tests.
 - [ ] Charts are responsive and interactive (tooltips, zoom).
 - [ ] Data export works for CSV and JSON formats.
-- [ ] Aggregation queries perform well on 100K+ results.
+- [ ] Aggregation and analytics queries meet master plan §10 on 1M+ results.
 
 ## Exit Criteria
 
@@ -63,7 +63,7 @@ A project dashboard tells the story: "Our test health improved from 82% to 97% p
 
 ## Sprint Decomposition
 
-- P08-S01: Aggregation pipeline and materialized metrics
+- P08-S01: Aggregation pipeline and daily metric tables
 - P08-S02: Pass rate and duration trend charts
 - P08-S03: Top failing, slowest, and flakiest test views
 - P08-S04: MTTR metrics, branch comparison, and data export

@@ -1,103 +1,85 @@
-﻿# Phase 05 — Sprint 01: WebSocket Infrastructure (Socket.IO + Redis Pub/Sub)
+# Phase 05 — Sprint 01: WebSocket Gateway (Socket.IO + Redis Adapter)
 
 ## Sprint Objective
 
-Set up the Socket.IO server with Redis adapter for horizontally scalable real-time event broadcasting.
+Stand up the authenticated, horizontally scalable Socket.IO gateway that delivers the events already published by the ingestion pipeline (master plan §4.3, §6).
 
 ## Dependencies
 
-Phase 04 complete (ingestion pipeline emits Redis events).
+Phase 04 complete (ingestion publishes events through `RealtimePublisher`), P03-S04 (membership change events).
+
+## Personas
+
+- **Lead:** `role-realtime-engineer`
+- **Reviewers / sign-off:** `role-security-engineer`, `role-sdet-architect`
 
 ## Scope
 
 ### Granular Implementation Tasks
 
-1. Install and configure Socket.IO server in apps/api.
-2. Configure @socket.io/redis-adapter for horizontal scaling.
-3. Define Socket.IO room structure (project:{projectId}, run:{runId}).
-4. Implement authentication middleware for WebSocket connections (JWT verification).
-5. Create event emitter service that publishes to Redis on ingestion.
-6. Create Socket.IO event handlers that broadcast Redis messages to rooms.
-7. Define TypeScript types for all WebSocket events (run:started, run:result, run:completed).
-8. Implement connection logging and monitoring.
+1. Attach a Socket.IO server to the Fastify HTTP server in `apps/api/src/server.ts`, using the same CORS allow-list with credentials.
+2. Configure `@socket.io/redis-adapter` with dedicated pub/sub connections (separate from BullMQ connections).
+3. Handshake authentication from the access-token cookie. Reject unauthenticated connections and auto-join `user:{userId}`.
+4. Implement `join:project` / `leave:project` with acks. Membership is checked through `resolveTenantContext()`. There are no `run:{runId}` rooms in v1 (clients filter by `runId`).
+5. Add typed `ServerToClientEvents` / `ClientToServerEvents` maps in `@testpulse/shared`, backed by the event schemas used by `RealtimePublisher`.
+6. Evict a user's sockets from affected rooms when their membership is removed or downgraded, or a project is deleted.
+7. Decide and configure the multi-instance transport strategy: sticky sessions, or `transports: ["websocket"]` (record it in ADR-002).
+8. Add connection metrics and logging (connected sockets, joins, auth failures) with tenant context.
 
 ## Expected Files / Areas
 
-`apps/api/src/websocket/`, `packages/shared/src/events/`
+`apps/api/src/realtime/`, `packages/shared/src/events/`
 
 ## Testing & Verification
 
-Integration tests for WebSocket connections, room joining, and event broadcasting. Load test for concurrent connections.
+Integration tests on a single instance with real `socket.io-client`: auth rejection, join ack for a member, `NOT_FOUND` ack for a non-member, eviction on removal. Contract test (`test:contract`): two gateway instances plus the emitter, where each client receives exactly one copy of each event. Smoke load test with 100 connections.
 
 ## Acceptance Criteria
 
-- [ ] Socket.IO server accepts authenticated connections.
-- [ ] Clients join project-specific rooms.
-- [ ] Ingestion events are broadcast to connected clients.
-- [ ] Redis adapter enables multi-server broadcasting.
-- [ ] Connection authentication rejects invalid tokens.
-- [ ] Event types are fully typed.
+- [ ] The gateway accepts only authenticated connections.
+- [ ] Clients can join only the project rooms of orgs they belong to.
+- [ ] Ingestion events reach connected clients across instances, exactly once.
+- [ ] Removed members stop receiving project events immediately.
+- [ ] Event types are fully typed and Zod-validated.
 
 ## Risks / Guardrails
 
-WebSocket server blocking the API event loop; missing auth on WebSocket connections; Redis adapter misconfiguration.
+Duplicate broadcasts from a hand-rolled Redis subscriber (forbidden); missing auth on room joins; long-polling without sticky sessions; the gateway blocking the API event loop under load.
 
 ## Antigravity Execution Prompt
 
 ```text
-You are the implementation agent for TestPulse, Phase 05, Sprint 01: WebSocket Infrastructure (Socket.IO + Redis Pub/Sub).
+You are the implementation agent for TestPulse, Phase 05 — Sprint 01: WebSocket Gateway (Socket.IO + Redis Adapter).
+Act as: role-realtime-engineer (load .agents/skills/role-realtime-engineer/SKILL.md). Reviewers: role-security-engineer, role-sdet-architect.
 
-OBJECTIVE:
-Set up the Socket.IO server with Redis adapter for horizontally scalable real-time event broadcasting.
+READ FIRST:
+1. AGENTS.md
+2. planning/master/TestPulse_Master_Plan.md — canonical contracts: §4.2 ingestion, §5 domain model, §6 events, §7 RBAC/isolation, §8 plan limits, §10 targets
+3. planning/phases/05-phase-real-time-dashboard.md
+4. planning/sprints/P05-S01-websocket-infrastructure.md — its Scope, Acceptance Criteria and Risks are the contract for this session.
 
 BEFORE CODING:
-1. Inspect the repository and the relevant existing implementation.
-2. Read AGENTS.md and the phase plan.
-3. Produce a concise implementation plan artifact.
-4. Identify exact files/modules that will change.
-5. Do not modify unrelated areas.
+1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
+2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
+3. Author docs/testing/test_cases_catalog_P05_S01.md (positive, negative, boundary, multi-tenant scenarios).
+4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
-IMPLEMENT:
-1. Install and configure Socket.IO server in apps/api.
-2. Configure @socket.io/redis-adapter for horizontal scaling.
-3. Define Socket.IO room structure (project:{projectId}, run:{runId}).
-4. Implement authentication middleware for WebSocket connections (JWT verification).
-5. Create event emitter service that publishes to Redis on ingestion.
-6. Create Socket.IO event handlers that broadcast Redis messages to rooms.
-7. Define TypeScript types for all WebSocket events (run:started, run:result, run:completed).
-8. Implement connection logging and monitoring.
+IMPLEMENT every task under "Granular Implementation Tasks".
 
-TEST:
-Integration tests for WebSocket connections, room joining, and event broadcasting. Load test for concurrent connections.
+VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build; npm audit --audit-level=high — plus npm run test:contract if queues or real-time code changed.
 
-ACCEPTANCE:
-- [ ] Socket.IO server accepts authenticated connections.
-- [ ] Clients join project-specific rooms.
-- [ ] Ingestion events are broadcast to connected clients.
-- [ ] Redis adapter enables multi-server broadcasting.
-- [ ] Connection authentication rejects invalid tokens.
-- [ ] Event types are fully typed.
-
-GUARDRAILS:
-WebSocket server blocking the API event loop; missing auth on WebSocket connections; Redis adapter misconfiguration.
-
-At completion:
-- Run the relevant verification commands.
-- Report changed files.
-- Report tests executed and results.
-- Report known limitations.
-- Do not suppress or bypass failing tests.
+AT COMPLETION:
+- Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
+- Write docs/walkthroughs/walkthrough-P05-S01.md and update task.md.
+- Never suppress, skip, or bypass failing tests.
 ```
 
 ## Sprint Definition of Done
 
 - [ ] Scope implemented without unrelated changes.
-- [ ] Tests added or updated for changed behavior.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Relevant tests pass.
-- [ ] Build passes when applicable.
+- [ ] Test case catalog authored before implementation; tests added or updated for changed behavior.
+- [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
+- [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
-- [ ] Git diff reviewed.
-- [ ] Documentation updated when behavior or architecture changed.
-- [ ] Sprint can be handed to the next sprint without hidden manual steps.
+- [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
+- [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.
