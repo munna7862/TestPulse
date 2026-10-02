@@ -45,3 +45,10 @@ Versions observed on npm on 2026-10-02, and the major chosen:
 - **Positive:** the project starts on current majors; the known incompatibilities (TypeScript 7 with typescript-eslint, `ioredis` 6 with the mock, the Prisma RC on `latest`) are avoided up front.
 - **Negative / trade-offs:** TypeScript 6 instead of 7 means a later upgrade; `ioredis` 5 means one later upgrade; documentation written for Next 15 and Prisma 5/6 patterns must be adapted.
 - **Mitigation:** the amendment process above; Dependabot; P02-S01 re-checks peers before installing.
+
+## Amendment 1 — Embedded PostgreSQL for tests and local development (P02-S03, 2026-10-02)
+
+- **Added:** `embedded-postgres@16.14.0-beta.17` (dev dependency of `@testpulse/db`). It ships PostgreSQL 16.14 binaries for Windows, macOS, and Linux. The `-beta` suffix is the wrapper's versioning scheme; the PostgreSQL binaries are a stable 16.x release.
+- **Why:** the primary development machine has no Docker, no WSL, and no system PostgreSQL. This gives real-PostgreSQL integration tests and a local dev database (`npm run db:start`) with zero installs, which satisfies the Docker-free rule.
+- **Constraint discovered:** `embedded-postgres` registers `async-exit-hook`, which calls `process.exit(0)`. Inside the Vitest process this overwrote failing exit codes with 0, so red runs were reported green. It must only run in a **child process** (`packages/db/test/pg-server.mjs`); verified that a failing test exits 1 afterwards.
+- **Also added:** `pg@8` (admin connection for creating per-file test databases), `pino@10` (worker process logging), `tsx@4` (dev runner).

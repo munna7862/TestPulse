@@ -233,3 +233,10 @@
 | FR-GTM-02 | Docs portal with tested quickstart (≤ 10 min to first live run) | P11-S02 | SC-GTM-002, SC-E2E-001 | Planned |
 | FR-GTM-03 | CI guides + OpenAPI reference generated from Zod | P11-S03 | SC-GTM-003 | Planned |
 | FR-GTM-04 | SEO metadata, sitemap, privacy-first funnel analytics (no PII) | P11-S04 | SC-GTM-004 | Planned |
+
+## DEV — Developer tooling & code quality
+
+| ID | Feature | Sprint(s) | Scenarios | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| FR-DEV-01 | ESLint 10, Prettier, TypeScript strict mode, package boundary enforcement, Husky and commitlint | P02-S04 | SC-DEV-001, SC-DEV-002, SC-DEV-003, SC-DEV-004, SC-DEV-005, SC-DEV-006 | Done |
+
