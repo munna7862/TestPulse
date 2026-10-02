@@ -38,7 +38,9 @@ describe("BullMQ contract (real Redis)", () => {
     const client = createQueueClient(createRedis(redisUrl), prefix);
     try {
       const schedulers = await client.queue("system").getJobSchedulers();
-      expect(schedulers.filter((s) => s.key === HEARTBEAT_SCHEDULER_ID || s.id === HEARTBEAT_SCHEDULER_ID)).toHaveLength(1);
+      expect(
+        schedulers.filter((s) => s.key === HEARTBEAT_SCHEDULER_ID || s.id === HEARTBEAT_SCHEDULER_ID),
+      ).toHaveLength(1);
     } finally {
       await client.close();
     }

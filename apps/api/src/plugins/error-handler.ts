@@ -31,9 +31,7 @@ export function registerErrorHandling(app: FastifyInstance): void {
         path: issue.instancePath,
         message: issue.message ?? "Invalid value",
       }));
-      return reply
-        .status(400)
-        .send(failure("VALIDATION_ERROR", "Request validation failed", request.id, details));
+      return reply.status(400).send(failure("VALIDATION_ERROR", "Request validation failed", request.id, details));
     }
 
     const status = typeof error.statusCode === "number" && error.statusCode >= 400 ? error.statusCode : 500;

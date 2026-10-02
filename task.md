@@ -14,9 +14,9 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ## 🚦 Active Sprint State
 
 - **Current Active Phase:** Phase 02: Project Bootstrap & DevOps
-- **Current Active Sprint:** P02-S01: Monorepo Initialization & Turborepo Setup
+- **Current Active Sprint:** P02-S05: CI/CD Pipeline & Deployment Targets
 - **Assigned Personas:** Lead `role-devops-engineer`; reviewer `role-fullstack-architect`
-- **Current Status:** In progress — branch `feat/P02-phase-02-bootstrap`
+- **Current Status:** Sprints P02-S01..S04 implemented & verified on branch `feat/P02-phase-02-bootstrap`
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -61,10 +61,19 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ---
 
 ## Phase 02: Project Bootstrap & DevOps
-- [/] **P02-S01:** Monorepo Initialization & Turborepo Setup (`planning/sprints/P02-S01-monorepo-initialization.md`)
-- [ ] **P02-S02:** Frontend & Backend Scaffolding — Next.js & Fastify 5 (`planning/sprints/P02-S02-frontend-backend-scaffolding.md`)
-- [ ] **P02-S03:** Database, Redis & Job Queue Setup (`planning/sprints/P02-S03-database-setup.md`)
-- [ ] **P02-S04:** Developer Tooling & Code Quality (`planning/sprints/P02-S04-developer-tooling-code-quality.md`)
+- [x] **P02-S01:** Monorepo Initialization & Turborepo Setup (`planning/sprints/P02-S01-monorepo-initialization.md`) — ✅ commit `e9d9db2`
+- [x] **P02-S02:** Frontend & Backend Scaffolding — Next.js & Fastify 5 (`planning/sprints/P02-S02-frontend-backend-scaffolding.md`) — ✅ commit `c34f455`
+- [x] **P02-S03:** Database, Redis & Job Queue Setup (`planning/sprints/P02-S03-database-setup.md`) — ✅ commit `2b15ff7`
+- [x] **P02-S04:** Developer Tooling & Code Quality (`planning/sprints/P02-S04-developer-tooling-code-quality.md`) — ✅ 2026-10-02
+  - [x] Configure ESLint 10 flat config (`eslint.config.mjs`) with typescript-eslint type-checked rules
+  - [x] Add boundary rules (`no-restricted-imports`): web ↛ db, shared stays browser-safe, `@prisma/client` only in packages/db, no cross-package relative imports
+  - [x] Configure Prettier with `eslint-config-prettier` to avoid rule conflicts
+  - [x] Confirm TypeScript strict mode in every workspace via shared base config (`tsconfig.base.json`)
+  - [x] Set up Husky pre-commit hooks with lint-staged
+  - [x] Configure commitlint for conventional commit enforcement
+  - [x] Add VS Code workspace settings and recommended extensions (`.vscode/settings.json`, `.vscode/extensions.json`)
+  - [x] Create npm scripts: lint, lint:fix, format, format:check, typecheck
+  - [x] Author test cases catalog (`docs/testing/test_cases_catalog_P02_S04.md`) and automated test suite (`apps/api/test/dev-tooling.test.ts`)
 - [ ] **P02-S05:** CI/CD Pipeline & Deployment Targets (`planning/sprints/P02-S05-cicd-pipeline-deployment.md`)
 - [ ] **P02-S06:** Design System Foundation & App Shell (`planning/sprints/P02-S06-design-system-foundation-app-shell.md`)
 

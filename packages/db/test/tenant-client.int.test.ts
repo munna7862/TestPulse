@@ -31,7 +31,9 @@ describe("tenant-scoped client against PostgreSQL", () => {
 
   it("[SC-SEC-004] cannot update or delete another org's rows", async () => {
     const tenant = createTenantDb(testDb.db, { orgId: orgA });
-    await expect(tenant.project.updateMany({ where: { id: projectB }, data: { name: "pwned" } })).resolves.toEqual({ count: 0 });
+    await expect(tenant.project.updateMany({ where: { id: projectB }, data: { name: "pwned" } })).resolves.toEqual({
+      count: 0,
+    });
     await expect(tenant.project.deleteMany({ where: { id: projectB } })).resolves.toEqual({ count: 0 });
     const untouched = await testDb.db.project.findFirstOrThrow({ where: { id: projectB } });
     expect(untouched.name).toBe("B1");

@@ -14,10 +14,7 @@ export class EnvValidationError extends Error {
  * Validates an environment source (e.g. `process.env`) against a Zod schema and fails fast with a
  * readable list of problems. Values are never echoed back, so secrets cannot leak into logs.
  */
-export function parseEnv<T extends z.ZodType>(
-  schema: T,
-  source: Record<string, string | undefined>,
-): z.infer<T> {
+export function parseEnv<T extends z.ZodType>(schema: T, source: Record<string, string | undefined>): z.infer<T> {
   const result = schema.safeParse(source);
   if (result.success) return result.data;
   const issues = result.error.issues.map((issue) => {

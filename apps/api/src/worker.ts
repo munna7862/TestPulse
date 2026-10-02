@@ -64,11 +64,9 @@ export async function startWorkers({
     });
   }
 
-  await client.queue("system").upsertJobScheduler(
-    HEARTBEAT_SCHEDULER_ID,
-    { every: 60_000 },
-    { name: "system.heartbeat", data: {} },
-  );
+  await client
+    .queue("system")
+    .upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} });
 
   log.info({ queues: QUEUES }, "workers started");
 

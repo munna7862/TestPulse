@@ -22,7 +22,11 @@ try {
   const member = await db.user.upsert({
     where: { email: "sdet@acme.test" },
     update: {},
-    create: { email: "sdet@acme.test", name: faker.person.fullName(), emailVerifiedAt: new Date("2026-01-01T00:00:00Z") },
+    create: {
+      email: "sdet@acme.test",
+      name: faker.person.fullName(),
+      emailVerifiedAt: new Date("2026-01-01T00:00:00Z"),
+    },
   });
 
   const org = await db.organization.upsert({

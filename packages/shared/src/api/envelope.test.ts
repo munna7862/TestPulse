@@ -19,8 +19,6 @@ describe("API envelope", () => {
   });
 
   it("rejects unknown error codes", () => {
-    expect(() =>
-      Response.parse({ success: false, error: { code: "TEAPOT", message: "?" } }),
-    ).toThrow();
+    expect(() => Response.parse({ success: false, error: { code: "TEAPOT", message: "?" } })).toThrow();
   });
 });

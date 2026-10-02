@@ -18,7 +18,8 @@ describe("api client", () => {
 
   it("throws ApiClientError with the shared error code", async () => {
     const request = createApiClient({
-      fetch: async () => jsonResponse(404, { success: false, error: { code: "NOT_FOUND", message: "Not found", requestId: "req_1" } }),
+      fetch: async () =>
+        jsonResponse(404, { success: false, error: { code: "NOT_FOUND", message: "Not found", requestId: "req_1" } }),
     });
 
     await expect(request({ path: "/api/v1/x", schema: z.object({}) })).rejects.toMatchObject({

@@ -12,11 +12,10 @@ describe("API app", () => {
 
   beforeAll(async () => {
     app = await buildApp({ env, logger: false });
-    app.post(
-      "/__test/echo",
-      { schema: { body: z.object({ name: z.string().min(2) }) } },
-      async (request) => ({ success: true, data: request.body }),
-    );
+    app.post("/__test/echo", { schema: { body: z.object({ name: z.string().min(2) }) } }, async (request) => ({
+      success: true,
+      data: request.body,
+    }));
     app.get("/__test/boom", async () => {
       throw new Error("database password=hunter2 leaked?");
     });

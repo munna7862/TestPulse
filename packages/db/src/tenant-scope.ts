@@ -96,7 +96,9 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
   const field = scope === "project" ? "projectId" : scope === "org" ? "orgId" : "id";
   const value = scope === "project" ? ctx.projectId : ctx.orgId;
   if (!value) {
-    throw new TenantScopeError(`Tenant context is missing ${scope === "project" ? "projectId" : "orgId"} for ${model}.${operation}.`);
+    throw new TenantScopeError(
+      `Tenant context is missing ${scope === "project" ? "projectId" : "orgId"} for ${model}.${operation}.`,
+    );
   }
 
   const base = isRecord(args) ? args : {};

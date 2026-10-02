@@ -32,7 +32,9 @@ try {
   // Database already exists.
 }
 
-console.info(`PostgreSQL 16 is running.\n  DATABASE_URL=postgresql://postgres:postgres@localhost:${port}/testpulse\n  Press Ctrl+C to stop.`);
+console.info(
+  `PostgreSQL 16 is running.\n  DATABASE_URL=postgresql://postgres:postgres@localhost:${port}/testpulse\n  Press Ctrl+C to stop.`,
+);
 
 let stopping = false;
 async function stop(): Promise<void> {

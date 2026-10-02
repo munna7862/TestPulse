@@ -10,7 +10,8 @@
     "start:worker": "node dist/worker-main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:contract": "vitest run --config vitest.contract.config.ts"
+    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@fastify/sensible": "^6.0.0",

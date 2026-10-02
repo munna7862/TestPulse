@@ -44,7 +44,10 @@ export function createApiClient({ baseUrl = "", fetch: fetchImpl = fetch }: ApiC
     const response = await fetchImpl(`${baseUrl}${path}`, {
       method,
       credentials: "include",
-      headers: body === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" },
+      headers:
+        body === undefined
+          ? { accept: "application/json" }
+          : { "content-type": "application/json", accept: "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(signal ? { signal } : {}),
     });

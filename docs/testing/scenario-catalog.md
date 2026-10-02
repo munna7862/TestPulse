@@ -305,3 +305,15 @@
 | SC-GTM-002 | A first-time user follows the quickstart (timed) | First live run within 10 minutes | M | FR-GTM-02 | — |
 | SC-GTM-003 | Documentation snippets and examples run in CI; the OpenAPI spec is compared with registered routes | All snippets pass; no undocumented or stale routes | I | FR-GTM-03 | — |
 | SC-GTM-004 | Public and app pages are crawled; analytics payloads are inspected | Unique meta on public pages; app pages `noindex`; analytics events contain no PII | I | FR-GTM-04 | — |
+
+## DEV — Developer tooling & quality gates
+
+| ID | Given / When | Then | Level | FR | Automated by |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| SC-DEV-001 | ESLint flat config runs across all workspaces (`npm run lint`) | 0 errors and 0 warnings with type-aware rules enabled | U | FR-DEV-01 | apps/api/test/dev-tooling.test.ts |
+| SC-DEV-002 | Code attempts forbidden imports (web importing db, shared importing server code or node built-ins, prisma imported outside packages/db, cross-package relative paths) | ESLint boundary rules reject the imports with explicit architectural guidance | U | FR-DEV-01 | apps/api/test/dev-tooling.test.ts |
+| SC-DEV-003 | Prettier check (`npm run format:check`) runs across the repository | All matched files adhere to formatting rules without ESLint conflicts | U | FR-DEV-01 | apps/api/test/dev-tooling.test.ts |
+| SC-DEV-004 | TypeScript compiler runs typecheck across all workspaces (`npm run typecheck`) | 0 compiler errors under strict, noUncheckedIndexedAccess, and noImplicitOverride | U | FR-DEV-01 | apps/api/test/dev-tooling.test.ts |
+| SC-DEV-005 | Git commit is created with Husky pre-commit and commit-msg hooks | `lint-staged` auto-fixes staged files and `commitlint` validates conventional commit formats and monorepo scopes | U | FR-DEV-01 | apps/api/test/dev-tooling.test.ts |
+| SC-DEV-006 | Developer opens monorepo in VS Code | Workspace settings and extension recommendations configure auto-formatting on save and recommended tooling | M | FR-DEV-01 | — |
+
