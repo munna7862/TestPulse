@@ -36,6 +36,10 @@ export const ApiEnvSchema = z.object({
   OAUTH_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(10_000),
   /** Per-IP limit for OAuth start/callback (security model §5). */
   OAUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(30),
+  /** Per-IP limit for password login (security model §5). */
+  AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(60),
+  /** Per-IP limit for register, forgot-password, reset-password (security model §5). */
+  AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(60),
 });
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 

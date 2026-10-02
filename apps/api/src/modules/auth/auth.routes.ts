@@ -1,3 +1,4 @@
+import rateLimit from "@fastify/rate-limit";
 import {
   apiSuccess,
   AuthMeResponseSchema,
@@ -16,6 +17,7 @@ import {
   VerifyEmailBodySchema,
   VerifyEmailResponseSchema,
 } from "@testpulse/shared";
+import type { FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { ApiEnv } from "../../env";
@@ -29,6 +31,15 @@ export interface AuthRoutesOptions {
   env: ApiEnv;
 }
 
+function getClientIp(request: FastifyRequest): string {
+  const forwarded = request.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.ip;
+}
+
 export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
     const isProduction = env.NODE_ENV === "production";
@@ -36,10 +47,38 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
 
     registerAuthErrorHandler(app);
 
-    // 1. Register (SC-AUTH-001, SC-AUTH-002, SC-AUTH-003)
+    await app.register(rateLimit, {
+      global: false,
+    });
+
+    const loginRateLimit = {
+      max: env.AUTH_RATE_LIMIT_LOGIN_PER_MINUTE,
+      timeWindow: "1 minute",
+      keyGenerator: (request: FastifyRequest) => getClientIp(request),
+      errorResponseBuilder: (_request: FastifyRequest, context: { ttl: number }) =>
+        Object.assign(
+          new Error(`Too many login attempts. Please try again in ${Math.ceil(context.ttl / 1000)} seconds.`),
+          { statusCode: 429 },
+        ),
+    };
+
+    const recoveryRateLimit = {
+      max: env.AUTH_RATE_LIMIT_RECOVERY_PER_HOUR,
+      timeWindow: "1 hour",
+      keyGenerator: (request: FastifyRequest) => getClientIp(request),
+      errorResponseBuilder: (_request: FastifyRequest, context: { ttl: number }) =>
+        Object.assign(new Error(`Too many requests. Please try again in ${Math.ceil(context.ttl / 1000)} seconds.`), {
+          statusCode: 429,
+        }),
+    };
+
+    // 1. Register (SC-AUTH-001, SC-AUTH-002, SC-AUTH-003, SC-AUTH-017)
     app.post(
       "/register",
       {
+        config: {
+          rateLimit: recoveryRateLimit,
+        },
         schema: {
           body: RegisterBodySchema,
           response: {
@@ -80,6 +119,9 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/resend-verification",
       {
+        config: {
+          rateLimit: recoveryRateLimit,
+        },
         schema: {
           body: ResendVerificationBodySchema,
           response: {
@@ -100,6 +142,9 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/login",
       {
+        config: {
+          rateLimit: loginRateLimit,
+        },
         schema: {
           body: LoginBodySchema,
           response: {
@@ -219,10 +264,13 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
       },
     );
 
-    // 8. Forgot Password (SC-AUTH-011)
+    // 8. Forgot Password (SC-AUTH-011, SC-AUTH-017)
     app.post(
       "/password/forgot",
       {
+        config: {
+          rateLimit: recoveryRateLimit,
+        },
         schema: {
           body: ForgotPasswordBodySchema,
           response: {
@@ -239,10 +287,13 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
       },
     );
 
-    // 9. Reset Password (SC-AUTH-012)
+    // 9. Reset Password (SC-AUTH-012, SC-AUTH-017)
     app.post(
       "/password/reset",
       {
+        config: {
+          rateLimit: recoveryRateLimit,
+        },
         schema: {
           body: ResetPasswordBodySchema,
           response: {
