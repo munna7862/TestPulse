@@ -14,9 +14,9 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ## 🚦 Active Sprint State
 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
-- **Current Active Sprint:** P03-S01: User Registration, Email Verification & Password Authentication
+- **Current Active Sprint:** P03-S02: OAuth Integration — Google & GitHub
 - **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** Phase 03 Sprint 01 complete & verified; PR ready
+- **Current Status:** Phase 03 Sprint 02 complete & verified; PR ready (next: P03-S03 Organization & Project CRUD and Membership)
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -29,6 +29,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 | Phase 01 (P01-S01…S05) | 2026-10-02 | [PR #3](https://github.com/munna7862/TestPulse/pull/3) | PRD, UX/IA, architecture & 7 ADRs, security model, testing strategy; closed Q1, Q2, Q4, Q5, Q6 |
 | Phase 02 (P02-S01…S06) | 2026-10-02 | [PR #4](https://github.com/munna7862/TestPulse/pull/4), [PR #5](https://github.com/munna7862/TestPulse/pull/5), [PR #6](https://github.com/munna7862/TestPulse/pull/6) | Monorepo bootstrap, Fastify 5 & Next.js 16, Prisma/Neon, dev tooling, CI/CD pipelines, design system & app shell |
 | P03-S01 | 2026-10-02 | commit `feat(auth): user registration, email verification and session auth (P03-S01)` | API-owned auth, argon2id, rotating cookies, CSRF guard, Next.js auth pages, Playwright & Axe tests |
+| P03-S02 | 2026-10-02 | [walkthrough](docs/walkthroughs/walkthrough-P03-S02.md) | Google & GitHub OAuth (Authorization Code + PKCE + state), verified-email-only linking, linked-accounts settings, friendly error page; 66 API integration tests (MSW), 22 Playwright tests with axe in light/dark |
 
 ---
 
@@ -107,7 +108,18 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [x] Implement Next.js auth pages: /login, /register, /verify-email, /forgot-password, /reset-password
   - [x] Author unit, integration, and Playwright E2E suites with Axe accessibility checks (SC-AUTH-001..012, 017..020)
   - [x] Author sprint walkthrough and verify all quality gates
-- [ ] **P03-S02:** OAuth Integration — Google & GitHub (`planning/sprints/P03-S02-oauth-integration.md`)
+- [x] **P03-S02:** OAuth Integration — Google & GitHub (`planning/sprints/P03-S02-oauth-integration.md`) — ✅ 2026-10-02
+  - [x] Author `docs/testing/test_cases_catalog_P03_S02.md` (SC-AUTH-013…016 reused; SC-AUTH-021…026 added to the master catalog)
+  - [x] Confirm `OAuthAccount` model per master plan §5 (already migrated in P03-S01; no schema change needed)
+  - [x] Add shared Zod schemas + `sanitizeReturnTo` allow-list (`packages/shared/src/api/oauth.ts`)
+  - [x] Implement Authorization Code + PKCE (S256) + `state` for Google and GitHub in `apps/api` with `arctic` (signed 10-min state cookie, provider timeouts, per-IP rate limit)
+  - [x] Callback account resolution: sign in linked / create verified user / link only when both emails verified; GitHub verified primary email from `/user/emails`
+  - [x] Issue the P03-S01 session cookies (`AuthService.issueSession`); redirect with no tokens in URLs and an allow-listed `returnTo`
+  - [x] Linked-accounts API: list, link (verified email required, bound to initiating session), unlink (last-method guard, 404 for foreign ids)
+  - [x] Redact OAuth `code`/`state` from request logs
+  - [x] Web: social buttons on /login and /register, `/oauth/error` page, `/settings/profile` linked accounts (loading/empty/error states); fix dark-theme contrast of the active sidebar item
+  - [x] Author MSW integration suite, state-cookie/log-redaction/shared/web unit tests, Playwright E2E with axe (light + dark)
+  - [x] Write `docs/ops/oauth-setup.md`, update API/env docs, feature + scenario catalogs, walkthrough, verify all quality gates
 - [ ] **P03-S03:** Organization & Project CRUD and Membership (`planning/sprints/P03-S03-organization-crud-membership.md`)
 - [ ] **P03-S04:** Invitation Flow & RBAC Authorization (`planning/sprints/P03-S04-invitation-flow-rbac.md`)
 - [ ] **P03-S05:** API Key Generation, Hashing & Scoping (`planning/sprints/P03-S05-api-key-generation.md`)

@@ -23,8 +23,8 @@
 | FR-AUTH-04 | Refresh-token rotation with reuse detection (family revocation) | P03-S01 | SC-AUTH-008, SC-AUTH-009 | Done |
 | FR-AUTH-05 | Logout (current session) and logout everywhere | P03-S01 | SC-AUTH-010 | Done |
 | FR-AUTH-06 | Password reset (request + confirm), revoking existing sessions | P03-S01 | SC-AUTH-011, SC-AUTH-012 | Done |
-| FR-AUTH-07 | Google and GitHub OAuth sign-in (PKCE + state) | P03-S02 | SC-AUTH-013, SC-AUTH-014 | Planned |
-| FR-AUTH-08 | Safe OAuth account linking (verified emails only) | P03-S02 | SC-AUTH-015, SC-AUTH-016 | Planned |
+| FR-AUTH-07 | Google and GitHub OAuth sign-in (PKCE + state) | P03-S02 | SC-AUTH-013, SC-AUTH-014, SC-AUTH-021, SC-AUTH-022, SC-AUTH-025, SC-AUTH-026 | Done |
+| FR-AUTH-08 | Safe OAuth account linking (verified emails only) | P03-S02 | SC-AUTH-015, SC-AUTH-016, SC-AUTH-023, SC-AUTH-024 | Done |
 | FR-AUTH-09 | Auth rate limiting (per IP and per account) | P03-S01, P03-S06 | SC-AUTH-017 | In progress |
 | FR-AUTH-10 | CSRF protection for cookie-authenticated mutations (Origin check) | P03-S01 | SC-AUTH-018 | Done |
 

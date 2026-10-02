@@ -19,6 +19,7 @@ import {
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { ApiEnv } from "../../env";
+import { registerAuthErrorHandler } from "./auth-error-handler";
 import { createAuthMiddleware } from "./auth.middleware";
 import { AuthError, type AuthService } from "./auth.service";
 import { clearAuthCookies, REFRESH_COOKIE_NAME, setAuthCookies } from "./tokens";
@@ -33,19 +34,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     const isProduction = env.NODE_ENV === "production";
     const middleware = createAuthMiddleware(authService.db, env);
 
-    // Decorate fastify error handler for AuthError
-    app.setErrorHandler((error, request, reply) => {
-      if (error instanceof AuthError) {
-        return reply.code(error.statusCode).send({
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        });
-      }
-      throw error;
-    });
+    registerAuthErrorHandler(app);
 
     // 1. Register (SC-AUTH-001, SC-AUTH-002, SC-AUTH-003)
     app.post(

@@ -34,11 +34,11 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `POST /auth/refresh` | refresh cookie | Rotate tokens | P03-S01 |
 | `POST /auth/logout` · `POST /auth/logout-all` | A | End the session(s) | P03-S01 |
 | `POST /auth/password/forgot` · `POST /auth/password/reset` | public | Password reset | P03-S01 |
-| `GET /auth/oauth/:provider/start` · `GET /auth/oauth/:provider/callback` | public | OAuth (google, github) | P03-S02 |
+| `GET /auth/oauth/:provider/start?returnTo=` · `GET /auth/oauth/:provider/callback` | public (30/min/IP) | OAuth (google, github). Browser redirects, not JSON: `/start` sets a signed `tp_oauth` cookie (state + PKCE verifier, 10 min) and 302s to the provider; `/callback` validates it, issues the session cookies and 302s to `WEB_ORIGIN` + an allow-listed path, or to `WEB_ORIGIN/oauth/error?code=&provider=` (`ACCESS_DENIED`, `INVALID_STATE`, `PROVIDER_ERROR`, `PROVIDER_NOT_CONFIGURED`, `EMAIL_UNVERIFIED`, `EMAIL_CONFLICT`, `ACCOUNT_ALREADY_LINKED`, `ACCOUNT_DISABLED`). Unknown `:provider` → 404. See [oauth-setup](../ops/oauth-setup.md) | P03-S02 |
 | `GET /auth/me` | A | Current user, memberships, preferences | P03-S01 |
 | `PATCH /me` | A | Profile, theme preference | P03-S01, P09-S02 |
 | `GET /me/sessions` · `DELETE /me/sessions/:sessionId` | A | Manage sessions | P03-S01 |
-| `GET /me/oauth-accounts` · `POST /me/oauth-accounts/:provider/link` · `DELETE /me/oauth-accounts/:id` | A | Linked accounts | P03-S02 |
+| `GET /me/oauth-accounts` · `POST /me/oauth-accounts/:provider/link` · `DELETE /me/oauth-accounts/:id` | A | Linked accounts. List → `{ accounts: [{ id, provider, createdAt }], hasPassword }` (no provider account ids). Link requires a verified email (`403 EMAIL_NOT_VERIFIED`) and returns `{ authorizationUrl }` for the browser to navigate to; unconfigured provider → `503`. Unlink: another user's id → `404`; removing the last sign-in method → `409 CONFLICT` | P03-S02 |
 | `POST /realtime/ticket` | A | Single-use socket ticket (60 s) | P05-S01 |
 | `GET /notifications` · `POST /notifications/read` · `POST /notifications/read-all` | A (own only) | Notification center | P07-S01 |
 | `GET /me/notification-preferences` · `PUT /me/notification-preferences` | A | Preferences | P07-S03 |

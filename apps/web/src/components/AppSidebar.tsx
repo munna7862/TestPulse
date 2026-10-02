@@ -91,7 +91,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                 className={cn(
                   "group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary font-semibold"
+                    ? "bg-primary/10 text-primary-link font-semibold"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -99,7 +99,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                      isActive ? "text-primary-link" : "text-muted-foreground group-hover:text-foreground",
                     )}
                   />
                   <span>{item.title}</span>
@@ -137,11 +137,11 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary/10 text-primary font-semibold"
+                      ? "bg-primary/10 text-primary-link font-semibold"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary-link" : "text-muted-foreground")} />
                   <span>{item.title}</span>
                 </Link>
               );

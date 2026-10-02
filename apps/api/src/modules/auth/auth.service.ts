@@ -189,6 +189,17 @@ export class AuthService {
       throw new AuthError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
     }
 
+    return this.issueSession(user, params.userAgent);
+  }
+
+  /**
+   * Start a new session family for an already-authenticated user and mint its tokens. Shared by password
+   * login and OAuth sign-in so both issue identical sessions (ADR-005 §3).
+   */
+  async issueSession(
+    user: User,
+    userAgent?: string,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const familyId = crypto.randomUUID();
     const refreshToken = generateRandomToken(32);
     const refreshTokenHash = hashRefreshToken(refreshToken, this.deps.env.JWT_REFRESH_SECRET);
@@ -200,7 +211,7 @@ export class AuthService {
         familyId,
         refreshTokenHash,
         expiresAt,
-        userAgent: params.userAgent,
+        userAgent,
       },
     });
 

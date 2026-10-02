@@ -3,12 +3,13 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import sensible from "@fastify/sensible";
 import { getSystemDb, type PrismaClient } from "@testpulse/db";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from "fastify-type-provider-zod";
 import type { ApiEnv } from "./env";
 import { ConsoleMailer, type Mailer } from "./lib/mailer";
-import { LOG_REDACT_PATHS } from "./log-redaction";
+import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
+import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
@@ -29,7 +30,22 @@ export async function buildApp({
   logger = true,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: logger ? { level: env.LOG_LEVEL, redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" } } : false,
+    logger: logger
+      ? {
+          level: env.LOG_LEVEL,
+          redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" },
+          serializers: {
+            // Same shape as the Fastify default, minus secret-bearing query strings (OAuth code and state).
+            req: (request: FastifyRequest) => ({
+              method: request.method,
+              url: redactRequestUrl(request.url),
+              host: request.host,
+              remoteAddress: request.ip,
+              remotePort: request.socket.remotePort,
+            }),
+          },
+        }
+      : false,
     trustProxy: env.TRUST_PROXY,
     bodyLimit: 1_048_576,
     requestIdHeader: "x-request-id",
@@ -98,6 +114,7 @@ export async function buildApp({
     });
 
     await app.register(authRoutes({ authService, env }), { prefix: "/api/v1/auth" });
+    await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
   }
 
   return app;

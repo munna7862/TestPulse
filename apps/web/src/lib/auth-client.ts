@@ -1,5 +1,10 @@
 import {
   ApiFailureSchema,
+  type ListOAuthAccountsResponse,
+  ListOAuthAccountsResponseSchema,
+  type OAuthProvider,
+  type StartOAuthLinkResponse,
+  StartOAuthLinkResponseSchema,
   type AuthMeResponse,
   type AuthUser,
   type ForgotPasswordBody,
@@ -105,6 +110,22 @@ export const authClient = {
       method: "POST",
       body: JSON.stringify(body),
     });
+  },
+
+  /** Linked sign-in providers for the signed-in user (profile settings). */
+  async listOAuthAccounts(): Promise<ListOAuthAccountsResponse> {
+    const data = await request<unknown>("/api/v1/me/oauth-accounts", { method: "GET" });
+    return ListOAuthAccountsResponseSchema.parse(data);
+  },
+
+  /** Starts a settings-initiated link; the caller navigates the browser to `authorizationUrl`. */
+  async startOAuthLink(provider: OAuthProvider): Promise<StartOAuthLinkResponse> {
+    const data = await request<unknown>(`/api/v1/me/oauth-accounts/${provider}/link`, { method: "POST" });
+    return StartOAuthLinkResponseSchema.parse(data);
+  },
+
+  async unlinkOAuthAccount(id: string): Promise<void> {
+    await request<unknown>(`/api/v1/me/oauth-accounts/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
 
   async getMe(): Promise<AuthUser> {

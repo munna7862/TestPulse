@@ -37,8 +37,11 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `JWT_ACCESS_SECRET` (S) | A | ≥ 32 random bytes; rotate in P10-S06 |
 | `JWT_REFRESH_SECRET` (S) | A | ≥ 32 random bytes (refresh tokens are opaque and stored hashed; this secret pepper-hashes them) |
 | `COOKIE_DOMAIN` | A | Unset in the free profile (host-only). Paid profile per ADR-005 |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (S) | A | OAuth |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` (S) | A | OAuth |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (S) | A | OAuth; both required to enable Google. Setup: [oauth-setup.md](oauth-setup.md) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` (S) | A | OAuth; both required to enable GitHub |
+| `OAUTH_REDIRECT_BASE_URL` | A | Optional. Origin used to build provider callback URLs; defaults to `WEB_ORIGIN` (same-origin `/api` proxy) |
+| `OAUTH_PROVIDER_TIMEOUT_MS` | A | Default `10000`. Bound for each outbound provider call |
+| `OAUTH_RATE_LIMIT_PER_MINUTE` | A | Default `30`. Per-IP limit for OAuth start/callback |
 | `WEBHOOK_SECRET_ENCRYPTION_KEY` (S) | A | 32-byte base64 key for AES-256-GCM |
 | `UNSUBSCRIBE_SIGNING_SECRET` (S) | A | HMAC for unsubscribe links |
 
