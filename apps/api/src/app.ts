@@ -2,6 +2,7 @@ import sensible from "@fastify/sensible";
 import Fastify, { type FastifyInstance } from "fastify";
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from "fastify-type-provider-zod";
 import type { ApiEnv } from "./env";
+import { LOG_REDACT_PATHS } from "./log-redaction";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
@@ -11,17 +12,6 @@ export interface BuildAppOptions {
   /** Disable request logging in tests. */
   logger?: boolean;
 }
-
-/** Secret-bearing fields that must never reach logs (docs/security/security-model.md §7). */
-export const LOG_REDACT_PATHS = [
-  "req.headers.authorization",
-  "req.headers.cookie",
-  'res.headers["set-cookie"]',
-  "*.password",
-  "*.token",
-  "*.apiKey",
-  "*.secret",
-];
 
 export async function buildApp({ env, health, logger = true }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({

@@ -14,6 +14,8 @@ export const ApiEnvSchema = z.object({
   RUN_WORKERS_IN_PROCESS: booleanString.default(true),
   WEB_ORIGIN: z.url().default("http://localhost:3000"),
   TRUST_PROXY: booleanString.default(false),
+  DATABASE_URL: z.string().min(1).optional(),
+  REDIS_URL: z.string().min(1).optional(),
   GIT_COMMIT_SHA: z.string().optional(),
 });
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;

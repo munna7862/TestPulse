@@ -18,8 +18,8 @@
 ## 2. Test infrastructure (Docker-free on developer machines)
 
 ### 2.1 PostgreSQL
-- Local options (`docs/database/local-setup.md`, P02-S03): a native PostgreSQL 16 install (Windows installer, Scoop, Homebrew) **or** a personal Neon branch.
-- `DATABASE_URL_TEST` points at a dedicated database. The Vitest `globalSetup` creates schema `test_w<VITEST_POOL_ID>` per worker and runs `prisma migrate deploy` into it once. A `truncateAll()` helper resets tables between test files.
+- **Zero-setup default (P02-S03):** with no `DATABASE_URL_TEST`, the Vitest `globalSetup` starts a throwaway embedded PostgreSQL 16 in a child process ([`docs/database/local-setup.md`](../database/local-setup.md), ADR-004 amendment 1). Alternatively, set `DATABASE_URL_TEST` to a native install, a Neon branch, or the CI service container.
+- **Isolation: one fresh database per test file** (`tp_test_w<VITEST_POOL_ID>`, dropped and recreated with all migrations applied) via `useTestDatabase()` from `@testpulse/db/testing`. A `truncateAll()` helper resets tables within a file when needed. (This replaces the earlier schema-per-worker design: same isolation, simpler with Prisma 7 driver adapters.)
 - **Do not** use transaction-rollback isolation (it conflicts with application code that opens its own transactions).
 - CI uses a `postgres:16` service container.
 

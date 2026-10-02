@@ -18,7 +18,10 @@
     "test": "turbo run test",
     "test:contract": "turbo run test:contract",
     "test:e2e": "turbo run test:e2e",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:start": "npm run db:start -w @testpulse/db",
+    "db:migrate": "npm run db:migrate -w @testpulse/db",
+    "db:seed": "npm run db:seed -w @testpulse/db"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
