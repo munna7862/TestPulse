@@ -26,7 +26,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:traceability": "node scripts/check-traceability.mjs",
-    "audit": "node scripts/audit-gate.mjs"
+    "audit": "node scripts/audit-gate.mjs",
+    "verify": "node scripts/verify.mjs",
+    "check:pr-size": "node scripts/check-pr-size.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

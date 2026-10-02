@@ -163,7 +163,7 @@ npm audit --audit-level=high  # Zero critical or high security vulnerabilities
 
 **Documentation-only sprints** (Phase 01) are verified by review against their acceptance criteria and by cross-checking against the master plan. The code gates do not apply until P02-S01 creates the scripts.
 
-Never mark a task `[x]` or claim acceptance unless you observed verifiable command output. Never skip, `.only`, or delete a failing test to get a green run.
+Agents never mark a task `[x]` themselves: an item is done when its PR is merged with green required checks on the protected `main`. Never claim acceptance unless you observed verifiable command output. Never skip, `.only`, or delete a failing test to get a green run.
 
 <!-- BEGIN:turborepo-agent-rules -->
 

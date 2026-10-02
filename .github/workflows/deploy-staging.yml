@@ -1,7 +1,11 @@
 name: Deploy Staging
 
+# Runs only after "CI Quality Gate" succeeds on main (or manually). Missing secrets fail the run
+# instead of silently skipping steps, so a green run always means staging was actually updated.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI Quality Gate"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -12,10 +16,21 @@ concurrency:
 jobs:
   migrate-and-deploy:
     name: Run Migrations & Trigger Staging Deploy
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    env:
+      DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
-      - name: Checkout code
+      - name: Require staging secrets
+        run: |
+          [ -n "$DIRECT_URL" ] || { echo "::error::Repository secret STAGING_DIRECT_URL is not set"; exit 1; }
+          [ -n "$RENDER_DEPLOY_HOOK_URL" ] || { echo "::error::Repository secret RENDER_DEPLOY_HOOK_URL is not set"; exit 1; }
+
+      - name: Checkout the commit that passed CI
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,15 +42,27 @@ jobs:
         run: npm ci
 
       - name: Run Prisma migrations against Staging Neon DB
-        if: env.DIRECT_URL != ''
-        env:
-          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
         run: npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 
       - name: Trigger Render staging deploy hook
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+
+  smoke:
+    name: Staging Smoke Check
+    needs: migrate-and-deploy
+    runs-on: ubuntu-latest
+    env:
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Wait until staging serves the new commit
         run: |
-          echo "Triggering Render staging deployment..."
-          curl -f -X POST "$RENDER_DEPLOY_HOOK_URL"
+          [ -n "$STAGING_API_URL" ] || { echo "::error::Repository variable STAGING_API_URL is not set"; exit 1; }
+          short="${EXPECTED_SHA:0:12}"
+          for i in $(seq 1 40); do
+            if curl -fsS "$STAGING_API_URL/health" | grep -q "\"commit\":\"$short\""; then
+              echo "Staging is serving $short"; exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Staging never reported commit $short within 10 minutes"; exit 1
