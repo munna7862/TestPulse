@@ -15,8 +15,8 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
 - **Current Active Sprint:** P03-S01: User Registration, Email Verification & Password Authentication
-- **Assigned Personas:** Lead `role-backend-engineer`; reviewer `role-security-engineer`
-- **Current Status:** Phase 02 complete & verified; PR opened for P02-S06; ready for Phase 03
+- **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
+- **Current Status:** Phase 03 Sprint 01 complete & verified; PR ready
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -27,7 +27,8 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 | :--- | :--- | :--- | :--- |
 | Planning review | 2026-10-02 | [PR #1](https://github.com/munna7862/TestPulse/pull/1), [PR #2](https://github.com/munna7862/TestPulse/pull/2) | Master plan, skills, phases, sprints, free-tier profile, FR/SC catalogs |
 | Phase 01 (P01-S01…S05) | 2026-10-02 | [PR #3](https://github.com/munna7862/TestPulse/pull/3) | PRD, UX/IA, architecture & 7 ADRs, security model, testing strategy; closed Q1, Q2, Q4, Q5, Q6 |
-| Phase 02 (P02-S01…S06) | 2026-10-02 | [PR #4](https://github.com/munna7862/TestPulse/pull/4), [PR #5](https://github.com/munna7862/TestPulse/pull/5), PR #6 | Monorepo bootstrap, Fastify 5 & Next.js 16, Prisma/Neon, dev tooling, CI/CD pipelines, design system & app shell |
+| Phase 02 (P02-S01…S06) | 2026-10-02 | [PR #4](https://github.com/munna7862/TestPulse/pull/4), [PR #5](https://github.com/munna7862/TestPulse/pull/5), [PR #6](https://github.com/munna7862/TestPulse/pull/6) | Monorepo bootstrap, Fastify 5 & Next.js 16, Prisma/Neon, dev tooling, CI/CD pipelines, design system & app shell |
+| P03-S01 | 2026-10-02 | commit `feat(auth): user registration, email verification and session auth (P03-S01)` | API-owned auth, argon2id, rotating cookies, CSRF guard, Next.js auth pages, Playwright & Axe tests |
 
 ---
 
@@ -95,7 +96,17 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ---
 
 ## Phase 03: Authentication & Multi-Tenancy
-- [ ] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`)
+- [x] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`) — ✅ 2026-10-02
+  - [x] Extend Prisma schema with User fields, Session, VerificationToken, and OAuthAccount models; apply migration
+  - [x] Create shared Zod schemas in `@testpulse/shared` for registration, verification, login, refresh, logout, password reset, and user profile
+  - [x] Implement password hashing with argon2id (memory 19 MiB, iterations 2, length 10..256)
+  - [x] Implement token generation, HMAC-SHA256 hashing, and cookie helpers
+  - [x] Implement transactional Mailer interface with in-memory TestMailer and dev ConsoleMailer
+  - [x] Implement Fastify auth routes: register, verify-email, resend-verification, login, refresh, logout, logout-all, forgot/reset password, me
+  - [x] Implement authenticateUser preHandler and CSRF Origin validation for cookie mutations
+  - [x] Implement Next.js auth pages: /login, /register, /verify-email, /forgot-password, /reset-password
+  - [x] Author unit, integration, and Playwright E2E suites with Axe accessibility checks (SC-AUTH-001..012, 017..020)
+  - [x] Author sprint walkthrough and verify all quality gates
 - [ ] **P03-S02:** OAuth Integration — Google & GitHub (`planning/sprints/P03-S02-oauth-integration.md`)
 - [ ] **P03-S03:** Organization & Project CRUD and Membership (`planning/sprints/P03-S03-organization-crud-membership.md`)
 - [ ] **P03-S04:** Invitation Flow & RBAC Authorization (`planning/sprints/P03-S04-invitation-flow-rbac.md`)

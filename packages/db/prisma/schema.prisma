@@ -25,16 +25,77 @@ enum OrgRole {
   VIEWER
 }
 
+enum VerificationTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
+
 /// Global (identity) table — accessed via systemDb in auth modules only.
 model User {
-  id              String      @id @default(uuid(7))
-  email           String      @unique
-  emailVerifiedAt DateTime?
-  name            String
-  deletedAt       DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  memberships     OrgMember[]
+  id                 String              @id @default(uuid(7))
+  email              String              @unique
+  emailVerifiedAt    DateTime?
+  passwordHash       String?
+  name               String
+  avatarUrl          String?
+  deletedAt          DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  memberships        OrgMember[]
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  oauthAccounts      OAuthAccount[]
+}
+
+/// Global (identity) table — OAuth accounts linked to users.
+model OAuthAccount {
+  id                String        @id @default(uuid(7))
+  userId            String
+  provider          OAuthProvider
+  providerAccountId String
+  createdAt         DateTime      @default(now())
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Global (identity) table — refresh-token session families (ADR-005).
+model Session {
+  id               String    @id @default(uuid(7))
+  userId           String
+  familyId         String
+  refreshTokenHash String    @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  replacedById     String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+}
+
+/// Global (identity) table — single-use tokens for email verification and password reset.
+model VerificationToken {
+  id        String                @id @default(uuid(7))
+  userId    String
+  type      VerificationTokenType
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId, type])
 }
 
 /// Tenant boundary.

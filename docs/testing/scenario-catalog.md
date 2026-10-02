@@ -17,25 +17,26 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-AUTH-001 | A new email registers with a valid password | 202 with a generic message; user is created unverified; a verification email is captured by the test mail transport | I | FR-AUTH-01 | — |
-| SC-AUTH-002 | An already-registered email registers again | Same generic response and status as SC-AUTH-001 (no enumeration); no second account is created | I | FR-AUTH-01 | — |
-| SC-AUTH-003 | Registration with a password under 10 characters or a malformed email | 400 `VALIDATION_ERROR` with field details; nothing is persisted | I | FR-AUTH-01 | — |
-| SC-AUTH-004 | A valid verification token is submitted | `emailVerifiedAt` is set; the token is marked used | I | FR-AUTH-02 | — |
-| SC-AUTH-005 | An expired, used, or tampered verification token is submitted | 400; user state unchanged | I | FR-AUTH-02 | — |
-| SC-AUTH-006 | Login with correct credentials | Access and refresh cookies are `HttpOnly; Secure; SameSite=Lax`, host-only; `/auth/me` returns the user; no token in the response body | I | FR-AUTH-03 | — |
-| SC-AUTH-007 | Login with a wrong password, or with an unknown email | 401 with an identical message for both cases | I | FR-AUTH-03 | — |
-| SC-AUTH-008 | Refresh with a valid refresh cookie | New access and refresh cookies; the previous refresh token no longer works | I | FR-AUTH-04 | — |
-| SC-AUTH-009 | An already-rotated refresh token is reused | 401; the entire token family is revoked (the newest token also stops working) | I | FR-AUTH-04 | — |
-| SC-AUTH-010 | Logout, then logout-all from another session | The current session is revoked; logout-all revokes every session for the user | I | FR-AUTH-05 | — |
-| SC-AUTH-011 | Password reset requested for an unknown email | Same generic 202 as for a known email; no email is sent | I | FR-AUTH-06 | — |
-| SC-AUTH-012 | Reset confirmed with a valid token; then the same token reused; then an expired token | Password changes and all sessions are revoked; reuse and expired tokens are rejected | I | FR-AUTH-06 | — |
+| SC-AUTH-001 | A new email registers with a valid password | 202 with a generic message; user is created unverified; a verification email is captured by the test mail transport | I | FR-AUTH-01 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-002 | An already-registered email registers again | Same generic response and status as SC-AUTH-001 (no enumeration); no second account is created | I | FR-AUTH-01 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-003 | Registration with a password under 10 characters or a malformed email | 400 `VALIDATION_ERROR` with field details; nothing is persisted | I | FR-AUTH-01 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-004 | A valid verification token is submitted | `emailVerifiedAt` is set; the token is marked used | I | FR-AUTH-02 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-005 | An expired, used, or tampered verification token is submitted | 400; user state unchanged | I | FR-AUTH-02 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-006 | Login with correct credentials | Access and refresh cookies are `HttpOnly; Secure; SameSite=Lax`, host-only; `/auth/me` returns the user; no token in the response body | I | FR-AUTH-03 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-007 | Login with a wrong password, or with an unknown email | 401 with an identical message for both cases | I | FR-AUTH-03 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-008 | Refresh with a valid refresh cookie | New access and refresh cookies; the previous refresh token no longer works | I | FR-AUTH-04 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-009 | An already-rotated refresh token is reused | 401; the entire token family is revoked (the newest token also stops working) | I | FR-AUTH-04 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-010 | Logout, then logout-all from another session | The current session is revoked; logout-all revokes every session for the user | I | FR-AUTH-05 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-011 | Password reset requested for an unknown email | Same generic 202 as for a known email; no email is sent | I | FR-AUTH-06 | apps/api/test/auth/password-reset.int.test.ts |
+| SC-AUTH-012 | Reset confirmed with a valid token; then the same token reused; then an expired token | Password changes and all sessions are revoked; reuse and expired tokens are rejected | I | FR-AUTH-06 | apps/api/test/auth/password-reset.int.test.ts |
 | SC-AUTH-013 | First-time Google/GitHub sign-in with a provider-verified email (mocked provider) | User created with `emailVerifiedAt`; session cookies set; redirect URL contains no tokens | I | FR-AUTH-07 | — |
 | SC-AUTH-014 | OAuth callback with a mismatched `state` or missing PKCE verifier | Rejected; no session created | I | FR-AUTH-07 | — |
 | SC-AUTH-015 | OAuth email matches an existing local account, and both emails are verified | Accounts are linked; the user is signed in | I | FR-AUTH-08 | — |
 | SC-AUTH-016 | OAuth email matches an existing account, but the local or provider email is unverified | Not linked; the user is told to sign in with the existing method and link from settings | I | FR-AUTH-08 | — |
 | SC-AUTH-017 | Repeated failed logins for one account from rotating IPs, and for one IP across accounts | 429 once either per-account or per-IP limit is exceeded | I | FR-AUTH-09 | — |
-| SC-AUTH-018 | A cookie-authenticated POST arrives with a foreign `Origin` header | 403; no state change | I | FR-AUTH-10 | — |
-| SC-AUTH-019 | An unverified user tries to create an org, accept an invitation, or link an OAuth account | 403 with `EMAIL_NOT_VERIFIED` guidance; verify/resend/logout still work | I | FR-AUTH-02 | — |
+| SC-AUTH-018 | A cookie-authenticated POST arrives with a foreign `Origin` header | 403; no state change | I | FR-AUTH-10 | apps/api/test/auth/login-session.int.test.ts |
+| SC-AUTH-019 | An unverified user tries to create an org, accept an invitation, or link an OAuth account | 403 with `EMAIL_NOT_VERIFIED` guidance; verify/resend/logout still work | I | FR-AUTH-02 | apps/api/test/auth/register-verify.int.test.ts |
+| SC-AUTH-020 | Web auth flow (sign up → verify email → login → access /runs → logout) | Authentication succeeds, cookies handled, and 0 axe-core accessibility violations | E | FR-AUTH-01, FR-AUTH-03 | apps/web/e2e/auth.spec.ts |
 
 ## ORG — Organizations, projects, membership
 
