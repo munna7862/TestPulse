@@ -1,4 +1,4 @@
-﻿# Phase 02 — Sprint 01: Monorepo Initialization and Turborepo Setup
+# Phase 02 — Sprint 01: Monorepo Initialization and Turborepo Setup
 
 ## Sprint Objective
 
@@ -13,7 +13,7 @@ Phase 01 complete.
 ### Granular Implementation Tasks
 
 1. Initialize npm/pnpm workspace with Turborepo.
-2. Create workspace directories: apps/web, apps/api, packages/db, packages/shared, packages/ui.
+2. Create workspace directories: apps/web, apps/api, packages/db, packages/shared, packages/ui, packages/reporter.
 3. Configure turbo.json with pipeline definitions (build, dev, lint, test, typecheck).
 4. Set up root package.json with workspace scripts.
 5. Configure pnpm-workspace.yaml or npm workspaces.
@@ -56,7 +56,7 @@ BEFORE CODING:
 
 IMPLEMENT:
 1. Initialize npm/pnpm workspace with Turborepo.
-2. Create workspace directories: apps/web, apps/api, packages/db, packages/shared, packages/ui.
+2. Create workspace directories: apps/web, apps/api, packages/db, packages/shared, packages/ui, packages/reporter.
 3. Configure turbo.json with pipeline definitions (build, dev, lint, test, typecheck).
 4. Set up root package.json with workspace scripts.
 5. Configure pnpm-workspace.yaml or npm workspaces.

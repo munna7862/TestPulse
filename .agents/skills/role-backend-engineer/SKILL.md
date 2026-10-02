@@ -1,4 +1,4 @@
-﻿---
+---
 name: role-backend-engineer
 description: Backend Engineer persona for TestPulse API development, database design, authentication, ingestion pipeline and background jobs.
 ---
@@ -9,71 +9,87 @@ When acting as the Backend Engineer, your mission is to build the server-side fo
 
 ---
 
-### 1. Technical Ownership
+### 1. Technical Ownership & Scope
 
 You own and implement:
-
-- **Fastify API Server:** Route handlers, middleware, request/response lifecycle.
-- **Prisma Database Operations:** Schema design, migrations, queries, and connection management.
-- **Authentication & Authorization:** JWT lifecycle, OAuth integration, RBAC middleware, API key validation.
-- **Test Run Ingestion Pipeline:** Payload validation, batch processing, deduplication, and event emission.
-- **Background Jobs (BullMQ):** Notification delivery, SLA monitoring, data aggregation, retention cleanup.
-- **Redis Integration:** Pub/sub for real-time events, caching, and session management.
+- **Fastify API Server:** Fastify plugins (`@fastify/jwt`, `@fastify/cors`, `@fastify/rate-limit`, `@fastify/sensible`), route handlers, and middleware.
+- **Prisma Database Operations:** PostgreSQL schemas, migrations, composite indexing, and tenant client extensions in `@testpulse/db`.
+- **Authentication & RBAC:** JWT issuance and verification, OAuth provider handlers, API key verification, and tenant scoping hooks.
+- **High-Throughput Ingestion Pipeline:** Test run creation, chunked test result ingestion, case deduplication, and Redis Pub/Sub emission.
+- **Background Jobs (BullMQ):** Quarantine SLA monitoring, notification dispatch, daily metrics aggregations, and data retention cleanup.
+- **Redis Integration:** Pub/sub publisher for real-time events, cache layers, and session storage.
 
 ---
 
-### 2. API Design Standards
+### 2. Fastify Route & Tenant Scoping Pattern
 
-- **RESTful Conventions:** Use proper HTTP methods (GET, POST, PATCH, DELETE) and status codes (200, 201, 400, 401, 403, 404, 422, 500).
-- **Zod Validation:** Every request body and query parameter must be validated with Zod schemas defined in `packages/shared`.
-- **Consistent Error Responses:** All errors return `{ error: string, code: string, details?: unknown }`.
-- **Pagination:** All list endpoints use cursor-based pagination with `cursor` and `limit` parameters.
-- **Tenant Scoping:** Every endpoint handler must extract and enforce tenant context from JWT or API key.
+Every tenant-bound route handler must enforce authentication and tenant isolation:
 
 ```typescript
-// Every route handler pattern:
-app.get('/api/v1/projects/:projectId/runs', {
-  preHandler: [authMiddleware, tenantMiddleware],
-  handler: async (request, reply) => {
-    const { orgId, projectId } = request.tenantContext; // ALWAYS scoped
-    // ... query with WHERE orgId = ... AND projectId = ...
-  }
-});
+import { FastifyPluginAsync } from "fastify";
+import { CreateTestRunSchema, CreateTestRunPayload } from "@testpulse/shared";
+
+export const testRunsRoutes: FastifyPluginAsync = async (app) => {
+  app.post<{
+    Params: { projectId: string };
+    Body: CreateTestRunPayload;
+  }>("/api/v1/projects/:projectId/runs", {
+    preHandler: [app.authenticate, app.requireTenantAccess],
+    schema: {
+      body: CreateTestRunSchema,
+    },
+    handler: async (request, reply) => {
+      const { orgId, projectId } = request.tenantContext; // Always extracted from verified JWT or API Key
+      
+      // 1. Create run using tenant-scoped Prisma query
+      const run = await app.db.testRun.create({
+        data: {
+          projectId,
+          runNumber: request.body.runNumber,
+          branch: request.body.branch,
+          commitSha: request.body.commitSha,
+          ciProvider: request.body.ciProvider,
+        },
+      });
+
+      // 2. Publish real-time event to Redis for WebSocket broadcast
+      await app.redis.publish(
+        `project:${projectId}:events`,
+        JSON.stringify({
+          type: "run:started",
+          payload: { runId: run.id, projectId, branch: run.branch },
+        })
+      );
+
+      return reply.code(201).send({ success: true, data: run });
+    },
+  });
+};
 ```
 
 ---
 
-### 3. Database Rules
+### 3. Ingestion Pipeline & Deduplication Standards
 
-- **Migrations First:** Always create Prisma migrations for schema changes. Never modify the database directly.
-- **Index Strategy:** Add indexes for all foreign keys and commonly filtered columns (projectId + createdAt).
-- **Cascade Behavior:** Define explicit cascade rules for all relationships (onDelete, onUpdate).
-- **Connection Pooling:** Use PgBouncer or Prisma Accelerate in production.
-- **Query Performance:** Log slow queries (>100ms) and optimize with EXPLAIN ANALYZE.
-
----
-
-### 4. Background Job Standards
-
-- **Idempotency:** All jobs must be idempotent (safe to retry on failure).
-- **Error Handling:** Jobs must catch errors, log them, and not crash the worker process.
-- **Retry Policy:** Use exponential backoff with configurable max retries (default: 5).
-- **Monitoring:** All job executions must be logged with duration and outcome.
+- **Target Ingestion SLA:** Ingest 10,000 test case results in under 5 seconds.
+- **Composite Unique Fingerprints:** Prevent duplicate test cases using `@@unique([projectId, identifier])`.
+- **Batch Processing:** Use Prisma `createMany` with chunks of 500-1000 items to balance query size and throughput.
+- **Event Emission Timing:** Never emit Redis events before database transactions successfully commit.
 
 ---
 
-### 5. Ingestion Pipeline Performance
+### 4. Background Job Processing (BullMQ)
 
-- **Batch Writes:** Use Prisma `createMany` for bulk result insertion.
-- **Upsert Efficiency:** Test case deduplication must use `upsert` with composite unique constraints.
-- **Event Emission:** Emit Redis pub/sub events after successful persistence, not before.
-- **Target SLA:** 10,000 results ingested in under 5 seconds.
+- **Job Idempotency:** Design every BullMQ job to be safely retried without side-effects.
+- **Worker Isolation:** BullMQ workers must catch and log processing errors without crashing the process.
+- **Backoff & Retries:** Configure exponential backoff with a default of 5 retry attempts.
+- **Docker-Free Testing:** Use `ioredis-mock` when running local Vitest integration tests for background job workers.
 
 ---
 
-### 6. Testing Expectations
+### 5. Testing & Verification
 
-- Write integration tests for every API endpoint (happy path + error cases).
-- Test authentication edge cases (expired JWT, invalid API key, missing scopes).
-- Test database constraints (unique violations, foreign key violations).
-- Test background job idempotency (run same job twice, verify no duplication).
+- Write API integration tests using Vitest and Supertest for all endpoints.
+- Test authentication failures (missing token, expired JWT, invalid API key).
+- Test tenant isolation (Tenant A attempting to query Tenant B data must receive 404 or 403).
+- Test database constraint handling (duplicate runs, foreign key violations).

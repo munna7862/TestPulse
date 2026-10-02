@@ -1,4 +1,4 @@
-﻿# Phase 02 — Project Bootstrap & DevOps
+# Phase 02 — Project Bootstrap & DevOps
 
 ← [Phase 01](./01-phase-product-architecture-foundation.md) | [Phase 03 →](./03-phase-authentication-multi-tenancy.md)
 
@@ -28,12 +28,13 @@ A developer can clone the repository, run `npm install`, start the dev server, r
 ```text
 testpulse/
   apps/
-    web/          (Next.js 15 frontend)
-    api/          (Fastify backend)
+    web/          (Next.js 15 frontend — @testpulse/web)
+    api/          (Fastify backend — @testpulse/api)
   packages/
-    db/           (Prisma schema + client)
-    shared/       (types, utils, constants)
-    ui/           (shared component library)
+    db/           (Prisma schema + client — @testpulse/db)
+    shared/       (types, utils, constants — @testpulse/shared)
+    ui/           (shared component library — @testpulse/ui)
+    reporter/     (standalone CI reporter — @testpulse/reporter)
   turbo.json
   package.json
 ```
