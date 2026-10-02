@@ -219,10 +219,10 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-OPS-01 | Health endpoint (DB + Redis) and worker heartbeat | P02-S03 | SC-OPS-001 | Planned |
-| FR-OPS-02 | Free-tier profile: same-origin `/api` proxy, in-process workers | P02-S02, P02-S05 | SC-OPS-002, SC-OPS-003 | Planned |
+| FR-OPS-01 | Health endpoint (DB + Redis) and worker heartbeat | P02-S03 | SC-OPS-001 | Done |
+| FR-OPS-02 | Free-tier profile: same-origin `/api` proxy, in-process workers | P02-S02, P02-S05 | SC-OPS-002, SC-OPS-003 | Done |
 | FR-OPS-03 | Catch-up-safe scheduled jobs (sleep / Redis loss) | P04-S06, P06-S05 | SC-OPS-004, SC-QUA-011 | Planned |
-| FR-OPS-04 | CI quality gates incl. traceability check | P02-S05 | SC-OPS-005 | Planned |
+| FR-OPS-04 | CI quality gates incl. traceability check | P02-S05 | SC-OPS-005, SC-OPS-007, SC-OPS-008 | Done |
 | FR-OPS-05 | Paid production environment with backups, alerts, restore drill | P10-S06 | SC-OPS-006 | Planned |
 
 ## GTM — Public site & docs

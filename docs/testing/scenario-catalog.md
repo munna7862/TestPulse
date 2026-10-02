@@ -245,7 +245,7 @@
 | SC-SEC-001 | Table-driven: every route is called by a user from another org | 404 for each | I | FR-SEC-01 | — |
 | SC-SEC-002 | Table-driven: every route is called with each role below its minimum | 403 for each | I | FR-SEC-01, FR-ORG-09 | — |
 | SC-SEC-003 | A route is registered without an entry in the isolation table | The meta-test fails | U | FR-SEC-01 | — |
-| SC-SEC-004 | The tenant client runs `findUnique` on a tenant model, a create with a foreign `projectId`, and `findMany` without a filter | Throws; throws; the scope is injected | U | FR-SEC-02 | — |
+| SC-SEC-004 | The tenant client runs `findUnique` on a tenant model, a create with a foreign `projectId`, and `findMany` without a filter | Throws; throws; the scope is injected | U | FR-SEC-02 | packages/db/test/tenant-client.int.test.ts |
 | SC-SEC-005 | API and web responses are inspected; a request comes from a foreign origin | Expected security headers present; CORS rejects the foreign origin | I | FR-SEC-03 | — |
 | SC-SEC-006 | Login, refresh, and ingest requests are logged | Logs contain no passwords, tokens, cookies, or API keys | I | FR-SEC-04 | — |
 | SC-SEC-007 | Role change, key create/revoke, project delete, and ownership transfer occur | One `AuditEvent` each, with actor and target | I | FR-SEC-04 | — |
@@ -270,12 +270,14 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-OPS-001 | `/health` is called with everything up, then with the database down | 200 with DB and Redis status; then 503. The worker heartbeat is recorded | I | FR-OPS-01 | — |
-| SC-OPS-002 | Free-profile staging: login through the web origin's `/api` proxy, then a token refresh | Cookies are first-party on the web origin, and refresh works | E | FR-OPS-02 | — |
-| SC-OPS-003 | The API starts with `RUN_WORKERS_IN_PROCESS=true`, then with `false` | Jobs are processed in-process; with `false`, no workers start | I | FR-OPS-02 | — |
-| SC-OPS-004 | Redis is flushed (non-persistent free tier) and the API restarts | Repeatable jobs are re-registered exactly once | C | FR-OPS-03 | — |
-| SC-OPS-005 | The scenario catalog marks a scenario automated with no matching `[SC-*]` test title | The traceability check fails CI | U | FR-OPS-04 | — |
+| SC-OPS-001 | `/health` is called with everything up, then with the database down | 200 with DB and Redis status; then 503. The worker heartbeat is recorded | I | FR-OPS-01 | apps/api/test/health-db.int.test.ts |
+| SC-OPS-002 | Free-profile staging: login through the web origin's `/api` proxy, then a token refresh | Cookies are first-party on the web origin, and refresh works | E | FR-OPS-02 | apps/web/e2e/smoke.spec.ts |
+| SC-OPS-003 | The API starts with `RUN_WORKERS_IN_PROCESS=true`, then with `false` | Jobs are processed in-process; with `false`, no workers start | I | FR-OPS-02 | apps/api/test/ci-pipeline.test.ts |
+| SC-OPS-004 | Redis is flushed (non-persistent free tier) and the API restarts | Repeatable jobs are re-registered exactly once | C | FR-OPS-03 | apps/api/test/queues.contract.test.ts |
+| SC-OPS-005 | The scenario catalog marks a scenario automated with no matching `[SC-*]` test title | The traceability check fails CI | U | FR-OPS-04 | apps/api/test/ci-pipeline.test.ts |
 | SC-OPS-006 | Paid profile: restore drill and alert test | Database restores to a branch; downtime, error, queue, and worker alerts fire | M | FR-OPS-05 | — |
+| SC-OPS-007 | PR is opened or push to main occurs | GitHub Actions CI workflow triggers verify and e2e jobs with service containers | I | FR-OPS-04 | apps/api/test/ci-pipeline.test.ts |
+| SC-OPS-008 | Commit merges to main | Staging deployment workflow runs Prisma migrations and triggers Render deployment | M | FR-OPS-04 | apps/api/test/ci-pipeline.test.ts |
 
 ## PERF — Non-functional (master plan §10)
 

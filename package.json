@@ -24,7 +24,8 @@
     "db:seed": "npm run db:seed -w @testpulse/db",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:traceability": "node scripts/check-traceability.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

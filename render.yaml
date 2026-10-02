@@ -1,0 +1,41 @@
+# Render blueprint for TestPulse free-tier staging profile (master plan §4.4, D-14).
+# In the free tier, one Render free web service runs Fastify REST + Socket.IO + BullMQ workers in one process.
+services:
+  - type: web
+    name: testpulse-api-staging
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npx turbo run build --filter=@testpulse/api...
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_PROFILE
+        value: free
+      - key: RUN_WORKERS_IN_PROCESS
+        value: "true"
+      - key: PORT
+        value: "4000"
+      - key: LOG_LEVEL
+        value: info
+      - key: TRUST_PROXY
+        value: "true"
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: WEBHOOK_SECRET_ENCRYPTION_KEY
+        generateValue: true
+      - key: SENTRY_DSN
+        sync: false

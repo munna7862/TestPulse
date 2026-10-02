@@ -1,0 +1,41 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-deploy:
+    name: Run Migrations & Trigger Staging Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prisma migrations against Staging Neon DB
+        if: env.DIRECT_URL != ''
+        env:
+          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+        run: npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
+
+      - name: Trigger Render staging deploy hook
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering Render staging deployment..."
+          curl -f -X POST "$RENDER_DEPLOY_HOOK_URL"
