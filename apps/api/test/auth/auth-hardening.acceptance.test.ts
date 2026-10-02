@@ -21,6 +21,8 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
       JWT_REFRESH_SECRET: "test-refresh-secret-at-least-32-chars-long",
       APP_URL: "https://testpulse.example.com",
       WEB_ORIGIN: "https://testpulse.example.com",
+      AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: "10",
+      AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: "20",
     });
 
     app = await buildApp({
@@ -91,7 +93,7 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
       for (let i = 0; i < 25; i++) {
         const res = await app.inject({
           method: "POST",
-          url: "/api/v1/auth/forgot-password",
+          url: "/api/v1/auth/password/forgot",
           headers: {
             "x-forwarded-for": clientIp,
           },

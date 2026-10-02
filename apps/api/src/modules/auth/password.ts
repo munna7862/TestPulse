@@ -11,6 +11,13 @@ const ARGON2_OPTIONS: argon2.HashOptions = {
   parallelism: 1,
 };
 
+/**
+ * Static dummy hash computed with identical parameters (argon2id, 19 MiB, 2 iterations).
+ * Verified against when an email does not exist to eliminate timing disparity (ADR-005 §9, Threat Model T11).
+ */
+export const DUMMY_PASSWORD_HASH =
+  "$argon2id$v=19$m=19456,p=1,t=2$oebvLd6SrHJvYRlhu9nVVg$xfnn8CAQDITN+dOLQ94rTj6tIj3HTeULiIaarildjAg";
+
 export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password, ARGON2_OPTIONS);
 }

@@ -3,7 +3,7 @@ import type { PrismaClient, User } from "@testpulse/db";
 import { VerificationTokenType } from "@testpulse/db";
 import type { ApiEnv } from "../../env";
 import type { Mailer } from "../../lib/mailer";
-import { hashPassword, verifyPassword } from "./password";
+import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "./password";
 import { generateRandomToken, hashRefreshToken, hashVerificationToken } from "./tokens";
 
 export interface AuthDependencies {
@@ -181,6 +181,7 @@ export class AuthService {
     const user = await this.deps.db.user.findUnique({ where: { email } });
 
     if (!user || !user.passwordHash || user.deletedAt) {
+      await verifyPassword(DUMMY_PASSWORD_HASH, params.password);
       throw new AuthError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
     }
 
@@ -224,7 +225,7 @@ export class AuthService {
   }
 
   /**
-   * Refresh session tokens with rotation and token-reuse detection (SC-AUTH-008, SC-AUTH-009).
+   * Refresh session tokens with rotation, concurrency guard and token-reuse detection (SC-AUTH-008, SC-AUTH-009).
    */
   async refreshSession(params: {
     refreshToken: string;
@@ -242,6 +243,7 @@ export class AuthService {
     }
 
     // Reuse detection: If the session was already revoked or replaced, revoke entire family!
+    // Must be committed directly on db so rollback does not cancel the revocation (SC-AUTH-009).
     if (session.revokedAt !== null || session.replacedById !== null) {
       await this.deps.db.session.updateMany({
         where: { familyId: session.familyId, revokedAt: null },
@@ -263,32 +265,68 @@ export class AuthService {
       throw new AuthError(401, "SESSION_EXPIRED", "Session has expired. Please log in again.");
     }
 
-    // Rotate refresh token
+    // Rotate refresh token atomically
     const newRefreshToken = generateRandomToken(32);
     const newRefreshTokenHash = hashRefreshToken(newRefreshToken, this.deps.env.JWT_REFRESH_SECRET);
     const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const newSession = await this.deps.db.$transaction(async (tx) => {
-      const created = await tx.session.create({
-        data: {
-          userId: session.userId,
-          familyId: session.familyId,
-          refreshTokenHash: newRefreshTokenHash,
-          expiresAt: newExpiresAt,
-          userAgent: params.userAgent ?? session.userAgent,
-        },
-      });
+    let raceDetected = false;
+    let newSession: { id: string } | null = null;
 
-      await tx.session.update({
-        where: { id: session.id },
-        data: {
-          revokedAt: new Date(),
-          replacedById: created.id,
-        },
-      });
+    try {
+      newSession = await this.deps.db.$transaction(async (tx) => {
+        // Concurrency guard: atomically rotate this session. If another concurrent request
+        // already updated revokedAt, updateMany returns count: 0, preventing race conditions (G6).
+        const updateResult = await tx.session.updateMany({
+          where: {
+            id: session.id,
+            revokedAt: null,
+            replacedById: null,
+          },
+          data: {
+            revokedAt: new Date(),
+          },
+        });
 
-      return created;
-    });
+        if (updateResult.count === 0) {
+          raceDetected = true;
+          return null;
+        }
+
+        const created = await tx.session.create({
+          data: {
+            userId: session.userId,
+            familyId: session.familyId,
+            refreshTokenHash: newRefreshTokenHash,
+            expiresAt: newExpiresAt,
+            userAgent: params.userAgent ?? session.userAgent,
+          },
+        });
+
+        await tx.session.update({
+          where: { id: session.id },
+          data: {
+            replacedById: created.id,
+          },
+        });
+
+        return created;
+      });
+    } catch {
+      raceDetected = true;
+    }
+
+    if (raceDetected || !newSession) {
+      await this.deps.db.session.updateMany({
+        where: { familyId: session.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new AuthError(
+        401,
+        "TOKEN_REUSE_DETECTED",
+        "Token reuse detected. All sessions in this family have been terminated.",
+      );
+    }
 
     const accessToken = this.deps.jwtSign({
       sub: session.userId,
