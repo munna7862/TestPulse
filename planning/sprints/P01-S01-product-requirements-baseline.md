@@ -26,10 +26,11 @@ Master Plan and Phase 01.
 7. Close Open Decision Q1 (does quarantine affect CI outcomes?) and document how quarantined tests appear in runs, the dashboard, and GitHub reporting.
 8. Define the product meaning of every status: run statuses, result statuses (including FLAKY = passed on retry), flaky states (STABLE/SUSPECTED/FLAKY), and quarantine states and escalation markers.
 9. Create a glossary for domain terminology (run, shard, result, test case, fingerprint, flaky, quarantine, SLA, MTTR).
+10. Refine the seeded feature catalog (`docs/product/feature-catalog.md`): confirm, split, or add `FR-*` entries so every PRD requirement has an ID.
 
 ## Expected Files / Areas
 
-`docs/product/prd.md`, `docs/product/glossary.md`
+`docs/product/prd.md`, `docs/product/glossary.md`, `docs/product/feature-catalog.md` (refined)
 
 ## Testing & Verification
 
@@ -77,5 +78,6 @@ AT COMPLETION:
 - [ ] Every deliverable exists at the path listed in Expected Files / Areas.
 - [ ] Content is consistent with the master plan; any change to a canonical contract is reflected in the master plan (§11 Decision Log / §12 Open Decisions).
 - [ ] Open questions are listed with an owner sprint.
+- [ ] New or changed requirements have `FR-*` IDs in `docs/product/feature-catalog.md`, with at least one `SC-*` scenario each.
 - [ ] Reviewer personas have reviewed the deliverables against the acceptance criteria.
 - [ ] `task.md` updated.

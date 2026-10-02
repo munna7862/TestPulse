@@ -30,7 +30,8 @@ testpulse/
 ```
 
 ### Technology Stacks
-*   **Runtime**: Node.js 24 LTS everywhere (`.nvmrc`, CI, Railway). npm workspaces + Turborepo 2.
+*   **Runtime**: Node.js 24 LTS everywhere (`.nvmrc`, CI, hosting). npm workspaces + Turborepo 2.
+*   **Hosting**: the **free-tier profile** (Vercel Hobby + Render free + Neon free + Render Key Value) is used until the product is feature-complete. The paid setup is decided in P10-S06 (master plan §4.4, D-14). Code must work in both profiles through configuration only: same-origin `/api` proxy, ticket-based socket auth, `RUN_WORKERS_IN_PROCESS`, and catch-up-safe scheduled jobs.
 *   **Frontend (`apps/web`)**: Next.js 15 (App Router), React 19, TanStack React Query v5, Zustand, Tailwind CSS v4, Radix UI primitives, Lucide React, Recharts.
 *   **Backend (`apps/api`)**: Fastify 5, `fastify-type-provider-zod`, `@fastify/jwt`, `@fastify/cookie`, `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit`, Socket.IO v4, BullMQ v5, pino.
 *   **Database (`packages/db`)**: Prisma ORM, PostgreSQL 16 on Neon (pooled `DATABASE_URL` at runtime, `DIRECT_URL` for migrations).
@@ -89,7 +90,13 @@ testpulse/
 *   Treat CI-provided data (test titles, error messages, stack traces) and user comments as **untrusted**: render as text, cap sizes, and never inject them as HTML.
 *   Store only hashes of API keys, refresh tokens, and invitation/reset/verification tokens. Webhook secrets are encrypted at rest because they are needed for signing.
 
-### 7. No Speculative Features
+### 7. Traceability (Features ↔ Tests)
+*   Every feature has an `FR-*` ID in [`docs/product/feature-catalog.md`](docs/product/feature-catalog.md), and every test scenario has an `SC-*` ID in [`docs/testing/scenario-catalog.md`](docs/testing/scenario-catalog.md).
+*   Sprint test catalogs (`docs/testing/test_cases_catalog_PXX_SYY.md`) reference existing `SC-*` IDs. New scenarios are added to the master scenario catalog in the same PR.
+*   Automated tests put the scenario ID in the test title, e.g. `it("[SC-ING-004] retried batch is idempotent", ...)`, so coverage is greppable.
+*   When a sprint completes, update the feature status and each scenario's "Automated by" column. PR descriptions list the FR and SC IDs they touch.
+
+### 8. No Speculative Features
 *   Adhere strictly to the active sprint plan. Do not build features that are explicitly deferred (master plan §1 "Non-MVP Exclusions"): Stripe billing, plan feature-gating, SSO/SAML, AI root-cause diagnosis, Slack bots, shareable public dashboards, reporters beyond Playwright/Vitest, or a server-side GitHub App.
 
 ---
@@ -108,7 +115,7 @@ The monorepo operates with 10 specialized virtual agent personas. Each sprint fi
 | **Real-Time Engineer** | [`.agents/skills/role-realtime-engineer`](.agents/skills/role-realtime-engineer/SKILL.md) | Socket.IO gateway, Redis adapter/emitter, room auth, connection resilience |
 | **SDET Architect** | [`.agents/skills/role-sdet-architect`](.agents/skills/role-sdet-architect/SKILL.md) | Test pyramid, test cases catalog, anti-flakiness, coverage, CI quality gates |
 | **Security Engineer** | [`.agents/skills/role-security-engineer`](.agents/skills/role-security-engineer/SKILL.md) | Tenant isolation audits, RBAC verification, credential handling, OWASP compliance |
-| **DevOps Engineer** | [`.agents/skills/role-devops-engineer`](.agents/skills/role-devops-engineer/SKILL.md) | Turborepo CI/CD pipelines, Vercel/Railway deploys, monitoring, environment configs |
+| **DevOps Engineer** | [`.agents/skills/role-devops-engineer`](.agents/skills/role-devops-engineer/SKILL.md) | Turborepo CI/CD pipelines, free-tier then paid deploys, monitoring, environment configs |
 | **Growth Engineer** | [`.agents/skills/role-growth-engineer`](.agents/skills/role-growth-engineer/SKILL.md) | Landing page, docs portal, SEO, privacy-first analytics, onboarding time-to-first-value |
 
 ### Additional Engineering Standards

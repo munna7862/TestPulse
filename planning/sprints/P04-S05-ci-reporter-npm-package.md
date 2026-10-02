@@ -23,10 +23,10 @@ P04-S02 ingestion API.
 4. Configuration via `TESTPULSE_API_KEY`, `TESTPULSE_API_URL`, `TESTPULSE_RUN_ID` (override), `TESTPULSE_DISABLED`, plus typed reporter options.
 5. CI metadata auto-detection (GitHub Actions, GitLab CI, Jenkins, CircleCI, generic) and an `externalRunId` that is stable across shards (e.g. `github:<GITHUB_RUN_ID>:<GITHUB_RUN_ATTEMPT>`).
 6. Normalize paths (shared utility), truncate fields to the API limits, strip ANSI codes, and optionally redact common secret patterns from error output.
-7. Resilience: retries with backoff and jitter on 5xx/429, a bounded in-memory buffer, a final-flush timeout (10 s), never throw, never change the exit code, and print one summary warning on failure.
+7. Resilience: retries with backoff and jitter on 5xx/429, a generous first-request timeout (60 s) to absorb free-tier cold starts, a bounded in-memory buffer (results keep buffering while the API wakes), a final-flush timeout (default 30 s, configurable), never throw, never change the exit code, and print one summary warning on failure.
 8. Implement quarantine mode per the Q1 decision (if accepted).
 9. README, plus example projects under `examples/` that CI runs against a local API.
-10. Prepare for publishing (package.json `exports`, `files`, provenance). The npm publish itself happens at P10-S06.
+10. Prepare for publishing (package.json `exports`, `files`, provenance). The npm publish itself happens at P10-S07.
 
 ## Expected Files / Areas
 
@@ -64,7 +64,7 @@ READ FIRST:
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P04_S05.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P04_S05.md (positive, negative, boundary, multi-tenant scenarios). Start from this sprint's FR-* entries in docs/product/feature-catalog.md and their SC-* scenarios in docs/testing/scenario-catalog.md; reference those IDs and add any new SC-* IDs to the master scenario catalog.
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -74,6 +74,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
 - Write docs/walkthroughs/walkthrough-P04-S05.md and update task.md.
+- Update the FR status in docs/product/feature-catalog.md and the "Automated by" column in docs/testing/scenario-catalog.md; automated tests carry their [SC-*] ID in the test title.
 - Never suppress, skip, or bypass failing tests.
 ```
 
@@ -84,5 +85,6 @@ AT COMPLETION:
 - [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
 - [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
+- [ ] Feature catalog status and scenario catalog "Automated by" entries updated; tests carry `[SC-*]` IDs in their titles.
 - [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
 - [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

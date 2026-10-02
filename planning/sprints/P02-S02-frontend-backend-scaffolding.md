@@ -19,12 +19,12 @@ P02-S01 monorepo initialized.
 
 1. Scaffold Next.js (major per ADR-004) with the App Router in apps/web: TypeScript strict, Tailwind CSS v4.
 2. Scaffold Fastify 5 in apps/api with `fastify-type-provider-zod`, `@fastify/sensible`, a central error handler that produces the shared response envelope, a pino logger with secret redaction, and `GET /health`.
-3. Create the apps/api entrypoints `src/server.ts` (HTTP) and `src/worker.ts` (an empty worker skeleton), both with graceful shutdown on SIGTERM.
+3. Create the apps/api entrypoints `src/server.ts` (HTTP) and `src/worker.ts` (exports `startWorkers()`). `server.ts` also starts the workers when `RUN_WORKERS_IN_PROCESS=true` (free profile, master plan §4.4). Both have graceful shutdown on SIGTERM.
 4. Create `tsconfig.base.json` (strict, noUncheckedIndexedAccess, noImplicitOverride) and have every workspace extend it.
 5. Seed `@testpulse/shared` with the response envelope schema, error-code enum, and env-schema helpers (browser-safe only).
 6. Add Zod-validated environment loading for web, api, and worker, plus `.env.example` files.
 7. Make `npm run dev` start web, api, and worker with hot reload (e.g. `tsx watch`) on Windows and POSIX.
-8. Create a typed API client skeleton in apps/web (`credentials: "include"`, Zod response parsing).
+8. Create a typed API client skeleton in apps/web that calls the same-origin `/api` path (`credentials: "include"`, Zod response parsing). Configure a Next.js rewrite `/api/:path*` → `API_INTERNAL_URL`, so the free profile has first-party cookies.
 
 ## Expected Files / Areas
 
@@ -61,7 +61,7 @@ READ FIRST:
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P02_S02.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P02_S02.md (positive, negative, boundary, multi-tenant scenarios). Start from this sprint's FR-* entries in docs/product/feature-catalog.md and their SC-* scenarios in docs/testing/scenario-catalog.md; reference those IDs and add any new SC-* IDs to the master scenario catalog.
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -71,6 +71,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
 - Write docs/walkthroughs/walkthrough-P02-S02.md and update task.md.
+- Update the FR status in docs/product/feature-catalog.md and the "Automated by" column in docs/testing/scenario-catalog.md; automated tests carry their [SC-*] ID in the test title.
 - Never suppress, skip, or bypass failing tests.
 ```
 
@@ -82,5 +83,6 @@ AT COMPLETION:
 - [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] New or changed screens have loading, empty and error states and pass the axe-core check in light and dark themes.
 - [ ] Acceptance criteria verified.
+- [ ] Feature catalog status and scenario catalog "Automated by" entries updated; tests carry `[SC-*]` IDs in their titles.
 - [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
 - [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

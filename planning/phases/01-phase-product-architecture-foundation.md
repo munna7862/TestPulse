@@ -48,13 +48,12 @@ Already resolved in the planning review (master plan §11 — record each as an 
 3. Auth: API-owned auth with cookie sessions, no Auth.js/Clerk (D-01) → ADR-005
 4. Tenant isolation: tenant-scoped client, nested routes, 404 policy (D-04) → ADR-006
 5. Ingestion: incremental batches with shard support (D-02) → ADR-007
-6. Deployment targets: Vercel (web) + Railway (api + worker) + Neon → ADR-003
+6. Deployment: the free-tier profile until feature-complete (D-14: Vercel Hobby + Render free + Neon free + Render Key Value); paid profile decided in P10-S06 → ADR-003
 
 Still open and owned by this phase (master plan §12):
 
 - Q1 Quarantine CI semantics (P01-S01)
 - Q2 Exact dependency majors (P01-S03, ADR-004)
-- Q3 Redis provider (P01-S03, ADR-003)
 - Q4 PostgreSQL RLS as defense in depth (P01-S04)
 - Q5 Email provider (P01-S03)
 - Q6 Test identity on rename/move (P01-S03)

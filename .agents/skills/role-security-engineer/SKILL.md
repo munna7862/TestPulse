@@ -21,7 +21,7 @@ Canonical contracts: master plan §7 (RBAC & isolation) and D-01 (auth design).
 
 #### B. Authentication & Session Security (API-owned auth)
 - **Passwords:** argon2id (memory ≥ 19 MiB, iterations ≥ 2) and a minimum length of 10. Check passwords against a breached or common-password list where feasible. Never log passwords.
-- **Tokens:** access JWT (15 min) and refresh token (30 days, rotating) in `HttpOnly; Secure; SameSite=Lax` cookies scoped to the same site. Refresh tokens are stored hashed and grouped by `familyId`. Reusing a rotated token revokes the whole family.
+- **Tokens:** access JWT (15 min) and refresh token (30 days, rotating) in `HttpOnly; Secure; SameSite=Lax` first-party cookies. In the free profile they are host-only on the web origin via the `/api` proxy; in the paid profile they are on the shared registrable domain. Socket connections use 60-second single-use tickets, never long-lived tokens in URLs or JavaScript. Refresh tokens are stored hashed and grouped by `familyId`. Reusing a rotated token revokes the whole family.
 - **CSRF:** for cookie-authenticated mutations, require `SameSite=Lax` cookies **and** validate the `Origin` header against the allow-list.
 - **Email verification** is required before a user can accept invitations or link OAuth accounts by email. **Account linking** only happens when both the provider email and the local email are verified. Otherwise, require sign-in with the existing method first (this prevents pre-hijacking account takeover).
 - **No account enumeration:** register, login, and password-reset responses are generic, with similar timing.

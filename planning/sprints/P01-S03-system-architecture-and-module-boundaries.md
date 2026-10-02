@@ -25,7 +25,7 @@ P01-S01 product requirements, P01-S02 information architecture.
 6. Produce the ER diagram for all master plan §5 entities, with indexes and cascade rules.
 7. Produce data-flow diagrams: ingestion, real-time fan-out, domain events → notifications/webhooks, retention, and aggregation.
 8. Define the environment strategy (local, test, preview, staging, production), same-site domain layout, and a draft environment-variable catalog.
-9. Write ADR-001 (monorepo tooling), ADR-002 (real-time engine and fan-out), ADR-003 (hosting and Redis provider, closes Q3), ADR-004 (dependency majors and runtime, closes Q2), and ADR-007 (ingestion protocol and fingerprints, closes Q6). Record the email provider decision (Q5).
+9. Write ADR-001 (monorepo tooling), ADR-002 (real-time engine and fan-out), ADR-003 (free-tier hosting profile per D-14 and its constraints; the paid profile is decided in P10-S06), ADR-004 (dependency majors and runtime, closes Q2), and ADR-007 (ingestion protocol and fingerprints, closes Q6). Record the email provider decision (Q5).
 
 ## Expected Files / Areas
 
@@ -41,7 +41,7 @@ Review the architecture for scalability bottlenecks, single points of failure, a
 - [ ] The ingestion, REST, and real-time contracts are documented and match the master plan.
 - [ ] The ER diagram covers all master plan §5 entities.
 - [ ] Data flow diagrams are complete.
-- [ ] ADR-001 through ADR-004 and ADR-007 are accepted; Q2, Q3, Q5, and Q6 are closed in master plan §11.
+- [ ] ADR-001 through ADR-004 and ADR-007 are accepted; Q2, Q5, and Q6 are closed in master plan §11.
 
 ## Risks / Guardrails
 
@@ -76,5 +76,6 @@ AT COMPLETION:
 - [ ] Every deliverable exists at the path listed in Expected Files / Areas.
 - [ ] Content is consistent with the master plan; any change to a canonical contract is reflected in the master plan (§11 Decision Log / §12 Open Decisions).
 - [ ] Open questions are listed with an owner sprint.
+- [ ] New or changed requirements have `FR-*` IDs in `docs/product/feature-catalog.md`, with at least one `SC-*` scenario each.
 - [ ] Reviewer personas have reviewed the deliverables against the acceptance criteria.
 - [ ] `task.md` updated.

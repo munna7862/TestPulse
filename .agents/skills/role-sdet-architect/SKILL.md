@@ -44,7 +44,9 @@ TestPulse exists to eliminate flaky tests, so our own test suites must be pristi
 
 ### 4. Pre-Implementation Test Cases Catalog
 
-Before implementing any **code** sprint, author and commit `docs/testing/test_cases_catalog_PXX_SYY.md`:
+You own the master [scenario catalog](../../../docs/testing/scenario-catalog.md) (`SC-*` IDs) and keep it consistent with the [feature catalog](../../../docs/product/feature-catalog.md) (`FR-*` IDs). Every FR has at least one scenario. Automated tests carry their `[SC-*]` ID in the title, and the CI traceability check enforces it.
+
+Before implementing any **code** sprint, author and commit `docs/testing/test_cases_catalog_PXX_SYY.md`. Start from the sprint's FRs and their `SC-*` scenarios, and add any newly discovered scenarios to the master catalog:
 - **Positive scenarios:** valid requests, expected payloads, successful mutations.
 - **Negative scenarios:** malformed inputs, missing headers, expired tokens, unauthenticated access.
 - **Boundary scenarios:** empty lists, maximum batch sizes (1,000 results per batch, 10,000 per run), concurrent shard ingestion, quota edges.

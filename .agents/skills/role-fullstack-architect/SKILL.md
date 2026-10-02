@@ -113,7 +113,7 @@ Author an ADR in `docs/architecture/adr-XXX-<title>.md` for every major choice, 
 | :--- | :--- |
 | ADR-001 | Monorepo tooling (npm workspaces + Turborepo 2) |
 | ADR-002 | Real-time engine and fan-out (Socket.IO + redis-adapter/emitter) |
-| ADR-003 | Hosting & managed services (Vercel, Railway api + worker, Neon, Redis provider) |
+| ADR-003 | Hosting & managed services: the free profile (Vercel Hobby, Render free, Neon free, Render Key Value) and its constraints; the paid profile is amended in P10-S06 |
 | ADR-004 | Dependency majors & runtime baseline (Node 24 LTS, Fastify 5, Next.js, Prisma, Zod) |
 | ADR-005 | Authentication & session design (API-owned auth, cookies, refresh rotation) |
 | ADR-006 | Tenant isolation enforcement (tenant client, nested routes, 404 policy, RLS decision) |

@@ -21,7 +21,7 @@ Phase 02 complete (monorepo, database, API scaffolding).
 2. Hash passwords with argon2id; enforce a minimum length of 10.
 3. `POST /api/v1/auth/register`: Zod-validated; gives a generic response (no account enumeration) and sends a verification email.
 4. `POST /api/v1/auth/verify-email` with a hashed, single-use, 24-hour token.
-5. `POST /api/v1/auth/login`: sets the access JWT (15 min) and refresh token (30 days) as `HttpOnly; Secure; SameSite=Lax` cookies.
+5. `POST /api/v1/auth/login`: sets the access JWT (15 min) and refresh token (30 days) as `HttpOnly; Secure; SameSite=Lax` host-only cookies, which must work through the same-origin `/api` proxy (free profile, master plan §4.4).
 6. `POST /api/v1/auth/refresh`: rotates the refresh token, and reuse of a rotated token revokes the whole family.
 7. `POST /api/v1/auth/logout` (current session) and `POST /api/v1/auth/logout-all`.
 8. `GET /api/v1/auth/me`.
@@ -68,7 +68,7 @@ READ FIRST:
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P03_S01.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P03_S01.md (positive, negative, boundary, multi-tenant scenarios). Start from this sprint's FR-* entries in docs/product/feature-catalog.md and their SC-* scenarios in docs/testing/scenario-catalog.md; reference those IDs and add any new SC-* IDs to the master scenario catalog.
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -78,6 +78,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
 - Write docs/walkthroughs/walkthrough-P03-S01.md and update task.md.
+- Update the FR status in docs/product/feature-catalog.md and the "Automated by" column in docs/testing/scenario-catalog.md; automated tests carry their [SC-*] ID in the test title.
 - Never suppress, skip, or bypass failing tests.
 ```
 
@@ -89,5 +90,6 @@ AT COMPLETION:
 - [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] New or changed screens have loading, empty and error states and pass the axe-core check in light and dark themes.
 - [ ] Acceptance criteria verified.
+- [ ] Feature catalog status and scenario catalog "Automated by" entries updated; tests carry `[SC-*]` IDs in their titles.
 - [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
 - [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.

@@ -33,7 +33,7 @@ Each sprint file's `## Personas` section is authoritative for who signs off. As 
 - **UI sprints (any phase):** **Frontend Engineer**, **SDET Architect** (including the axe-core check), and **Product Owner** acceptance.
 - **Real-time sprints:** **Real-Time Engineer** and **SDET Architect** performance validation.
 - **Security hardening (P03-S06, P10-S04):** **Security Engineer** audit.
-- **DevOps / release sprints (Phase 02, P10-S05, P10-S06):** **DevOps Engineer** pipeline and deployment validation.
+- **DevOps / release sprints (Phase 02, P10-S05, P10-S06, P10-S07):** **DevOps Engineer** pipeline and deployment validation.
 - **Growth & GTM sprints (Phase 11):** **Growth Engineer** and **Product Owner** approval.
 
 ---

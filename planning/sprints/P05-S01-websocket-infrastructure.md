@@ -19,11 +19,11 @@ Phase 04 complete (ingestion publishes events through `RealtimePublisher`), P03-
 
 1. Attach a Socket.IO server to the Fastify HTTP server in `apps/api/src/server.ts`, using the same CORS allow-list with credentials.
 2. Configure `@socket.io/redis-adapter` with dedicated pub/sub connections (separate from BullMQ connections).
-3. Handshake authentication from the access-token cookie. Reject unauthenticated connections and auto-join `user:{userId}`.
+3. Ticket-based handshake authentication: `POST /api/v1/realtime/ticket` (cookie-authenticated) issues a 60-second single-use ticket stored in Redis, and the gateway redeems it atomically on connect. Reject missing, expired, or reused tickets, and auto-join `user:{userId}`.
 4. Implement `join:project` / `leave:project` with acks. Membership is checked through `resolveTenantContext()`. There are no `run:{runId}` rooms in v1 (clients filter by `runId`).
 5. Add typed `ServerToClientEvents` / `ClientToServerEvents` maps in `@testpulse/shared`, backed by the event schemas used by `RealtimePublisher`.
 6. Evict a user's sockets from affected rooms when their membership is removed or downgraded, or a project is deleted.
-7. Decide and configure the multi-instance transport strategy: sticky sessions, or `transports: ["websocket"]` (record it in ADR-002).
+7. Use `transports: ["websocket"]` in the free profile (single instance). Document the multi-instance strategy for the paid profile (sticky sessions or websocket-only) in ADR-002.
 8. Add connection metrics and logging (connected sockets, joins, auth failures) with tenant context.
 
 ## Expected Files / Areas
@@ -61,7 +61,7 @@ READ FIRST:
 BEFORE CODING:
 1. Confirm the sprint's dependencies are [x] in task.md and any open decisions it relies on (master plan §12) are closed; if not, stop and report.
 2. Inspect the existing implementation and produce a concise implementation plan artifact naming the exact files/modules that will change.
-3. Author docs/testing/test_cases_catalog_P05_S01.md (positive, negative, boundary, multi-tenant scenarios).
+3. Author docs/testing/test_cases_catalog_P05_S01.md (positive, negative, boundary, multi-tenant scenarios). Start from this sprint's FR-* entries in docs/product/feature-catalog.md and their SC-* scenarios in docs/testing/scenario-catalog.md; reference those IDs and add any new SC-* IDs to the master scenario catalog.
 4. Do not modify unrelated areas. If this file conflicts with the master plan, follow the master plan and report the conflict.
 
 IMPLEMENT every task under "Granular Implementation Tasks".
@@ -71,6 +71,7 @@ VERIFY by running: npm run lint; npm run typecheck; npm run test; npm run build;
 AT COMPLETION:
 - Report changed files, tests executed (counts, duration, file paths) and results, and known limitations.
 - Write docs/walkthroughs/walkthrough-P05-S01.md and update task.md.
+- Update the FR status in docs/product/feature-catalog.md and the "Automated by" column in docs/testing/scenario-catalog.md; automated tests carry their [SC-*] ID in the test title.
 - Never suppress, skip, or bypass failing tests.
 ```
 
@@ -81,5 +82,6 @@ AT COMPLETION:
 - [ ] Every new endpoint, socket room, or job has tenant-isolation (404) and role (403) tests where applicable.
 - [ ] `npm run lint`, `typecheck`, `test`, `build` and `npm audit --audit-level=high` pass (plus `test:contract` / `test:e2e` where applicable) — output observed, not assumed.
 - [ ] Acceptance criteria verified.
+- [ ] Feature catalog status and scenario catalog "Automated by" entries updated; tests carry `[SC-*]` IDs in their titles.
 - [ ] Docs updated (`docs/api/` for contract changes; master plan if a canonical contract changed); walkthrough written.
 - [ ] `task.md` updated; the sprint can be handed to the next sprint without hidden manual steps.
