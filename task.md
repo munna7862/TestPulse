@@ -14,9 +14,9 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ## 🚦 Active Sprint State
 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
-- **Current Active Sprint:** P03-S02: OAuth Integration — Google & GitHub
+- **Current Active Sprint:** P03-S03: Organization & Project CRUD and Membership
 - **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** P03-S02 merged. A review on 2026-10-02 found six gaps in P02-S05 and P03-S01 (see Known gaps). Next: hardening slice H1, then P03-S03.
+- **Current Status:** Slice H1 (auth security hardening) merged in PR #10 (G4, G5, G6 resolved). Next: P03-S03.
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -28,9 +28,9 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [/] **G1 · P02-S05** Staging deploy reported green while skipping every step and did not wait for CI. Fix in the Step 0 PR (CI-gated, fails on missing secrets, smoke check). Still needs the staging secrets and the `STAGING_API_URL` variable to be added by the owner.
 - [/] **G2 · P02-S05** Sentry helpers were no-op stubs. Step 0 PR removes the stubs; error tracking is deferred until the first real staging deploy (owner decision, 2026-10-02).
 - [/] **G3 · P02-S05** Coverage thresholds were not enforced. Step 0 PR sets thresholds at measured floors. `apps/web` unit coverage is ~9%, below the 40% target in testing-strategy.md §4.
-- [/] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). Implemented in `fix/h1-auth-hardening` (acceptance tests passing, pending PR merge).
-- [/] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). Implemented in `fix/h1-auth-hardening` via dummy argon2id hashing (acceptance tests passing, pending PR merge).
-- [/] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Implemented in `fix/h1-auth-hardening` via atomic update guard (acceptance tests passing, pending PR merge).
+- [x] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
+- [x] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
+- [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
 
 ## ✅ Completion Log
 
@@ -39,7 +39,7 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 | Planning review | 2026-10-02 | [PR #1](https://github.com/munna7862/TestPulse/pull/1), [PR #2](https://github.com/munna7862/TestPulse/pull/2) | Master plan, skills, phases, sprints, free-tier profile, FR/SC catalogs |
 | Phase 01 (P01-S01…S05) | 2026-10-02 | [PR #3](https://github.com/munna7862/TestPulse/pull/3) | PRD, UX/IA, architecture & 7 ADRs, security model, testing strategy; closed Q1, Q2, Q4, Q5, Q6 |
 | Phase 02 (P02-S01…S06) | 2026-10-02 | [PR #4](https://github.com/munna7862/TestPulse/pull/4), [PR #5](https://github.com/munna7862/TestPulse/pull/5), [PR #6](https://github.com/munna7862/TestPulse/pull/6) | Monorepo bootstrap, Fastify 5 & Next.js 16, Prisma/Neon, dev tooling, CI/CD pipelines, design system & app shell |
-| P03-S01 (partial: G4–G6) | 2026-10-02 | commit `feat(auth): user registration, email verification and session auth (P03-S01)` | API-owned auth, argon2id, rotating cookies, CSRF guard, Next.js auth pages, Playwright & Axe tests |
+| P03-S01 | 2026-10-02 | [PR #10](https://github.com/munna7862/TestPulse/pull/10) | User registration, email verification, session auth; hardened via slice H1 (rate limiting, timing parity, atomic refresh rotation) |
 | P03-S02 | 2026-10-02 | [walkthrough](docs/walkthroughs/walkthrough-P03-S02.md) | Google & GitHub OAuth (Authorization Code + PKCE + state), verified-email-only linking, linked-accounts settings, friendly error page; 66 API integration tests (MSW), 22 Playwright tests with axe in light/dark |
 
 ---
@@ -108,7 +108,7 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 ---
 
 ## Phase 03: Authentication & Multi-Tenancy
-- [!] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`) — merged 2026-10-02, open gaps G4–G6
+- [x] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`) — ✅ merged 2026-10-02, hardened via slice H1 ([PR #10](https://github.com/munna7862/TestPulse/pull/10))
   - [x] Extend Prisma schema with User fields, Session, VerificationToken, and OAuthAccount models; apply migration
   - [x] Create shared Zod schemas in `@testpulse/shared` for registration, verification, login, refresh, logout, password reset, and user profile
   - [x] Implement password hashing with argon2id (memory 19 MiB, iterations 2, length 10..256)
