@@ -28,9 +28,9 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [/] **G1 · P02-S05** Staging deploy reported green while skipping every step and did not wait for CI. Fix in the Step 0 PR (CI-gated, fails on missing secrets, smoke check). Still needs the staging secrets and the `STAGING_API_URL` variable to be added by the owner.
 - [/] **G2 · P02-S05** Sentry helpers were no-op stubs. Step 0 PR removes the stubs; error tracking is deferred until the first real staging deploy (owner decision, 2026-10-02).
 - [/] **G3 · P02-S05** Coverage thresholds were not enforced. Step 0 PR sets thresholds at measured floors. `apps/web` unit coverage is ~9%, below the 40% target in testing-strategy.md §4.
-- [!] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). → hardening slice H1.
-- [!] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). → H1.
-- [!] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). → H1.
+- [/] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). Implemented in `fix/h1-auth-hardening` (acceptance tests passing, pending PR merge).
+- [/] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). Implemented in `fix/h1-auth-hardening` via dummy argon2id hashing (acceptance tests passing, pending PR merge).
+- [/] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Implemented in `fix/h1-auth-hardening` via atomic update guard (acceptance tests passing, pending PR merge).
 
 ## ✅ Completion Log
 
