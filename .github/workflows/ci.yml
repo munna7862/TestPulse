@@ -1,0 +1,137 @@
+name: CI Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Quality Gates
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testpulse_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testpulse_test
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Linting & boundary check
+        run: npm run lint
+
+      - name: TypeScript type checking
+        run: npm run typecheck
+
+      - name: Prettier format check
+        run: npm run format:check
+
+      - name: Scenario traceability check
+        run: npm run check:traceability
+
+      - name: Unit & Integration tests with coverage
+        run: npm run test
+
+      - name: Real-Redis contract tests
+        run: npm run test:contract
+
+      - name: Production build
+        run: npm run build
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
+
+  e2e:
+    name: Playwright E2E Smoke Tests
+    needs: verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testpulse_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testpulse_test
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testpulse_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/testpulse_test
+      REDIS_URL: redis://localhost:6379
+      RUN_WORKERS_IN_PROCESS: "true"
+      DEPLOYMENT_PROFILE: "free"
+      PORT: "4000"
+      API_INTERNAL_URL: "http://localhost:4000"
+      NEXT_PUBLIC_SOCKET_URL: "http://localhost:4000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      WEB_ORIGIN: "http://localhost:3000"
+      NODE_ENV: "test"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Apply database migrations
+        run: npm run db:migrate
+
+      - name: Build applications
+        run: npm run build
+
+      - name: Run E2E smoke suite
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 14

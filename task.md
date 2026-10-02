@@ -73,8 +73,16 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [x] Configure commitlint for conventional commit enforcement
   - [x] Add VS Code workspace settings and recommended extensions (`.vscode/settings.json`, `.vscode/extensions.json`)
   - [x] Create npm scripts: lint, lint:fix, format, format:check, typecheck
-  - [x] Author test cases catalog (`docs/testing/test_cases_catalog_P02_S04.md`) and automated test suite (`apps/api/test/dev-tooling.test.ts`)
-- [ ] **P02-S05:** CI/CD Pipeline & Deployment Targets (`planning/sprints/P02-S05-cicd-pipeline-deployment.md`)
+- [x] **P02-S05:** CI/CD Pipeline & Deployment Targets (`planning/sprints/P02-S05-cicd-pipeline-deployment.md`) — ✅ 2026-10-02
+  - [x] Create `.github/workflows/ci.yml` with concurrency, Postgres 16 & Redis 7 services, verify & e2e jobs
+  - [x] Create `.github/workflows/deploy-staging.yml` for Prisma migrations and Render deploy hook trigger
+  - [x] Create `.github/workflows/keep-alive.yml` for working-hours ping reducing free-tier cold starts
+  - [x] Create Render blueprint (`render.yaml`) for Fastify API service with `RUN_WORKERS_IN_PROCESS=true`
+  - [x] Author automated traceability gate (`scripts/check-traceability.mjs`, `npm run check:traceability`)
+  - [x] Implement Playwright smoke suite and axe-core accessibility checks in `apps/web/e2e/smoke.spec.ts`
+  - [x] Implement Sentry observability helpers in `apps/api` and `apps/web`
+  - [x] Create root `.env.example`, update `docs/ops/environment.md`, and add status badges to `README.md`
+  - [x] Author test cases catalog (`docs/testing/test_cases_catalog_P02_S05.md`), update catalogs, and walkthrough (`docs/walkthroughs/walkthrough-P02-S05.md`)
 - [ ] **P02-S06:** Design System Foundation & App Shell (`planning/sprints/P02-S06-design-system-foundation-app-shell.md`)
 
 ---
