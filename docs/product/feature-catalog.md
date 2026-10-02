@@ -17,16 +17,16 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-AUTH-01 | Email/password registration with generic (non-enumerating) responses | P03-S01 | SC-AUTH-001, SC-AUTH-002, SC-AUTH-003 | Planned |
-| FR-AUTH-02 | Email verification with single-use, expiring tokens; unverified users restricted (ADR-005) | P03-S01 | SC-AUTH-004, SC-AUTH-005, SC-AUTH-019 | Planned |
-| FR-AUTH-03 | Login with first-party `HttpOnly` cookie session (access 15 min, refresh 30 days) | P03-S01 | SC-AUTH-006, SC-AUTH-007 | Planned |
-| FR-AUTH-04 | Refresh-token rotation with reuse detection (family revocation) | P03-S01 | SC-AUTH-008, SC-AUTH-009 | Planned |
-| FR-AUTH-05 | Logout (current session) and logout everywhere | P03-S01 | SC-AUTH-010 | Planned |
-| FR-AUTH-06 | Password reset (request + confirm), revoking existing sessions | P03-S01 | SC-AUTH-011, SC-AUTH-012 | Planned |
+| FR-AUTH-01 | Email/password registration with generic (non-enumerating) responses | P03-S01 | SC-AUTH-001, SC-AUTH-002, SC-AUTH-003, SC-AUTH-020 | Done |
+| FR-AUTH-02 | Email verification with single-use, expiring tokens; unverified users restricted (ADR-005) | P03-S01 | SC-AUTH-004, SC-AUTH-005, SC-AUTH-019 | Done |
+| FR-AUTH-03 | Login with first-party `HttpOnly` cookie session (access 15 min, refresh 30 days) | P03-S01 | SC-AUTH-006, SC-AUTH-007, SC-AUTH-020 | Done |
+| FR-AUTH-04 | Refresh-token rotation with reuse detection (family revocation) | P03-S01 | SC-AUTH-008, SC-AUTH-009 | Done |
+| FR-AUTH-05 | Logout (current session) and logout everywhere | P03-S01 | SC-AUTH-010 | Done |
+| FR-AUTH-06 | Password reset (request + confirm), revoking existing sessions | P03-S01 | SC-AUTH-011, SC-AUTH-012 | Done |
 | FR-AUTH-07 | Google and GitHub OAuth sign-in (PKCE + state) | P03-S02 | SC-AUTH-013, SC-AUTH-014 | Planned |
 | FR-AUTH-08 | Safe OAuth account linking (verified emails only) | P03-S02 | SC-AUTH-015, SC-AUTH-016 | Planned |
-| FR-AUTH-09 | Auth rate limiting (per IP and per account) | P03-S01, P03-S06 | SC-AUTH-017 | Planned |
-| FR-AUTH-10 | CSRF protection for cookie-authenticated mutations (Origin check) | P03-S01 | SC-AUTH-018 | Planned |
+| FR-AUTH-09 | Auth rate limiting (per IP and per account) | P03-S01, P03-S06 | SC-AUTH-017 | In progress |
+| FR-AUTH-10 | CSRF protection for cookie-authenticated mutations (Origin check) | P03-S01 | SC-AUTH-018 | Done |
 
 ## ORG — Organizations, projects, membership
 
