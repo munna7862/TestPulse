@@ -58,7 +58,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 
 | Variable | Used by | Notes |
 | :--- | :--- | :--- |
-| `SENTRY_DSN` (S) | A | |
+| `SENTRY_DSN` (S) | A | Not read yet: error tracking is deferred until the first real staging deploy (see `task.md`) |
 | `NEXT_PUBLIC_SENTRY_DSN` | W | Public by design |
 | `SENTRY_ENVIRONMENT` | W A | `local` \| `ci` \| `staging` \| `production` |
 | `GIT_COMMIT_SHA` | W A | Release tagging; shown short in `/health` |

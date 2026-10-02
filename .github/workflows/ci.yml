@@ -2,6 +2,7 @@ name: CI Quality Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
@@ -44,6 +45,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: PR size budget
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          PR_SIZE_OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'size/exception') }}
+        run: npm run check:pr-size
 
       - name: Linting & boundary check
         run: npm run lint

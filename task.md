@@ -16,10 +16,21 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
 - **Current Active Sprint:** P03-S02: OAuth Integration — Google & GitHub
 - **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** Phase 03 Sprint 02 complete & verified; PR ready (next: P03-S03 Organization & Project CRUD and Membership)
+- **Current Status:** P03-S02 merged. A review on 2026-10-02 found six gaps in P02-S05 and P03-S01 (see Known gaps). Next: hardening slice H1, then P03-S03.
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
+
+## ⚠️ Known gaps (review of 2026-10-02, docs/process/ai-delivery-playbook.html §1)
+
+Work is only `[x]` when its PR is merged with green required checks. Agents never mark items done themselves.
+
+- [/] **G1 · P02-S05** Staging deploy reported green while skipping every step and did not wait for CI. Fix in the Step 0 PR (CI-gated, fails on missing secrets, smoke check). Still needs the staging secrets and the `STAGING_API_URL` variable to be added by the owner.
+- [/] **G2 · P02-S05** Sentry helpers were no-op stubs. Step 0 PR removes the stubs; error tracking is deferred until the first real staging deploy (owner decision, 2026-10-02).
+- [/] **G3 · P02-S05** Coverage thresholds were not enforced. Step 0 PR sets thresholds at measured floors. `apps/web` unit coverage is ~9%, below the 40% target in testing-strategy.md §4.
+- [!] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). → hardening slice H1.
+- [!] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). → H1.
+- [!] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). → H1.
 
 ## ✅ Completion Log
 
@@ -28,7 +39,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 | Planning review | 2026-10-02 | [PR #1](https://github.com/munna7862/TestPulse/pull/1), [PR #2](https://github.com/munna7862/TestPulse/pull/2) | Master plan, skills, phases, sprints, free-tier profile, FR/SC catalogs |
 | Phase 01 (P01-S01…S05) | 2026-10-02 | [PR #3](https://github.com/munna7862/TestPulse/pull/3) | PRD, UX/IA, architecture & 7 ADRs, security model, testing strategy; closed Q1, Q2, Q4, Q5, Q6 |
 | Phase 02 (P02-S01…S06) | 2026-10-02 | [PR #4](https://github.com/munna7862/TestPulse/pull/4), [PR #5](https://github.com/munna7862/TestPulse/pull/5), [PR #6](https://github.com/munna7862/TestPulse/pull/6) | Monorepo bootstrap, Fastify 5 & Next.js 16, Prisma/Neon, dev tooling, CI/CD pipelines, design system & app shell |
-| P03-S01 | 2026-10-02 | commit `feat(auth): user registration, email verification and session auth (P03-S01)` | API-owned auth, argon2id, rotating cookies, CSRF guard, Next.js auth pages, Playwright & Axe tests |
+| P03-S01 (partial: G4–G6) | 2026-10-02 | commit `feat(auth): user registration, email verification and session auth (P03-S01)` | API-owned auth, argon2id, rotating cookies, CSRF guard, Next.js auth pages, Playwright & Axe tests |
 | P03-S02 | 2026-10-02 | [walkthrough](docs/walkthroughs/walkthrough-P03-S02.md) | Google & GitHub OAuth (Authorization Code + PKCE + state), verified-email-only linking, linked-accounts settings, friendly error page; 66 API integration tests (MSW), 22 Playwright tests with axe in light/dark |
 
 ---
@@ -76,14 +87,14 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
   - [x] Configure commitlint for conventional commit enforcement
   - [x] Add VS Code workspace settings and recommended extensions (`.vscode/settings.json`, `.vscode/extensions.json`)
   - [x] Create npm scripts: lint, lint:fix, format, format:check, typecheck
-- [x] **P02-S05:** CI/CD Pipeline & Deployment Targets (`planning/sprints/P02-S05-cicd-pipeline-deployment.md`) — ✅ 2026-10-02
+- [x] **P02-S05:** CI/CD Pipeline & Deployment Targets (`planning/sprints/P02-S05-cicd-pipeline-deployment.md`) — merged 2026-10-02; gaps G1–G3 fixed in Step 0
   - [x] Create `.github/workflows/ci.yml` with concurrency, Postgres 16 & Redis 7 services, verify & e2e jobs
   - [x] Create `.github/workflows/deploy-staging.yml` for Prisma migrations and Render deploy hook trigger
   - [x] Create `.github/workflows/keep-alive.yml` for working-hours ping reducing free-tier cold starts
   - [x] Create Render blueprint (`render.yaml`) for Fastify API service with `RUN_WORKERS_IN_PROCESS=true`
   - [x] Author automated traceability gate (`scripts/check-traceability.mjs`, `npm run check:traceability`)
   - [x] Implement Playwright smoke suite and axe-core accessibility checks in `apps/web/e2e/smoke.spec.ts`
-  - [x] Implement Sentry observability helpers in `apps/api` and `apps/web`
+  - [ ] ~~Implement Sentry observability helpers~~ — were stubs; removed and deferred (G2)
   - [x] Create root `.env.example`, update `docs/ops/environment.md`, and add status badges to `README.md`
 - [x] **P02-S06:** Design System Foundation & App Shell (`planning/sprints/P02-S06-design-system-foundation-app-shell.md`) — ✅ 2026-10-02
   - [x] Define semantic design tokens and WCAG 2.1 AA contrast in Tailwind v4 `@theme`
@@ -97,7 +108,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ---
 
 ## Phase 03: Authentication & Multi-Tenancy
-- [x] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`) — ✅ 2026-10-02
+- [!] **P03-S01:** User Registration, Email Verification & Password Authentication (`planning/sprints/P03-S01-user-registration-authentication.md`) — merged 2026-10-02, open gaps G4–G6
   - [x] Extend Prisma schema with User fields, Session, VerificationToken, and OAuthAccount models; apply migration
   - [x] Create shared Zod schemas in `@testpulse/shared` for registration, verification, login, refresh, logout, password reset, and user profile
   - [x] Implement password hashing with argon2id (memory 19 MiB, iterations 2, length 10..256)

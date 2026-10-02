@@ -40,5 +40,6 @@ export const ApiEnvSchema = z.object({
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 
 export function loadApiEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
-  return parseEnv(ApiEnvSchema, source);
+  // Render exposes the deployed commit as RENDER_GIT_COMMIT; the staging smoke check compares it via /health.
+  return parseEnv(ApiEnvSchema, { ...source, GIT_COMMIT_SHA: source.GIT_COMMIT_SHA ?? source.RENDER_GIT_COMMIT });
 }

@@ -56,6 +56,15 @@ export default tseslint.config(
       eqeqeq: ["error", "always"],
       "no-console": ["error", { allow: ["info", "warn", "error"] }],
       "no-restricted-imports": ["error", { patterns: [PRISMA_IMPORTS, NO_CROSS_PACKAGE_RELATIVE] }],
+      // Catch fake implementations: `void someParam;` hid no-op helpers in P02-S05.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ExpressionStatement > UnaryExpression[operator='void'][argument.type='Identifier']",
+          message: "Looks like a stub (void x;). Implement it or delete it.",
+        },
+      ],
+      "no-warning-comments": ["error", { terms: ["todo", "fixme", "stub"], location: "start" }],
     },
   },
 

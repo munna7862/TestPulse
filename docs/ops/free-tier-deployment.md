@@ -44,7 +44,7 @@ Accounts are created by a **human**. Agents never sign up for services or enter 
 3. **Vercel:** import the repository with root `apps/web`. Set `API_INTERNAL_URL=https://<api>.onrender.com` (the rewrite target) and `NEXT_PUBLIC_SOCKET_URL=https://<api>.onrender.com`.
 4. **OAuth apps (Google, GitHub):** set the callback URLs to `https://<web>.vercel.app/api/v1/auth/oauth/<provider>/callback`. The callback goes through the same-origin proxy.
 5. **GitHub Actions:** the `deploy-staging` workflow runs `prisma migrate deploy` against `DIRECT_URL`, then triggers the Render deploy hook. Vercel deploys through its Git integration.
-6. **Sentry:** create projects `web` and `api`, and set `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`.
+6. **Sentry (deferred, not wired in code yet):** create projects `web` and `api`, and set `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`.
 
 ## 4. Configuration contract (same code, two profiles)
 

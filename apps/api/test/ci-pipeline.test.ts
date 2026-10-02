@@ -204,6 +204,15 @@ describe("CI/CD Pipeline & Deployment Specifications [FR-OPS-02, FR-OPS-04]", ()
       expect(deployRunCommands).toContain("prisma migrate deploy");
       expect(deployRunCommands).toContain("curl");
 
+      // Safety properties: deploy only after CI passes, never skip steps silently, verify staging afterwards.
+      const deployTriggers = deployWorkflow["on"] as Record<string, { workflows?: string[] } | undefined>;
+      expect(deployTriggers["push"]).toBeUndefined();
+      expect(deployTriggers["workflow_run"]?.workflows).toEqual(["CI Quality Gate"]);
+      expect(String(stagingJob?.["if"])).toContain("conclusion == 'success'");
+      expect(deploySteps.filter((s) => (s as { if?: string }).if !== undefined)).toEqual([]);
+      expect(deployRunCommands).toContain("STAGING_DIRECT_URL is not set");
+      expect(deployJobs["smoke"]?.["needs"]).toBe("migrate-and-deploy");
+
       // 3. Keep-alive workflow
       const keepAlivePath = resolve(rootDir, ".github/workflows/keep-alive.yml");
       expect(existsSync(keepAlivePath)).toBe(true);

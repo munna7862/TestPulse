@@ -1,0 +1,3099 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Verified Delivery Playbook</title>
+    <meta
+      name="description"
+      content="Evidence-based review of the persona-driven AI workflow across TestPulse and six sibling repos, with five better approaches and an adoption plan."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+    />
+    <style>
+      /* Layout: one report column (~68ch prose) beside a sticky contents rail at >=1180px; ledgers, tables and code run the full column */
+      :root {
+        --paper: #f5f7f6;
+        --sheet: #ffffff;
+        --ink: #16212a;
+        --ink-2: #4b5965;
+        --rule: #d8dee2;
+        --accent: #0b6e77;
+        --accent-soft: #e2f0f1;
+        --code-bg: #eef2f1;
+        --pass: #1e7a46;
+        --pass-soft: #e3f2e9;
+        --fail: #b3261e;
+        --fail-soft: #fbe8e6;
+        --warn: #8f5500;
+        --warn-soft: #fbefd9;
+        --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+        --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+        --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --paper: #0e1317;
+          --sheet: #141b20;
+          --ink: #e5eaec;
+          --ink-2: #a2aeb6;
+          --rule: #29333a;
+          --accent: #5ec4cd;
+          --accent-soft: #10303a;
+          --code-bg: #10181d;
+          --pass: #63cf90;
+          --pass-soft: #11301f;
+          --fail: #ff8f85;
+          --fail-soft: #3b1714;
+          --warn: #f0b75c;
+          --warn-soft: #35260d;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme="dark"] {
+        --paper: #0e1317;
+        --sheet: #141b20;
+        --ink: #e5eaec;
+        --ink-2: #a2aeb6;
+        --rule: #29333a;
+        --accent: #5ec4cd;
+        --accent-soft: #10303a;
+        --code-bg: #10181d;
+        --pass: #63cf90;
+        --pass-soft: #11301f;
+        --fail: #ff8f85;
+        --fail-soft: #3b1714;
+        --warn: #f0b75c;
+        --warn-soft: #35260d;
+        color-scheme: dark;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        html {
+          scroll-behavior: smooth;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1.0625rem;
+        line-height: 1.62;
+        font-optical-sizing: auto;
+      }
+      img {
+        max-width: 100%;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      a {
+        color: var(--accent);
+        text-underline-offset: 2px;
+        text-decoration-thickness: 1px;
+      }
+      a:hover {
+        text-decoration-thickness: 2px;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        background: var(--code-bg);
+        padding: 0.08em 0.32em;
+        border-radius: 3px;
+        overflow-wrap: anywhere;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        font-size: inherit;
+        overflow-wrap: normal;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-display);
+        line-height: 1.18;
+        letter-spacing: -0.012em;
+        text-wrap: balance;
+        margin: 0;
+      }
+      p,
+      li {
+        max-width: 68ch;
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      ul,
+      ol {
+        margin: 0 0 14px;
+        padding-left: 1.3em;
+      }
+      li {
+        margin-bottom: 6px;
+      }
+      li > ul {
+        margin-top: 6px;
+      }
+
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding-inline: clamp(16px, 4vw, 40px);
+        padding-block: 40px 96px;
+      }
+      main {
+        min-width: 0;
+        max-width: 880px;
+      }
+      @media (min-width: 1180px) {
+        .page {
+          display: grid;
+          grid-template-columns: 200px minmax(0, 1fr);
+          column-gap: 56px;
+        }
+      }
+
+      /* Masthead */
+      .masthead {
+        grid-column: 1 / -1;
+        padding-block: 8px 30px;
+        border-bottom: 1px solid var(--rule);
+        margin-bottom: 30px;
+      }
+      .eyebrow {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
+      .masthead h1 {
+        font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+        font-weight: 800;
+        margin-top: 10px;
+        letter-spacing: -0.02em;
+      }
+      .dek {
+        font-size: clamp(1.125rem, 2.2vw, 1.3rem);
+        line-height: 1.5;
+        max-width: 62ch;
+        margin: 16px 0 0;
+      }
+      .meta {
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+        margin: 16px 0 0;
+        max-width: 84ch;
+      }
+
+      /* Contents */
+      .toc {
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        margin-bottom: 28px;
+      }
+      .toc-title {
+        display: none;
+      }
+      .toc ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 16px;
+      }
+      .toc li {
+        margin: 0;
+      }
+      .toc a {
+        color: var(--ink-2);
+        text-decoration: none;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+      .toc .sec {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--accent);
+        margin-right: 6px;
+      }
+      @media (min-width: 1180px) {
+        .toc {
+          position: sticky;
+          top: calc(env(safe-area-inset-top, 0px) + 24px);
+          align-self: start;
+          margin: 0;
+        }
+        .toc-title {
+          display: block;
+          margin-bottom: 12px;
+        }
+        .toc ol {
+          display: grid;
+          gap: 9px;
+        }
+      }
+
+      /* Sections */
+      main > section {
+        padding-block: 40px;
+        border-top: 1px solid var(--rule);
+      }
+      main > section:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+      section h2 {
+        font-size: clamp(1.6rem, 3.2vw, 2.1rem);
+        font-weight: 800;
+        margin: 6px 0 14px;
+      }
+      section h3 {
+        font-size: 1.28rem;
+        font-weight: 700;
+        margin: 34px 0 10px;
+      }
+      section h4 {
+        font-size: 1.02rem;
+        font-weight: 700;
+        margin: 22px 0 6px;
+      }
+      .small {
+        font-size: 0.92rem;
+        color: var(--ink-2);
+      }
+
+      /* Short answers */
+      .answers {
+        background: var(--sheet);
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 6px 22px;
+        margin: 0;
+      }
+      .answers > div {
+        padding-block: 16px;
+        border-top: 1px solid var(--rule);
+        display: grid;
+        gap: 4px;
+      }
+      .answers > div:first-child {
+        border-top: 0;
+      }
+      .answers dt {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.02rem;
+        line-height: 1.35;
+      }
+      .answers dd {
+        margin: 0;
+      }
+      @media (min-width: 760px) {
+        .answers > div {
+          grid-template-columns: 14rem minmax(0, 1fr);
+          gap: 24px;
+        }
+      }
+
+      /* Stats */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 22px;
+        margin: 10px 0 30px;
+      }
+      .stat {
+        border-top: 2px solid var(--ink);
+        padding-top: 10px;
+      }
+      .stat b {
+        display: block;
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 2.05rem;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+      }
+      .stat span {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 0.86rem;
+        color: var(--ink-2);
+        line-height: 1.45;
+        margin-top: 6px;
+      }
+
+      /* Ledger of findings */
+      .ledger {
+        display: grid;
+        gap: 14px;
+        margin: 18px 0;
+      }
+      .entry {
+        background: var(--sheet);
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 16px 20px;
+        min-width: 0;
+      }
+      .entry-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 12px;
+        margin-bottom: 10px;
+      }
+      .entry-id,
+      .entry-where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--ink-2);
+      }
+      .entry-head h4 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .entry-head .chip {
+        margin-left: auto;
+      }
+      .entry-body {
+        margin: 0;
+        display: grid;
+        gap: 10px;
+      }
+      .entry-body > div {
+        display: grid;
+        gap: 2px;
+      }
+      .entry-body dt {
+        font-family: var(--font-display);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
+      .entry-body dd {
+        margin: 0;
+        font-size: 0.98rem;
+        max-width: 70ch;
+      }
+      @media (min-width: 760px) {
+        .entry-body > div {
+          grid-template-columns: 8.5rem minmax(0, 1fr);
+          gap: 16px;
+        }
+        .entry-body dt {
+          padding-top: 0.3em;
+        }
+      }
+
+      /* Status chips, styled after test-runner output */
+      .chip {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: 0.68rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        white-space: nowrap;
+        line-height: 1.5;
+      }
+      .chip.pass {
+        color: var(--pass);
+        background: var(--pass-soft);
+        border-color: var(--pass);
+      }
+      .chip.fail {
+        color: var(--fail);
+        background: var(--fail-soft);
+        border-color: var(--fail);
+      }
+      .chip.warn {
+        color: var(--warn);
+        background: var(--warn-soft);
+        border-color: var(--warn);
+      }
+      .chip.info {
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      .note {
+        background: var(--accent-soft);
+        border-radius: 6px;
+        padding: 14px 18px;
+        margin: 18px 0;
+        max-width: 72ch;
+      }
+      .note-label {
+        display: block;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      /* Tables */
+      .table-wrap {
+        overflow-x: auto;
+        margin: 16px 0 22px;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        background: var(--sheet);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+      table.wide {
+        min-width: 700px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 10px 14px;
+        border-top: 1px solid var(--rule);
+      }
+      thead th {
+        border-top: 0;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        font-weight: 700;
+        background: var(--paper);
+      }
+      td code {
+        font-size: 0.82em;
+      }
+      .num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      td .chip {
+        margin-top: 1px;
+      }
+
+      /* Keep / Retire / Transform */
+      .kfr {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 22px;
+        margin: 20px 0 8px;
+      }
+      .kfr > div {
+        border-top: 3px solid var(--rule);
+        padding-top: 12px;
+        min-width: 0;
+      }
+      .kfr > .keep {
+        border-top-color: var(--pass);
+      }
+      .kfr > .retire {
+        border-top-color: var(--fail);
+      }
+      .kfr > .transform {
+        border-top-color: var(--accent);
+      }
+      .kfr h3 {
+        margin: 0 0 8px;
+        font-size: 1.05rem;
+      }
+      .kfr ul {
+        padding-left: 1.1em;
+        margin: 0;
+      }
+      .kfr li {
+        font-size: 0.95rem;
+      }
+
+      /* Approaches */
+      .approach {
+        padding-block: 30px 6px;
+        border-top: 1px solid var(--rule);
+        margin-top: 26px;
+      }
+      .approach-head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .rank {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 2.6rem;
+        line-height: 1;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+        min-width: 1.4ch;
+      }
+      .approach h3 {
+        margin: 2px 0 6px;
+        font-size: 1.45rem;
+      }
+      .lede {
+        font-size: 1.1rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+      .fromto {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 10px 28px;
+        margin: 18px 0 4px;
+        padding-block: 12px;
+        border-block: 1px solid var(--rule);
+      }
+      .fromto > div {
+        min-width: 0;
+      }
+      .fromto p {
+        margin: 2px 0 0;
+        font-size: 0.97rem;
+      }
+      .impact {
+        list-style: none;
+        padding: 0;
+        margin: 16px 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .impact li {
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        padding: 4px 12px;
+        margin: 0;
+        background: var(--sheet);
+        max-width: none;
+      }
+      .impact b {
+        font-weight: 700;
+        margin-right: 4px;
+      }
+
+      /* Slice loop */
+      .loop {
+        list-style: none;
+        padding: 0;
+        margin: 18px 0;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        background: var(--sheet);
+      }
+      .loop > li {
+        display: grid;
+        grid-template-columns: 2.2rem minmax(0, 1fr);
+        gap: 2px 12px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--rule);
+        margin: 0;
+        max-width: none;
+      }
+      .loop > li:first-child {
+        border-top: 0;
+      }
+      .loop > li.checkpoint {
+        background: var(--accent-soft);
+      }
+      .loop .n {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: var(--accent);
+        font-size: 0.95rem;
+        padding-top: 1px;
+        grid-row: span 2;
+      }
+      .loop h4 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .loop p {
+        margin: 2px 0 0;
+        font-size: 0.95rem;
+      }
+      .loop .who {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        align-items: center;
+        font-family: var(--font-display);
+        font-size: 0.8rem;
+        color: var(--ink-2);
+        margin-top: 6px;
+      }
+      .owner {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 1px 7px;
+        border-radius: 4px;
+        border: 1px solid var(--rule);
+        color: var(--ink);
+        background: var(--paper);
+      }
+      .owner.you {
+        background: var(--accent);
+        color: var(--sheet);
+        border-color: var(--accent);
+      }
+
+      /* Adoption plan */
+      .phase {
+        padding-block: 18px 6px;
+        border-top: 1px solid var(--rule);
+      }
+      .phase:first-of-type {
+        border-top: 0;
+      }
+      .phase-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 14px;
+      }
+      .phase-head .n {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .phase-head h3 {
+        margin: 0;
+        font-size: 1.18rem;
+      }
+      .when {
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+      }
+      .checklist {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0;
+      }
+      .checklist li {
+        display: grid;
+        grid-template-columns: 1.5rem minmax(0, 1fr);
+        gap: 6px;
+        align-items: start;
+        margin: 0 0 8px;
+        max-width: 74ch;
+      }
+      .checklist input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0.32em 0 0;
+        accent-color: var(--accent);
+      }
+      .checklist label {
+        cursor: pointer;
+      }
+      .checklist input:checked + label {
+        color: var(--ink-2);
+        text-decoration: line-through;
+        text-decoration-color: var(--rule);
+      }
+
+      /* Charts */
+      .chart {
+        margin: 20px 0 28px;
+      }
+      .chart figcaption {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+      }
+      .bars {
+        display: grid;
+        gap: 8px;
+      }
+      .bar-row {
+        display: grid;
+        grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr) 5.5rem;
+        gap: 12px;
+        align-items: center;
+        font-family: var(--font-display);
+        font-size: 0.85rem;
+      }
+      .bar-track {
+        height: 14px;
+        background: var(--code-bg);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .bar {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+        border-radius: 3px;
+      }
+      .bar.muted {
+        background: var(--ink-2);
+      }
+      .bar-value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .chart-note {
+        font-family: var(--font-display);
+        font-size: 0.8rem;
+        color: var(--ink-2);
+        margin-top: 8px;
+      }
+      @media (max-width: 540px) {
+        .bar-row {
+          grid-template-columns: minmax(0, 1fr) 4.8rem;
+          gap: 4px 10px;
+        }
+        .bar-track {
+          grid-column: 1 / -1;
+          grid-row: 2;
+        }
+      }
+
+      /* Code templates */
+      .code {
+        margin: 12px 0 22px;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        background: var(--sheet);
+        overflow: hidden;
+        min-width: 0;
+      }
+      .code-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 10px 7px 14px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--paper);
+      }
+      .code-path {
+        font-family: var(--font-mono);
+        font-size: 0.76rem;
+        color: var(--ink-2);
+        overflow-wrap: anywhere;
+      }
+      .copy {
+        font-family: var(--font-display);
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--sheet);
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+        padding: 3px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .copy:hover {
+        background: var(--accent-soft);
+      }
+      .code pre {
+        margin: 0;
+        padding: 14px 16px;
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        line-height: 1.55;
+        color: var(--ink);
+        tab-size: 2;
+      }
+      .tpl-label {
+        font-family: var(--font-mono);
+        color: var(--accent);
+        margin-right: 8px;
+      }
+
+      .foot {
+        border-top: 1px solid var(--rule);
+        margin-top: 8px;
+        padding-top: 18px;
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+      }
+      .foot p {
+        max-width: 84ch;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="eyebrow">Engineering review · 2 Oct 2026 · TestPulse and six workspace repos</div>
+        <h1>Verified Delivery Playbook</h1>
+        <p class="dek">
+          Your contracts and guardrails are stronger than most AI-built projects have. Your definition of done is the
+          weak point. The agent that writes the code also signs it off, so unfinished work gets marked verified. This
+          playbook keeps what works, replaces the role-play with independent checks and machine gates, and cuts the
+          process context each session loads by about 85%.
+        </p>
+        <p class="meta">
+          Sources: git history, GitHub pull requests and Actions runs, and the files in each repo, all read on 2 Oct
+          2026. Token figures are file size divided by four. Gemini's plan is reviewed claim by claim in §3.
+        </p>
+      </header>
+
+      <nav class="toc" aria-label="Contents">
+        <div class="eyebrow toc-title">Contents</div>
+        <ol>
+          <li>
+            <a href="#answers"><span class="sec">··</span>Short answers</a>
+          </li>
+          <li>
+            <a href="#evidence"><span class="sec">§1</span>Evidence</a>
+          </li>
+          <li>
+            <a href="#method"><span class="sec">§2</span>Your method</a>
+          </li>
+          <li>
+            <a href="#gemini"><span class="sec">§3</span>Gemini's plan</a>
+          </li>
+          <li>
+            <a href="#approaches"><span class="sec">§4</span>Five approaches</a>
+          </li>
+          <li>
+            <a href="#loop"><span class="sec">§5</span>Slice loop</a>
+          </li>
+          <li>
+            <a href="#plan"><span class="sec">§6</span>Adoption plan</a>
+          </li>
+          <li>
+            <a href="#tokens"><span class="sec">§7</span>Token budget</a>
+          </li>
+          <li>
+            <a href="#defects"><span class="sec">§8</span>Defects and metrics</a>
+          </li>
+          <li>
+            <a href="#templates"><span class="sec">§9</span>Templates</a>
+          </li>
+        </ol>
+      </nav>
+
+      <main>
+        <section id="answers" aria-label="Short answers">
+          <dl class="answers">
+            <div>
+              <dt>Is the persona method a good way to build?</dt>
+              <dd>
+                Half of it is. The contracts are the valuable half: the master plan, ADRs, testable non-negotiables and
+                CI gates. Keep them. The personas add ceremony without independence, because one model in one context
+                plays every role. Turn them into on-demand knowledge, separate reviewer agents and machine gates.
+              </dd>
+            </div>
+            <div>
+              <dt>Is Gemini's plan right?</dt>
+              <dd>
+                It is right about independent review and about planning just in time. Most of the rest is already built,
+                wrong for this repo, or based on numbers nobody measured. It never read your code or CI, so it missed
+                the six real problems in §1.
+              </dd>
+            </div>
+            <div>
+              <dt>What should change first?</dt>
+              <dd>
+                Protect <code>main</code>, gate deploys on CI, and stop the agent from marking its own work done. That
+                takes about three hours and closes the gap that every finding below came through.
+              </dd>
+            </div>
+            <div>
+              <dt>Can the result be defect-free?</dt>
+              <dd>
+                No process reaches zero. The reachable goal is no known defect at merge, fast detection after it, and
+                every escaped defect turned into a gate so its class cannot ship twice.
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section id="evidence">
+          <div class="eyebrow">§1 · Evidence</div>
+          <h2>What the repos show</h2>
+
+          <div class="stats">
+            <div class="stat">
+              <b>6 h 46 m</b>
+              <span>TestPulse from first commit to P03-S02 merged: 25 commits, 8 PRs, 13 sprints.</span>
+            </div>
+            <div class="stat">
+              <b>0 of 8</b>
+              <span>PRs with any review. Seven of eight merged within 10 minutes of being opened.</span>
+            </div>
+            <div class="stat">
+              <b>≈47.5k</b>
+              <span>Tokens of process docs read per sprint session, 2.3× the entire API source.</span>
+            </div>
+            <div class="stat">
+              <b>6</b>
+              <span>Items marked “Completed &amp; Verified” that are missing, stubbed or broken.</span>
+            </div>
+          </div>
+
+          <h3>Claimed versus observed</h3>
+          <p>
+            I audited P02-S05 and P03-S01 in depth, and parts of P03-S02. Every row below sits under a sprint that
+            <code>task.md</code> marks complete.
+          </p>
+
+          <div class="ledger">
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">01</span>
+                <h4>Staging deploy</h4>
+                <span class="entry-where">P02-S05</span>
+                <span class="chip warn">Skipped</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>
+                    SC-OPS-008, “Staging deployment runs migrations and triggers Render deploy hook”, listed as Verified
+                    in the walkthrough.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    <a href="https://github.com/munna7862/TestPulse/actions/runs/37024051013"
+                      >Deploy Staging run 37024051013</a
+                    >
+                    is green, but the migration step and the deploy step were both skipped. The repo has no Actions
+                    secrets, and the <code>if:</code> guards turn a missing secret into a silent skip. The workflow also
+                    starts on every push to <code>main</code> without waiting for CI.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>The test for SC-OPS-008 parses the YAML file. Nothing checks staging after a deploy.</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">02</span>
+                <h4>Error tracking</h4>
+                <span class="entry-where">P02-S05</span>
+                <span class="chip fail">Stub</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>
+                    Acceptance criterion “Sentry receives errors from web, api, and worker”. The walkthrough says the
+                    error-tracking helpers were implemented.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    <a
+                      href="https://github.com/munna7862/TestPulse/blob/6ac3ac034335cc2e9affa068a9f6cd67a1d1588a/apps/api/src/lib/sentry.ts"
+                      ><code>apps/api/src/lib/sentry.ts</code></a
+                    >
+                    and <code>apps/web/src/lib/sentry.ts</code> drop every error (<code>void error;</code>). No Sentry
+                    SDK is installed, and nothing calls the helpers.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>No test sends an event anywhere. The sign-off came from the session that wrote the stub.</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">03</span>
+                <h4>Coverage gate</h4>
+                <span class="entry-where">P02-S05</span>
+                <span class="chip fail">Missing</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>
+                    “Coverage thresholds are enforced in CI.” <code>docs/testing/testing-strategy.md</code> §4 sets 60%
+                    for <code>apps/api</code> from P03-S01.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    No Vitest config sets coverage or thresholds. The CI step named “Unit &amp; Integration tests with
+                    coverage” runs plain <code>vitest run</code>.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>The gate exists only in prose.</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">04</span>
+                <h4>Auth rate limits</h4>
+                <span class="entry-where">P03-S01</span>
+                <span class="chip fail">Missing</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>
+                    Sprint task 12, “Rate-limit register, login, and reset per IP and per account”. The login route's
+                    code comment cites SC-AUTH-017.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    Only the OAuth routes register <code>@fastify/rate-limit</code>. SC-AUTH-017 has no test, and the
+                    walkthrough does not mention the gap.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>
+                    The task fell out when the sprint was expanded into <code>task.md</code>. Nothing compares the
+                    sprint file with the diff.
+                  </dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">05</span>
+                <h4>Account enumeration</h4>
+                <span class="entry-where">P03-S01</span>
+                <span class="chip fail">Spec violation</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>ADR-005 §9 and threat-model T11 require generic responses “with similar timing”.</dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    Login skips argon2 when the email is unknown. Register returns at once for a known email but hashes,
+                    writes and awaits the mailer for a new one, and forgot-password does the reverse. Response times
+                    reveal which emails have accounts.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>The tests compare response bodies only.</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="entry">
+              <header class="entry-head">
+                <span class="entry-id">06</span>
+                <h4>Refresh rotation</h4>
+                <span class="entry-where">P03-S01</span>
+                <span class="chip fail">Race</span>
+              </header>
+              <dl class="entry-body">
+                <div>
+                  <dt>Claimed</dt>
+                  <dd>SC-AUTH-009: reusing a rotated refresh token revokes the whole session family.</dd>
+                </div>
+                <div>
+                  <dt>Observed</dt>
+                  <dd>
+                    <a
+                      href="https://github.com/munna7862/TestPulse/blob/6ac3ac034335cc2e9affa068a9f6cd67a1d1588a/apps/api/src/modules/auth/auth.service.ts#L229-L303"
+                      ><code>refreshSession</code></a
+                    >
+                    reads the session, then updates it by id with no condition. Two concurrent requests with the same
+                    token both mint new sessions, and reuse detection never fires.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Why it slipped</dt>
+                  <dd>
+                    Only sequential reuse is tested. OAuth sign-in got a concurrency test (SC-AUTH-013). Refresh did
+                    not.
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+
+          <p class="note">
+            <span class="note-label">Why the status matters</span>
+            Most of these gaps are normal this early in a project. The status is the problem. Each one was marked
+            verified, so nothing would have prompted a second look until production found it.
+          </p>
+
+          <h3>Process signals</h3>
+          <ul>
+            <li>
+              <code>main</code> has no branch protection and no required checks, so CI is advisory. The repo is public,
+              so protection costs nothing.
+            </li>
+            <li>
+              Two of the four PRs that ran CI failed on their first push after the agent had reported every gate green
+              locally. One was the Playwright <code>webServer</code> setting in P02-S05, the other a gitleaks finding in
+              P03-S01.
+            </li>
+            <li>
+              <a href="https://github.com/munna7862/TestPulse/pull/4">PR #4</a> bundled four sprints: +13,566 lines
+              across 88 files, merged 1 minute 57 seconds after it was opened, before CI existed.
+            </li>
+            <li>
+              Some tests exist to satisfy the traceability gate. <code>[SC-DEV-002]</code> checks that
+              <code>eslint.config.mjs</code> contains certain strings and never lints a violating import.
+              <code>[SC-OPS-008]</code> parses the deploy YAML. Both count as automated scenarios.
+            </li>
+            <li>
+              Prose outweighs product. About 196k tokens of planning, docs and skills sit beside 64k tokens of product
+              code and 38k of tests (chart in §7).
+            </li>
+          </ul>
+
+          <h3>Across the workspace</h3>
+          <div class="table-wrap">
+            <table class="wide">
+              <thead>
+                <tr>
+                  <th>Repo</th>
+                  <th>Built over</th>
+                  <th class="num">Merged PRs</th>
+                  <th>Independent reviews</th>
+                  <th>What stands out</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>TestPulse</td>
+                  <td>1 day</td>
+                  <td class="num">8</td>
+                  <td>None</td>
+                  <td>Deploy not gated on CI; <code>main</code> unprotected; 60 sprint files</td>
+                </tr>
+                <tr>
+                  <td>AutomationFrameworks</td>
+                  <td>25 active days, Jan–Oct</td>
+                  <td class="num">26</td>
+                  <td>None (1 CodeQL report, 2 of your own comments)</td>
+                  <td>The only repo with a learnings file and path-scoped instructions</td>
+                </tr>
+                <tr>
+                  <td>buggy-books</td>
+                  <td>21 active days, Apr–Sep</td>
+                  <td class="num">100</td>
+                  <td>None (33 CodeQL reports)</td>
+                  <td>27 fix commits out of 171</td>
+                </tr>
+                <tr>
+                  <td>ChessGame</td>
+                  <td>6 days in August</td>
+                  <td class="num">64</td>
+                  <td>None</td>
+                  <td>159k words of docs for a chess app</td>
+                </tr>
+                <tr>
+                  <td>CrownConquest</td>
+                  <td>3 days in August</td>
+                  <td class="num">22</td>
+                  <td>None</td>
+                  <td>15 domain personas; the source of the “SM → GD → SDE” chain Gemini critiques</td>
+                </tr>
+                <tr>
+                  <td>Mymodel</td>
+                  <td>2 days in August</td>
+                  <td class="num">32</td>
+                  <td>None</td>
+                  <td>202 commits and 95k words of docs in two days; no CI</td>
+                </tr>
+                <tr>
+                  <td>SynthNet</td>
+                  <td>2 days in August</td>
+                  <td class="num">11</td>
+                  <td>None</td>
+                  <td>
+                    Last CI on <code>main</code> failed while the deploy succeeded (<code>needs: [ ]</code>); 29 of 59
+                    tasks open
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Across 263 merged PRs there is no review by another person or by an independent agent. The only reviews are
+            34 automated CodeQL reports and two of your own comments. The 78 skill folders hold about 38.8k words of
+            persona text, and the shared ones have drifted apart: <code>role-scrum-master</code> exists in 6 repos as 5
+            different versions, and <code>doc-implementation-standards</code> in 7 repos as 7 versions.
+          </p>
+          <p>
+            The pattern produces a lot of well-organized material quickly. Production grade shows up somewhere else:
+            software that runs, is watched, and gets fixed when users hit problems. Most of these repos stop after a
+            burst of two to six days. AutomationFrameworks, the one you kept working on for 25 days, is also the one
+            that grew a learnings file and path-scoped instructions. That is the habit to scale.
+          </p>
+        </section>
+
+        <section id="method">
+          <div class="eyebrow">§2 · Your method</div>
+          <h2>Is the persona method a good way to build?</h2>
+          <p>
+            It is a strong planning system attached to a weak verification system. What makes TestPulse good is its
+            contracts and its code-level guardrails. The personas add tokens and ceremony, and their sign-offs come from
+            the same session that wrote the code.
+          </p>
+
+          <div class="kfr">
+            <div class="keep">
+              <h3>Keep</h3>
+              <ul>
+                <li>The master plan as the canonical contract, with conflicts fixed in the same PR.</li>
+                <li>ADRs, and the pinned dependency baseline in ADR-004.</li>
+                <li>
+                  Non-negotiables phrased as testable rules: 404 across tenants, 403 for low roles, Zod at every
+                  boundary, no <code>io.emit</code> in handlers.
+                </li>
+                <li>
+                  The guardrails already in code: ESLint boundary rules, strict TypeScript, the fail-closed
+                  <code>MODEL_SCOPE</code> tenant guard, schema-per-worker Postgres tests, real-Redis contract tests,
+                  gitleaks, the audit gate and commitlint.
+                </li>
+                <li>FR and SC IDs in test titles.</li>
+                <li>The non-MVP exclusion list.</li>
+              </ul>
+            </div>
+            <div class="retire">
+              <h3>Retire</h3>
+              <ul>
+                <li>Reviewer sign-offs written by the session that wrote the code.</li>
+                <li>
+                  Scrum Master, Product Owner and DevOps role-play inside the agent. You are the product owner, and CI
+                  is the release manager.
+                </li>
+                <li>Per-sprint test-case catalogs of 1,200–1,500 words and walkthroughs of about 1,000.</li>
+                <li>Hand-synced “Automated by” columns.</li>
+                <li>Detailed sprint files more than two slices ahead.</li>
+                <li>PRs that bundle several sprints.</li>
+              </ul>
+            </div>
+            <div class="transform">
+              <h3>Transform</h3>
+              <ul>
+                <li>Role skills become on-demand knowledge, loaded when a task touches that area.</li>
+                <li>Reviewer personas become separate agents with fresh context and a duty to show proof.</li>
+                <li>Prose rules become machine gates wherever a machine can check them.</li>
+                <li><code>task.md</code> becomes a 40-line now-and-next board. History lives in git.</li>
+                <li>
+                  Traceability by label becomes traceability by behavior, with the scenario table generated from passing
+                  tests.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Why role-play gives no independence</h3>
+          <p>
+            A reviewer persona inside the builder's session reads the builder's reasoning first. It inherits the same
+            assumptions, the same reading of the spec and the same blind spots. Independence needs four things the
+            persona setup lacks.
+          </p>
+          <ul>
+            <li>A fresh context that holds the spec and the diff, and none of the builder's narrative.</li>
+            <li>A different objective: find what is wrong and prove it.</li>
+            <li>The means to run things, such as tests, the app and CI logs.</li>
+            <li>
+              Ideally a different model family. You already use Gemini in Antigravity and Claude in Claude Code. Build
+              with one and review with the other.
+            </li>
+          </ul>
+          <p class="small">
+            Your setup is close to BMAD-METHOD and to MetaGPT-style software-company simulations. Their useful part is
+            the structure they impose. Their weak spot is also the same, since they produce sign-offs without
+            independent evidence.
+          </p>
+          <p class="small">
+            In this Claude Code session, none of the twelve <code>.agents/skills</code> folders were registered as
+            skills. They load only when a prompt names the file, which is why every sprint prompt lists them by path.
+          </p>
+        </section>
+
+        <section id="gemini">
+          <div class="eyebrow">§3 · Second opinion</div>
+          <h2>Gemini's plan, claim by claim</h2>
+          <p>
+            Gemini's plan has the right instincts in two places. It reads as if it were written from the file tree and
+            the sprint names. It cites no line of code, CI run or PR, and its figures (30–50% of context lost, 50%
+            faster, 2× speed) were never measured.
+          </p>
+
+          <div class="table-wrap">
+            <table class="wide">
+              <thead>
+                <tr>
+                  <th style="width: 26%">Gemini says</th>
+                  <th style="width: 15%">Verdict</th>
+                  <th>What the repo shows</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>“61 pre-baked sprint files”, replaced by its template for “20-page BDUF specs”</td>
+                  <td><span class="chip warn">Partly right</span></td>
+                  <td>
+                    There are 60 sprint files plus an index, about 730 words each. Writing them was cheap. Keeping them
+                    true is not, because each contract change ripples through phase files, sprint files and both
+                    catalogs.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Handoff memos burn 30–50% of the context (SM → GD → SDET → SDE)</td>
+                  <td><span class="chip fail">Wrong source</span></td>
+                  <td>
+                    That chain comes from CrownConquest's <code>.agents/AGENTS.md</code>. TestPulse has no GD or SDE
+                    role, and its handoff is a six-line summary. The real load is reading docs, about 47.5k tokens per
+                    sprint (§7). The percentage was never measured.
+                  </td>
+                </tr>
+                <tr>
+                  <td>The LLM grades its own homework</td>
+                  <td><span class="chip pass">Correct</span></td>
+                  <td>
+                    The most important point in the plan, and §1 confirms it six times. Gemini gives no evidence for it,
+                    so it reads as opinion.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Rules live in prompts instead of machines</td>
+                  <td><span class="chip fail">Outdated</span></td>
+                  <td>
+                    TestPulse already enforces boundaries with ESLint, tenant scoping at runtime, strict TypeScript,
+                    nine CI checks and an E2E job. The missing gates are different ones: branch protection, deploy
+                    gating, coverage thresholds and the presence of rate limits.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Serial ceremony turns a 10-minute task into 45 minutes</td>
+                  <td><span class="chip fail">Wrong priority</span></td>
+                  <td>
+                    Code sprints already finish in 30 to 60 minutes. Speed is not your constraint. Verified correctness
+                    is.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Approach 1, spec-as-code</td>
+                  <td><span class="chip warn">Flawed example</span></td>
+                  <td>
+                    Zod schemas in <code>packages/shared</code> plus <code>fastify-type-provider-zod</code> already give
+                    one source of truth for shapes. The example puts an HTTP test inside <code>packages/shared</code>,
+                    which must stay browser-safe. It expects a 200 from an OAuth callback that redirects. It also claims
+                    typecheck stops drift. Types catch changes in shape and miss changes in behavior.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Approach 2, dual-loop evaluator</td>
+                  <td><span class="chip pass">Right, thin</span></td>
+                  <td>
+                    The critic needs the spec and the diff as inputs, an evidence-only output, a merge gate that
+                    enforces its verdict, and a token budget. Running Stryker across the whole repo is too slow. Scope
+                    it to pure logic.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Approach 3, vertical slices in <code>packages/features/</code></td>
+                  <td><span class="chip fail">Wrong here</span></td>
+                  <td>
+                    One package holding Fastify routes, BullMQ workers and React components breaks your enforced
+                    boundaries (<code>apps/web</code> must never reach server code) and mixes the Vercel and Render
+                    deploy targets. Slice the plan and keep the package graph.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Approach 4, JIT planning with parallel front-end and back-end worktrees</td>
+                  <td><span class="chip warn">Half right</span></td>
+                  <td>
+                    Just-in-time detail is right. Two parallel builders feeding one reviewer doubles unreviewed output
+                    and collides on <code>schema.prisma</code>, <code>package-lock.json</code>, <code>task.md</code> and
+                    the catalogs. The 50% time saving has no basis.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Approach 5, fitness functions</td>
+                  <td><span class="chip warn">Broken example</span></td>
+                  <td>
+                    The sample lint rule never fires. Prisma accessors are camelCase (<code>systemDb.testRun</code>),
+                    and this repo exports <code>getSystemDb()</code> with no <code>systemDb</code> object. Your runtime
+                    <code>MODEL_SCOPE</code> guard is already stronger than any name-matching lint rule.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Evaluation matrix</td>
+                  <td><span class="chip fail">No data</span></td>
+                  <td>
+                    Every alternative is green on every axis and the current method is red on every axis. There are no
+                    costs, tradeoffs or measurements.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Template A, lean sprint spec</td>
+                  <td><span class="chip fail">Not grounded</span></td>
+                  <td>
+                    It specifies <code>@fastify/oauth2</code> for P03-S02, which had already shipped using
+                    <code>arctic</code>. It drops acceptance criteria, risks and non-goals, which are what an agent
+                    needs most.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Template B, adversarial prompt</td>
+                  <td><span class="chip pass">Good start</span></td>
+                  <td>
+                    Add the inputs (brief, diff, CI links), a claims audit, false-green checks, severity with file:line
+                    evidence, and a rule that a finding without proof is dropped.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>What it leaves out</h3>
+          <ul>
+            <li>Branch protection and required checks.</li>
+            <li>Deploys gated on CI, and a smoke test after each deploy.</li>
+            <li>A size limit on PRs.</li>
+            <li>Checking “done” claims against the code.</li>
+            <li>Observability and feedback from production.</li>
+            <li>Where your own 20 minutes per slice should go.</li>
+            <li>What the extra reviewer costs in tokens.</li>
+            <li>Your multi-tool setup of Antigravity, Claude Code and Copilot.</li>
+            <li>All six findings in §1.</li>
+          </ul>
+          <p>Use it as a set of prompts for thinking. Do not adopt it as written.</p>
+        </section>
+
+        <section id="approaches">
+          <div class="eyebrow">§4 · Alternatives</div>
+          <h2>Five approaches that beat the current style</h2>
+          <p>
+            Ranked by how many defects each one keeps out of <code>main</code>. Each replaces a specific part of the
+            persona workflow, and together they form the slice loop in §5. Unlike the matrix in Gemini's plan, the table
+            below lists what each one costs.
+          </p>
+
+          <div class="table-wrap">
+            <table class="wide">
+              <thead>
+                <tr>
+                  <th>Approach</th>
+                  <th>Replaces</th>
+                  <th>Would have caught</th>
+                  <th>Setup</th>
+                  <th>Ongoing cost</th>
+                  <th>Main risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>1</b> Maker–checker verification</td>
+                  <td>Persona sign-offs</td>
+                  <td>01–06</td>
+                  <td>~2 h</td>
+                  <td>30–60k tokens per risky slice</td>
+                  <td>Noisy reviewers. Dropping findings without proof keeps the noise down.</td>
+                </tr>
+                <tr>
+                  <td><b>2</b> Executable acceptance</td>
+                  <td>Markdown catalogs, tests after code</td>
+                  <td>02, 04, 05, 06</td>
+                  <td>~1 h, then habit</td>
+                  <td>15–30 min per slice</td>
+                  <td>Brittle tests at the wrong level. Test through the API.</td>
+                </tr>
+                <tr>
+                  <td><b>3</b> Process as code</td>
+                  <td>Prose gates, self-reported green</td>
+                  <td>01, 03, local and CI drift</td>
+                  <td>~4 h</td>
+                  <td>Seconds per run</td>
+                  <td>Over-strict gates get bypassed. Keep an exception label that needs a reason.</td>
+                </tr>
+                <tr>
+                  <td><b>4</b> Thin slices, planned just in time</td>
+                  <td>60 upfront sprints, end-of-plan quality, giant PRs</td>
+                  <td>Keeps every change reviewable</td>
+                  <td>~2 h re-plan</td>
+                  <td>~10 min brief per slice</td>
+                  <td>Slices too thin to show value. Anchor each one to a milestone.</td>
+                </tr>
+                <tr>
+                  <td><b>5</b> Context engineering</td>
+                  <td>Load-everything prompts</td>
+                  <td>Indirectly, by keeping rules in focus</td>
+                  <td>~3 h</td>
+                  <td>Skill upkeep</td>
+                  <td>Vague skill descriptions mean skills never load.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <article class="approach" id="a1">
+            <div class="approach-head">
+              <span class="rank">1</span>
+              <div>
+                <h3>Maker–checker verification</h3>
+                <p class="lede">
+                  The agent that writes the code never decides it is done. A separate checker with a fresh context does,
+                  and it has to show proof. You make the merge call.
+                </p>
+              </div>
+            </div>
+            <div class="fromto">
+              <div>
+                <div class="eyebrow">Today</div>
+                <p>
+                  Reviewer personas sign off inside the builder's own session, after reading the builder's own summary.
+                </p>
+              </div>
+              <div>
+                <div class="eyebrow">Proposed</div>
+                <p>
+                  Three reviewer agents run after the build in their own contexts. You approve the PR from an evidence
+                  table.
+                </p>
+              </div>
+            </div>
+            <h4>Why it beats the current style</h4>
+            <p>
+              A claims audit compares each acceptance criterion with the diff and the CI logs. It would have flagged
+              findings 01 to 04 by reading alone. An adversarial pass with the ADR-005 checklist goes straight at 05 and
+              06.
+            </p>
+            <h4>How to set it up in TestPulse</h4>
+            <ol>
+              <li>
+                Add <code>.claude/agents/claims-auditor.md</code>, <code>security-reviewer.md</code> and
+                <code>test-auditor.md</code> (§9). Each gets the slice brief, <code>git diff origin/main...HEAD</code>
+                and the CI results. None sees the builder's conversation.
+              </li>
+              <li>
+                Every finding carries severity, file:line and proof, which can be a failing test, command output or
+                quoted code. A finding without proof is dropped.
+              </li>
+              <li>The builder fixes evidenced findings only, and each reviewer re-checks only what it raised.</li>
+              <li>
+                Review with a different model family from the builder. Build in Antigravity and review in Claude Code,
+                or the other way round.
+              </li>
+              <li>
+                Run the built-in <code>/code-review</code> and <code>/security-review</code> on the branch before
+                opening the PR.
+              </li>
+              <li>Read the PR's evidence table and the diff of risky files yourself. Budget 10 to 15 minutes.</li>
+            </ol>
+            <h4>Tradeoffs</h4>
+            <p>
+              Reviewer contexts cost roughly 30–60k tokens on a risky slice. Skip the security reviewer on docs-only and
+              purely visual slices. Reviewers make mistakes too, which is why the proof rule matters.
+            </p>
+            <ul class="impact">
+              <li><b>Defects</b>large cut</li>
+              <li><b>Tokens</b>+30–60k on risky slices</li>
+              <li><b>Speed</b>about even</li>
+            </ul>
+          </article>
+
+          <article class="approach" id="a2">
+            <div class="approach-head">
+              <span class="rank">2</span>
+              <div>
+                <h3>Executable acceptance</h3>
+                <p class="lede">
+                  Acceptance criteria become failing tests before any implementation starts. The builder makes them pass
+                  and may not edit them.
+                </p>
+              </div>
+            </div>
+            <div class="fromto">
+              <div>
+                <div class="eyebrow">Today</div>
+                <p>Markdown catalogs and SC labels. The same session writes the tests after the code.</p>
+              </div>
+              <div>
+                <div class="eyebrow">Proposed</div>
+                <p>Acceptance tests are the spec, and the scenario table is generated from them.</p>
+              </div>
+            </div>
+            <h4>Why it beats the current style</h4>
+            <p>
+              Rate limiting, timing parity and concurrent refresh were all written down, and none was tested as
+              behavior. A failing test cannot be marked done.
+            </p>
+            <h4>How to set it up in TestPulse</h4>
+            <ol>
+              <li>
+                Write criteria in EARS form, for example “When an account has 5 failed logins within 15 minutes, the API
+                shall return 429 for that account from any IP.”
+              </li>
+              <li>
+                Make the first step of every slice the acceptance tests: write <code>*.acceptance.test.ts</code>, run
+                it, confirm each test fails for the right reason, and commit it as <code>test(acceptance): …</code>.
+              </li>
+              <li>
+                Lock the spec. A PreToolUse hook blocks edits to committed acceptance tests (§9). If the spec is wrong,
+                the agent stops and asks you.
+              </li>
+              <li>
+                Require tests by risk.
+                <ul>
+                  <li>Every tenant route gets a 404/403 matrix generated from a route inventory.</li>
+                  <li>Every check-then-act gets a <code>Promise.all</code> concurrency test.</li>
+                  <li>
+                    Pure logic gets fast-check property tests: tenant scope rules, fingerprinting, flaky scoring and
+                    quarantine transitions.
+                  </li>
+                  <li>Auth timing gets a structural test that unknown emails still run argon2 against a dummy hash.</li>
+                </ul>
+              </li>
+              <li>
+                Replace the hand-synced “Automated by” column with a script that builds it from passing test titles.
+                Tests that only read config files move to <code>test/meta/</code> and stop counting.
+              </li>
+              <li>Run Stryker weekly on three or four pure modules instead of the whole repo.</li>
+            </ol>
+            <h4>Tradeoffs</h4>
+            <p>
+              Each slice gets 15 to 30 minutes longer before code starts. You stop paying for rework, and the catalog
+              stops drifting.
+            </p>
+            <ul class="impact">
+              <li><b>Defects</b>large cut</li>
+              <li><b>Tokens</b>lower, no per-sprint catalogs</li>
+              <li><b>Speed</b>slower per slice, faster per feature</li>
+            </ul>
+          </article>
+
+          <article class="approach" id="a3">
+            <div class="approach-head">
+              <span class="rank">3</span>
+              <div>
+                <h3>Process as code</h3>
+                <p class="lede">
+                  Anything a machine can check is checked by a machine at the earliest point. Done means green required
+                  checks on a protected <code>main</code> and a passing smoke test on staging.
+                </p>
+              </div>
+            </div>
+            <div class="fromto">
+              <div>
+                <div class="eyebrow">Today</div>
+                <p>AGENTS.md describes the gates, and the agent reports how they went.</p>
+              </div>
+              <div>
+                <div class="eyebrow">Proposed</div>
+                <p>GitHub, CI and agent hooks enforce the gates. The agent cannot report its way past them.</p>
+              </div>
+            </div>
+            <h4>Why it beats the current style</h4>
+            <p>
+              The coverage gate, the deploy gating and the skipped deploy steps existed only as prose. Two CI failures
+              surfaced only after the agent had reported green.
+            </p>
+            <h4>How to set it up in TestPulse</h4>
+            <ol>
+              <li>
+                Protect <code>main</code> with required checks “Verify Quality Gates” and “Playwright E2E Smoke Tests”,
+                up-to-date branches, linear history, no force pushes, and admins included (§9 F).
+              </li>
+              <li>
+                Deploy only after CI succeeds, through <code>workflow_run</code>, with secrets at job level. On
+                <code>main</code>, fail when a secret is missing instead of skipping. Add a smoke job that waits for
+                staging to report the new commit and then runs a login check (§9 E).
+              </li>
+              <li>
+                Set coverage thresholds in each Vitest config at today's values and only ever raise them. Vitest's
+                <code>coverage.thresholds.autoUpdate</code> can write the new floor for you (§9 G).
+              </li>
+              <li>
+                Fail PRs above 800 changed lines of product code, with the lockfile, generated code, migrations, tests
+                and docs excluded, unless they carry a <code>size/exception</code> label with a reason (§9 I).
+              </li>
+              <li>Add one <code>npm run verify</code> that runs what CI runs, in CI order.</li>
+              <li>
+                Add Claude Code hooks that lint each edited file and stop the agent from ending a turn while lint or
+                typecheck fails (§9 D).
+              </li>
+              <li>
+                Flag stubs in <code>src/</code> with <code>no-restricted-syntax</code> for <code>void x;</code> and
+                <code>no-warning-comments</code> for TODO and FIXME (§9 J).
+              </li>
+              <li>
+                Turn on CodeQL default setup, which automation-frameworks and buggy-books already run, and Dependabot or
+                Renovate for updates.
+              </li>
+              <li>
+                Adopt one rule: every escaped defect becomes a gate. Write the test, lint rule or check that would have
+                caught it.
+              </li>
+            </ol>
+            <h4>Tradeoffs</h4>
+            <p>
+              About half a day to set up. Branch protection with admins included also blocks you, which is the point.
+              Keep the exception label for real emergencies.
+            </p>
+            <ul class="impact">
+              <li><b>Defects</b>large cut for infra and drift</li>
+              <li><b>Tokens</b>lower, rules leave the prompt</li>
+              <li><b>Speed</b>faster, less rework</li>
+            </ul>
+          </article>
+
+          <article class="approach" id="a4">
+            <div class="approach-head">
+              <span class="rank">4</span>
+              <div>
+                <h3>Thin vertical slices, planned just in time</h3>
+                <p class="lede">
+                  Plan by outcome and detail only the next one or two slices. Each slice crosses DB, API, events and UI,
+                  ships to staging, and stays small enough to review in 15 minutes.
+                </p>
+              </div>
+            </div>
+            <div class="fromto">
+              <div>
+                <div class="eyebrow">Today</div>
+                <p>
+                  11 phases and 60 sprint files written up front. Polish waits for Phase 09 and quality engineering for
+                  Phase 10. Sprints get batched into PRs of 4,000 to 13,000 lines.
+                </p>
+              </div>
+              <div>
+                <div class="eyebrow">Proposed</div>
+                <p>
+                  An outcome roadmap (Now, Next, Later), one-page slice briefs, about 800 product lines per PR at most,
+                  and quality inside every slice.
+                </p>
+              </div>
+            </div>
+            <h4>Why it beats the current style</h4>
+            <p>
+              Nobody, human or agent, reviews a 5,000-line PR with rigor. Accessibility, coverage and security audits
+              get more expensive the later they run. The sprint files for Phases 05 to 11 were written before any
+              ingestion code existed.
+            </p>
+            <h4>How to set it up in TestPulse</h4>
+            <ol>
+              <li>
+                Write <code>planning/roadmap.md</code> with 6 to 8 outcome milestones. M1: a new user signs up, creates
+                a project, gets an API key, runs the reporter and watches the run arrive live.
+              </li>
+              <li>
+                Build M1 as a walking skeleton first, the thinnest path that works end to end on staging. Then deepen
+                it.
+              </li>
+              <li>
+                One slice is one agent session, one PR and at most about 800 product lines. Hide unfinished UI behind a
+                flag.
+              </li>
+              <li>
+                Every slice's definition of done includes axe checks, loading, empty and error states, isolation tests,
+                and a performance budget where it applies. Phases 09 and 10 shrink to release work.
+              </li>
+              <li>
+                Keep the master plan and the ADRs. Freeze the old sprint files as reference notes and stop maintaining
+                them.
+              </li>
+              <li>
+                Dogfood early. Once the reporter works, send TestPulse's own CI runs, and the AutomationFrameworks
+                Playwright suites that run against BuggyBooks, into staging TestPulse. You get real flaky tests and real
+                load at no cost.
+              </li>
+            </ol>
+            <h4>Tradeoffs</h4>
+            <p>
+              About two hours to re-plan, and you give up the comfort of a complete plan. In return the plan stays true
+              to the code.
+            </p>
+            <ul class="impact">
+              <li><b>Defects</b>moderate cut, every PR reviewable</li>
+              <li><b>Tokens</b>lower, smaller contexts</li>
+              <li><b>Speed</b>faster to working features</li>
+            </ul>
+          </article>
+
+          <article class="approach" id="a5">
+            <div class="approach-head">
+              <span class="rank">5</span>
+              <div>
+                <h3>Context engineering</h3>
+                <p class="lede">
+                  Load the smallest context that lets the agent do the next slice correctly. Everything else stays on
+                  disk until a task needs it.
+                </p>
+              </div>
+            </div>
+            <div class="fromto">
+              <div>
+                <div class="eyebrow">Today</div>
+                <p>About 47.5k tokens of process docs per sprint, with personas pulled in by the prompt.</p>
+              </div>
+              <div>
+                <div class="eyebrow">Proposed</div>
+                <p>
+                  About 7k tokens: a lean AGENTS.md, the slice brief, one or two skills on demand, and only the contract
+                  sections the brief cites.
+                </p>
+              </div>
+            </div>
+            <h4>Why it beats the current style</h4>
+            <p>
+              Long context dilutes attention. ADR-005 §9 was on the agent's reading list and was still missed. Every
+              session re-reads the master plan, both catalogs and <code>task.md</code> whether or not the slice needs
+              them.
+            </p>
+            <h4>How to set it up in TestPulse</h4>
+            <ol>
+              <li>
+                Cut AGENTS.md to about 1.5k tokens: commands, 8 to 10 one-line non-negotiables that each name their
+                enforcing check, a repo map and the slice loop (§9 A).
+              </li>
+              <li>
+                Move persona knowledge into skills with precise descriptions and copy them to
+                <code>.claude/skills/</code>, so Claude Code loads them only when a task needs them.
+              </li>
+              <li>
+                Add folder rules for <code>apps/api</code>, <code>apps/web</code> and <code>packages/db</code>. Keep
+                them in AGENTS.md files for Antigravity, with a one-line CLAUDE.md beside each (<code>@AGENTS.md</code>)
+                if your Claude Code version does not pick up nested AGENTS.md files.
+              </li>
+              <li>
+                Slice briefs cite master-plan sections by heading. The agent reads those sections and nothing else from
+                the plan.
+              </li>
+              <li>Replace walkthroughs and per-sprint catalogs with the PR description and one CHANGELOG line.</li>
+              <li>Shrink <code>task.md</code> to a <code>NOW.md</code> of about 40 lines. History lives in git.</li>
+              <li>
+                Keep one slice per session. Start reviews in fresh sessions. Use an Explore subagent for codebase
+                searches so the main thread stays small.
+              </li>
+              <li>
+                Route models by task: the strongest model for design, risky code and security review, and a faster one
+                for search, doc sync and the test audit.
+              </li>
+              <li>Record tokens per merged slice with the other metrics in §8.</li>
+            </ol>
+            <h4>Tradeoffs</h4>
+            <p>
+              About three hours once. Knowledge that leaves the always-on file has to stay findable, so each skill
+              description must say exactly when to load it.
+            </p>
+            <ul class="impact">
+              <li><b>Defects</b>moderate cut, rules get followed</li>
+              <li><b>Tokens</b>about 85% less process context</li>
+              <li><b>Speed</b>faster sessions</li>
+            </ul>
+          </article>
+        </section>
+
+        <section id="loop">
+          <div class="eyebrow">§5 · Operating model</div>
+          <h2>The slice loop</h2>
+          <p>
+            One slice, one session, one PR. You spend about 20 minutes per slice at two checkpoints, where human
+            judgment pays off most. The first is before any code, on the requirements. The second is before merge, on
+            the evidence.
+          </p>
+
+          <ol class="loop">
+            <li>
+              <span class="n">1</span>
+              <h4>Pick</h4>
+              <div>
+                <p>Choose the next slice from <code>NOW.md</code>.</p>
+                <div class="who"><span class="owner you">You</span><span>Gate: none</span></div>
+              </div>
+            </li>
+            <li class="checkpoint">
+              <span class="n">2</span>
+              <h4>Brief</h4>
+              <div>
+                <p>
+                  The builder drafts a one-page brief: outcome, EARS criteria, non-goals, risks and cited contract
+                  sections.
+                </p>
+                <div class="who">
+                  <span class="owner">Builder</span><span class="owner you">You</span
+                  ><span>Checkpoint 1: you approve, 5–10 min</span>
+                </div>
+              </div>
+            </li>
+            <li>
+              <span class="n">3</span>
+              <h4>Tests first</h4>
+              <div>
+                <p>Write the acceptance tests, watch them fail for the right reason, and commit them.</p>
+                <div class="who">
+                  <span class="owner">Builder</span><span>Gate: hook locks committed acceptance tests</span>
+                </div>
+              </div>
+            </li>
+            <li>
+              <span class="n">4</span>
+              <h4>Build</h4>
+              <div>
+                <p>Implement in small commits. Each edit is linted as it lands.</p>
+                <div class="who">
+                  <span class="owner">Builder</span><span>Gate: Stop hook runs lint and typecheck</span>
+                </div>
+              </div>
+            </li>
+            <li>
+              <span class="n">5</span>
+              <h4>Verify</h4>
+              <div>
+                <p>Run <code>npm run verify</code> locally, then CI runs on push.</p>
+                <div class="who"><span class="owner">Machine</span><span>Gate: required checks</span></div>
+              </div>
+            </li>
+            <li>
+              <span class="n">6</span>
+              <h4>Review</h4>
+              <div>
+                <p>Claims, security and test auditors run in parallel, each in a fresh context.</p>
+                <div class="who"><span class="owner">Checkers</span><span>Gate: every finding needs proof</span></div>
+              </div>
+            </li>
+            <li>
+              <span class="n">7</span>
+              <h4>Fix</h4>
+              <div>
+                <p>Fix the evidenced findings. Each reviewer re-checks only what it raised.</p>
+                <div class="who"><span class="owner">Builder</span><span>Gate: required checks again</span></div>
+              </div>
+            </li>
+            <li class="checkpoint">
+              <span class="n">8</span>
+              <h4>Merge</h4>
+              <div>
+                <p>Read the evidence table and the risky files, then merge.</p>
+                <div class="who">
+                  <span class="owner you">You</span><span>Checkpoint 2: your merge, 10–15 min</span>
+                </div>
+              </div>
+            </li>
+            <li>
+              <span class="n">9</span>
+              <h4>Ship</h4>
+              <div>
+                <p>CI-gated deploy to staging, smoke test, dogfood telemetry.</p>
+                <div class="who"><span class="owner">Machine</span><span>Gate: smoke must pass</span></div>
+              </div>
+            </li>
+            <li>
+              <span class="n">10</span>
+              <h4>Learn</h4>
+              <div>
+                <p>Turn any escaped defect into a test, lint rule or check.</p>
+                <div class="who"><span class="owner">Builder</span><span>Gate: none</span></div>
+              </div>
+            </li>
+          </ol>
+
+          <p class="note">
+            <span class="note-label">Where parallel agents help</span>
+            They help with the three reviewers, with codebase exploration, and with slices that share no files, such as
+            the marketing site while ingestion is built, each in its own worktree. They hurt when two builders work one
+            slice, or when parallel work touches <code>schema.prisma</code>, the lockfile or shared contracts.
+          </p>
+          <p>
+            Expect a slice to take 20 to 40 minutes longer than a sprint does today. Expect far fewer slices to be
+            redone, and no status you need to doubt.
+          </p>
+        </section>
+
+        <section id="plan">
+          <div class="eyebrow">§6 · Adoption</div>
+          <h2>Adoption plan</h2>
+          <p>
+            Ordered so that each step pays for itself before the next. No step stops feature work for more than a day.
+            Tick items as you go. This page remembers them in your browser.
+          </p>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 0</span>
+              <h3>Stop false greens</h3>
+              <span class="when">Today · about 3 hours</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s0-1" /><label for="s0-1"
+                  >Protect <code>main</code> with required checks (§9 F).</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s0-2" /><label for="s0-2"
+                  >Gate the staging deploy on CI, fail on missing secrets, and add the smoke job (§9 E).</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s0-3" /><label for="s0-3"
+                  >Add coverage thresholds at today's values (§9 G).</label
+                >
+              </li>
+              <li><input type="checkbox" id="s0-4" /><label for="s0-4">Add the PR size check (§9 I).</label></li>
+              <li>
+                <input type="checkbox" id="s0-5" /><label for="s0-5"
+                  >Reopen the six findings in <code>task.md</code> as <code>[!]</code> with one line each, and change
+                  P02-S05 and P03-S01 from complete to partial.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s0-6" /><label for="s0-6"
+                  >Add one rule to AGENTS.md: the agent never marks <code>[x]</code>. A merged PR with green required
+                  checks does.</label
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 1</span>
+              <h3>Pilot the loop on a hardening slice</h3>
+              <span class="when">Next session · about 1 day</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s1-1" /><label for="s1-1"
+                  >Brief: fix findings 01–06. Install a real Sentry SDK, or delete the stubs and move the criterion to a
+                  later slice.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s1-2" /><label for="s1-2"
+                  >Tests first: 429 per IP and per account, dummy-hash timing parity, concurrent refresh with
+                  <code>Promise.all</code> expecting one success and a revoked family, and a Sentry event captured by a
+                  test transport.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s1-3" /><label for="s1-3"
+                  >Build and verify, then run the three reviewers for the first time.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s1-4" /><label for="s1-4"
+                  >Write down what the reviewers found that the persona flow missed. That is your baseline.</label
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 2</span>
+              <h3>Context diet</h3>
+              <span class="when">Before P03-S03 · about 3 hours</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s2-1" /><label for="s2-1">Rewrite AGENTS.md from the template (§9 A).</label>
+              </li>
+              <li>
+                <input type="checkbox" id="s2-2" /><label for="s2-2"
+                  >Turn backend, frontend, realtime, security, testing and devops into knowledge skills. Retire
+                  scrum-master and product-owner as roles, and park growth until Phase 11.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s2-3" /><label for="s2-3"
+                  >Add folder rules for <code>apps/api</code>, <code>apps/web</code> and
+                  <code>packages/db</code>.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s2-4" /><label for="s2-4"
+                  >Create <code>planning/slices/</code> with the brief template (§9 B) and a <code>NOW.md</code>.</label
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 3</span>
+              <h3>Run the loop</h3>
+              <span class="when">P03-S03 to P03-S06</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s3-1" /><label for="s3-1"
+                  >Every slice: brief, tests first, build, verify, reviewers, PR with an evidence table.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s3-2" /><label for="s3-2"
+                  >In P03-S06, generate the tenant isolation matrix from a route inventory instead of writing it by
+                  hand.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s3-3" /><label for="s3-3">Record the §8 metrics for each slice.</label>
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 4</span>
+              <h3>Re-plan by outcome</h3>
+              <span class="when">End of Phase 03 · about 2 hours</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s4-1" /><label for="s4-1"
+                  >Write <code>planning/roadmap.md</code> (Now, Next, Later) with M1 “first live run” as the next
+                  milestone.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s4-2" /><label for="s4-2"
+                  >Mark sprint files P04 to P11 as reference notes, and fold the Phase 09 and 10 duties into the slice
+                  definition of done.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s4-3" /><label for="s4-3"
+                  >Cut M1 into slices of at most about 800 product lines.</label
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 5</span>
+              <h3>Operate</h3>
+              <span class="when">From the first real staging deploy</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s5-1" /><label for="s5-1"
+                  >Working error tracking, structured logs and an uptime check on staging.</label
+                >
+              </li>
+              <li><input type="checkbox" id="s5-2" /><label for="s5-2">A smoke test after every merge.</label></li>
+              <li>
+                <input type="checkbox" id="s5-3" /><label for="s5-3"
+                  >TestPulse CI runs and AutomationFrameworks Playwright runs reporting into staging TestPulse.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s5-4" /><label for="s5-4"
+                  >15 minutes a week on the errors and flaky tests in your own product.</label
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div class="phase">
+            <div class="phase-head">
+              <span class="n">Step 6</span>
+              <h3>One kit for every repo</h3>
+              <span class="when">After Phase 03</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <input type="checkbox" id="s6-1" /><label for="s6-1"
+                  >Move the reviewer agents, hooks, CI templates, brief template and AGENTS.md skeleton into one
+                  versioned repo, or package them as a Claude Code plugin.</label
+                >
+              </li>
+              <li>
+                <input type="checkbox" id="s6-2" /><label for="s6-2"
+                  >Start new projects from the kit instead of a fresh set of personas, so improvements land once and
+                  reach every repo.</label
+                >
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="tokens">
+          <div class="eyebrow">§7 · Tokens</div>
+          <h2>Token budget</h2>
+
+          <figure class="chart">
+            <figcaption>Process context loaded per session (tokens)</figcaption>
+            <div class="bars">
+              <div class="bar-row">
+                <span>Today, per sprint</span>
+                <span class="bar-track"><span class="bar muted" style="width: 100%"></span></span>
+                <span class="bar-value">47,520</span>
+              </div>
+              <div class="bar-row">
+                <span>Proposed, per slice</span>
+                <span class="bar-track"><span class="bar" style="width: 15.2%"></span></span>
+                <span class="bar-value">≈7,200</span>
+              </div>
+            </div>
+            <p class="chart-note">
+              Proposed: lean AGENTS.md 1,500 · slice brief 1,000 · one skill 1,800 · cited contract sections 2,500 ·
+              NOW.md 400.
+            </p>
+          </figure>
+
+          <figure class="chart">
+            <figcaption>Where today's 47,520 tokens come from</figcaption>
+            <div class="bars">
+              <div class="bar-row">
+                <span>Master plan</span>
+                <span class="bar-track"><span class="bar muted" style="width: 100%"></span></span>
+                <span class="bar-value">10,904</span>
+              </div>
+              <div class="bar-row">
+                <span>Scenario catalog</span>
+                <span class="bar-track"><span class="bar muted" style="width: 88.6%"></span></span>
+                <span class="bar-value">9,656</span>
+              </div>
+              <div class="bar-row">
+                <span>Five persona skills</span>
+                <span class="bar-track"><span class="bar muted" style="width: 69.2%"></span></span>
+                <span class="bar-value">7,547</span>
+              </div>
+              <div class="bar-row">
+                <span>AGENTS.md</span>
+                <span class="bar-track"><span class="bar muted" style="width: 41.4%"></span></span>
+                <span class="bar-value">4,515</span>
+              </div>
+              <div class="bar-row">
+                <span>Feature catalog</span>
+                <span class="bar-track"><span class="bar muted" style="width: 40.2%"></span></span>
+                <span class="bar-value">4,378</span>
+              </div>
+              <div class="bar-row">
+                <span>task.md</span>
+                <span class="bar-track"><span class="bar muted" style="width: 39.8%"></span></span>
+                <span class="bar-value">4,336</span>
+              </div>
+              <div class="bar-row">
+                <span>Two standards skills</span>
+                <span class="bar-track"><span class="bar muted" style="width: 32.8%"></span></span>
+                <span class="bar-value">3,576</span>
+              </div>
+              <div class="bar-row">
+                <span>Phase and sprint file</span>
+                <span class="bar-track"><span class="bar muted" style="width: 23.9%"></span></span>
+                <span class="bar-value">2,608</span>
+              </div>
+            </div>
+            <p class="chart-note">
+              Measured for P03-S03, the next sprint, from the files its execution prompt and lifecycle tell the agent to
+              read. Persona skills: backend, frontend, security, SDET, product owner.
+            </p>
+          </figure>
+
+          <figure class="chart">
+            <figcaption>Prose versus code in TestPulse today (tokens)</figcaption>
+            <div class="bars">
+              <div class="bar-row">
+                <span>Planning, docs, skills</span>
+                <span class="bar-track"><span class="bar muted" style="width: 100%"></span></span>
+                <span class="bar-value">196,411</span>
+              </div>
+              <div class="bar-row">
+                <span>Product code</span>
+                <span class="bar-track"><span class="bar" style="width: 32.4%"></span></span>
+                <span class="bar-value">63,597</span>
+              </div>
+              <div class="bar-row">
+                <span>Test code</span>
+                <span class="bar-track"><span class="bar" style="width: 19.2%"></span></span>
+                <span class="bar-value">37,674</span>
+              </div>
+            </div>
+          </figure>
+
+          <p>
+            Main-thread process context drops by about 85%. Written ceremony falls from about 5.6k tokens per sprint
+            (the P03-S02 catalog and walkthrough) to about 1k for a PR description and a CHANGELOG line. Reviewer agents
+            add 30–60k tokens on risky slices, in their own contexts, so total spend per slice stays roughly flat at
+            first. The difference is in what the tokens buy. They move from re-reading ceremony to finding defects.
+            Prompt caching lowers the price of re-reads, but re-read text still fills the window and dilutes attention.
+          </p>
+          <h3>Keeping reviewer cost down</h3>
+          <ul>
+            <li>Run reviewers only on slices that touch auth, tenancy, ingestion, outbound calls or infrastructure.</li>
+            <li>Give reviewers the brief and the diff, never the whole repo.</li>
+            <li>Use a faster model for the test audit and for exploration.</li>
+            <li>Let machine gates go first. They cost no tokens.</li>
+          </ul>
+        </section>
+
+        <section id="defects">
+          <div class="eyebrow">§8 · Quality</div>
+          <h2>Defect map and metrics</h2>
+          <p>
+            Each defect class gets the cheapest check that catches it reliably, placed as early as possible. Numbers in
+            the last column refer to the findings in §1.
+          </p>
+          <div class="table-wrap">
+            <table class="wide">
+              <thead>
+                <tr>
+                  <th>Defect class</th>
+                  <th>Cheapest reliable catch</th>
+                  <th>When</th>
+                  <th>Seen here</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Wrong or missing requirement</td>
+                  <td>EARS criteria and your brief approval</td>
+                  <td>Before code</td>
+                  <td>Rate limits dropped from P03-S01 (04)</td>
+                </tr>
+                <tr>
+                  <td>Unimplemented or stubbed work</td>
+                  <td>Claims audit and acceptance tests</td>
+                  <td>Before PR</td>
+                  <td>Sentry stubs (02)</td>
+                </tr>
+                <tr>
+                  <td>Auth and security logic</td>
+                  <td>Security reviewer with the ADR checklist, plus structural tests</td>
+                  <td>Before PR</td>
+                  <td>Timing enumeration (05)</td>
+                </tr>
+                <tr>
+                  <td>Race conditions</td>
+                  <td>A concurrency test for every check-then-act</td>
+                  <td>Tests first</td>
+                  <td>Refresh rotation (06)</td>
+                </tr>
+                <tr>
+                  <td>Cross-tenant leaks</td>
+                  <td><code>MODEL_SCOPE</code> guard (in place) and a generated 404/403 matrix</td>
+                  <td>Every PR</td>
+                  <td>None found so far</td>
+                </tr>
+                <tr>
+                  <td>Boundary violations</td>
+                  <td>ESLint <code>no-restricted-imports</code> (in place)</td>
+                  <td>Edit and commit</td>
+                  <td>None found so far</td>
+                </tr>
+                <tr>
+                  <td>Infrastructure false greens</td>
+                  <td>Required checks, CI-gated deploy, failing on missing secrets, post-deploy smoke</td>
+                  <td>Merge and deploy</td>
+                  <td>Skipped deploy (01), coverage gate (03)</td>
+                </tr>
+                <tr>
+                  <td>Local and CI drift</td>
+                  <td>One <code>npm run verify</code> that mirrors CI</td>
+                  <td>Before push</td>
+                  <td>Playwright <code>webServer</code>, gitleaks</td>
+                </tr>
+                <tr>
+                  <td>Regressions</td>
+                  <td>Protected <code>main</code> and a coverage ratchet</td>
+                  <td>Every PR</td>
+                  <td>Not yet measurable</td>
+                </tr>
+                <tr>
+                  <td>Vulnerable dependencies</td>
+                  <td>Audit gate (in place) and Dependabot or Renovate</td>
+                  <td>Daily</td>
+                  <td>Exceptions are time-boxed in the audit gate</td>
+                </tr>
+                <tr>
+                  <td>Failures only production shows</td>
+                  <td>Working error tracking, uptime checks, dogfooding</td>
+                  <td>After deploy</td>
+                  <td>No error tracking yet (02)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Metrics to track per slice</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Today</th>
+                  <th>Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Items marked done that are not</td>
+                  <td>6 across two audited sprints</td>
+                  <td>0 at merge</td>
+                </tr>
+                <tr>
+                  <td>First-push CI pass rate</td>
+                  <td>2 of 4 PRs since CI existed</td>
+                  <td>9 in 10 or better</td>
+                </tr>
+                <tr>
+                  <td>Median PR size</td>
+                  <td>≈4,500 lines added (PRs #5–#8)</td>
+                  <td>≤ 800 product lines</td>
+                </tr>
+                <tr>
+                  <td>Independent reviews per PR</td>
+                  <td>0</td>
+                  <td>One agent review plus your merge decision</td>
+                </tr>
+                <tr>
+                  <td>Process context per session</td>
+                  <td>≈47.5k tokens</td>
+                  <td>≈7k tokens</td>
+                </tr>
+                <tr>
+                  <td>Escaped defects</td>
+                  <td>Not tracked</td>
+                  <td>Tracked per slice, each one turned into a gate</td>
+                </tr>
+                <tr>
+                  <td>Time per slice</td>
+                  <td>30–60 min, unverified</td>
+                  <td>Under a day, verified and deployed</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="templates">
+          <div class="eyebrow">§9 · Templates</div>
+          <h2>Copy-ready templates</h2>
+          <p>
+            Adapt paths and names to each repo. Every script is Node ESM, so it runs the same on Windows and Linux. The
+            files in A to C are prompts and work in any agent tool; D is specific to Claude Code.
+          </p>
+
+          <h3><span class="tpl-label">A</span>Lean AGENTS.md</h3>
+          <p class="small">About 1.2k tokens. It replaces the current 4.5k-token file and links out for detail.</p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">AGENTS.md</span
+              ><button type="button" class="copy" data-copy="t-agents">Copy</button>
+            </div>
+            <pre id="t-agents"><code># TestPulse: agent guide
+
+Multi-tenant SaaS for live test-run monitoring and flaky-test quarantine.
+Canonical contracts: planning/master/TestPulse_Master_Plan.md. It wins on conflict.
+Changing a contract needs an ADR in the same PR.
+
+## Commands
+npm run verify      # everything CI runs, in CI order. Run before every push.
+npm run dev         # web :3000, api :4000
+npm run test        # unit + integration (needs DATABASE_URL_TEST)
+npm run test:e2e    # Playwright + axe
+npm run db:migrate
+
+## Non-negotiables (each names what enforces it)
+1. Tenant data only through createTenantDb(ctx). Other tenant = 404, low role = 403.
+   Enforced by: MODEL_SCOPE runtime guard, generated isolation matrix.
+2. A Zod schema from @testpulse/shared at every boundary. Enforced by: fastify-type-provider-zod.
+3. No any, no ts-ignore, strict TS. Enforced by: ESLint, tsconfig.base.json.
+4. Package boundaries: web never imports db; shared stays browser-safe. Enforced by: ESLint.
+5. Handlers and workers never touch Socket.IO. Publish through RealtimePublisher after commit.
+6. Never log secrets. Render CI-provided text as text.
+7. Windows dev, Linux CI: no shell-specific npm scripts; store paths with POSIX separators.
+8. Nothing from the non-MVP list (master plan §1).
+
+## How we work
+One slice per session: brief -&gt; acceptance tests first -&gt; build -&gt; npm run verify
+-&gt; independent review -&gt; PR with evidence. Never edit a committed *.acceptance.test.ts.
+You never mark work done. A merged PR with green required checks does.
+
+## Where things are
+apps/api     Fastify 5, feature modules in src/modules/&lt;feature&gt;
+apps/web     Next.js 16 App Router
+packages/    shared (Zod, events), db (Prisma, tenant client), ui, reporter
+planning/    roadmap.md, NOW.md, slices/&lt;id&gt;.md
+docs/        ADRs in docs/architecture, API contracts in docs/api
+
+## Load on demand
+Skills: backend, frontend, realtime, security, testing, devops. Descriptions say when.
+Folder rules: apps/api, apps/web and packages/db each have their own AGENTS.md.</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">B</span>Slice brief</h3>
+          <p class="small">
+            One page. You approve it before any code. The example is the invitation slice from P03-S04.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">planning/slices/S-012-invite-teammate.md</span
+              ><button type="button" class="copy" data-copy="t-brief">Copy</button>
+            </div>
+            <pre id="t-brief"><code># S-012: An org admin can invite a teammate by email
+Milestone: M1 First live run · Appetite: 1 session · Risk: high (auth, tenancy)
+
+## Outcome
+After this ships, an Owner or Admin can invite a teammate, who joins with the
+invited role after verifying the same email address.
+
+## Acceptance criteria (EARS)
+AC1 When an Admin invites an email, the API shall store a hashed single-use token
+    and send exactly one email.
+AC2 When the invitee accepts with the same verified email, the API shall add them
+    with the invited role and consume the token.
+AC3 If the token is reused, expired, or accepted by a different email, then the API
+    shall reject it without revealing whether the org exists.
+AC4 While a user is not a member of the org, every invitation route shall return 404.
+
+## Non-goals
+Bulk invites. SSO. Custom roles.
+
+## Contracts touched (read only these)
+Master plan §5 (Invitation), §7 (RBAC matrix). ADR-006 (tenant isolation).
+
+## Risks to test explicitly
+Isolation: 404 for non-members and 403 for Members on every new route.
+Races: two accepts of one token at once (Promise.all) yield one membership.
+
+## Tests written first
+apps/api/test/invitations.acceptance.test.ts covers AC1-AC4.
+
+## Done means
+Required checks green · claims audit shows no MISSING or STUB · staging smoke passes ·
+you merged the PR.</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">C</span>Reviewer agents</h3>
+          <p class="small">
+            Claude Code loads these from <code>.claude/agents/</code>. Antigravity can run the same text as a prompt in
+            a fresh conversation.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.claude/agents/claims-auditor.md</span
+              ><button type="button" class="copy" data-copy="t-claims">Copy</button>
+            </div>
+            <pre id="t-claims"><code>---
+name: claims-auditor
+description: Use after a slice is built and before opening its PR. Verifies every acceptance criterion and every "done", "implemented" or "verified" claim against code, tests and CI output. Read-only.
+tools: Read, Grep, Glob, Bash
+model: opus
+---
+You audit claims. You did not write this code and you do not trust its author's summary.
+
+Inputs: the slice brief (planning/slices/&lt;id&gt;.md), `git diff origin/main...HEAD`,
+the PR draft, and CI results (`gh run list`, `gh run view &lt;id&gt; --log-failed`).
+
+For every acceptance criterion and every claim of completion:
+1. Find the code that implements it (file:line). If there is none, mark it MISSING.
+2. Find the test that proves the behavior. Run it. A test that only reads config
+   files or matches strings in source does not count.
+3. Mark it VERIFIED (test name and output), PARTIAL, MISSING, or STUB. STUB means the
+   code exists but does nothing: no-op bodies, `void x;`, TODOs, swallowed errors.
+
+Also check:
+- CI steps that report success but were skipped.
+- Required secrets or env vars that are unset.
+- Docs or walkthroughs that describe behavior the code does not have.
+
+Output one table: claim | status | evidence (file:line, test, command output) | fix.
+No evidence, no finding. Do not edit files.</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.claude/agents/security-reviewer.md</span
+              ><button type="button" class="copy" data-copy="t-sec">Copy</button>
+            </div>
+            <pre id="t-sec"><code>---
+name: security-reviewer
+description: Use before opening a PR that touches auth, sessions, tenancy, API keys, ingestion, webhooks or logging. Hunts for exploitable defects in the diff and proves each one. Read-only.
+tools: Read, Grep, Glob, Bash
+model: opus
+---
+You are attacking this change. Inputs: the slice brief, `git diff origin/main...HEAD`,
+docs/architecture/adr-005-auth-and-sessions.md, adr-006-tenant-isolation.md and
+docs/security/threat-model.md.
+
+Check, with proof:
+- Tenancy: can a member of org A read or change org B's data? Cross-tenant must be
+  404 and a low role must be 403.
+- Auth: enumeration by status, body or timing; missing rate limits; token reuse;
+  CSRF on cookie routes; session fixation.
+- Races: every read-then-write on security state (tokens, sessions, invitations,
+  quotas). Try it with Promise.all.
+- Secrets: anything sensitive that is logged, returned, or placed in a URL.
+- Untrusted CI data rendered as HTML; SSRF in outbound calls.
+
+For each finding give severity, file:line, and a failing test or exact reproduction.
+If you cannot prove it, list it under "Suspicions" with what would confirm it.
+Do not edit files.</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.claude/agents/test-auditor.md</span
+              ><button type="button" class="copy" data-copy="t-test">Copy</button>
+            </div>
+            <pre id="t-test"><code>---
+name: test-auditor
+description: Use after tests pass and before opening a PR. Judges whether the tests prove the behavior in the slice brief. Read-only.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+You review tests, not code style. Inputs: the slice brief and `git diff origin/main...HEAD`.
+
+Flag, with file:line:
+- Tests that assert on labels, config text or mocks instead of behavior.
+- Acceptance criteria with no test that failed first and passes now.
+- Missing negative cases: wrong tenant (404), low role (403), invalid input,
+  expired or reused tokens.
+- Check-then-act code with no concurrency test.
+- Flake risks: sleeps, shared state between tests, order dependence, real clocks,
+  real network.
+- Changed lines with no coverage.
+
+Run the suite once and report the counts. Do not edit files.</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">D</span>Claude Code hooks</h3>
+          <p class="small">
+            The PreToolUse hook locks committed acceptance tests, the PostToolUse hook lints each edit, and the Stop
+            hook keeps the agent from ending a turn with lint or type errors. Exit code 2 sends the message back to the
+            agent.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.claude/settings.json</span
+              ><button type="button" class="copy" data-copy="t-settings">Copy</button>
+            </div>
+            <pre id="t-settings"><code>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agent/guard-acceptance-tests.mjs\"" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agent/lint-edited-file.mjs\"" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agent/verify-before-stop.mjs\"" }]
+      }
+    ]
+  }
+}</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">scripts/agent/guard-acceptance-tests.mjs</span
+              ><button type="button" class="copy" data-copy="t-guard">Copy</button>
+            </div>
+            <pre
+              id="t-guard"
+            ><code>// PreToolUse: committed acceptance tests are the approved spec, so block edits to them.
+import { execFileSync } from "node:child_process";
+
+let raw = "";
+for await (const chunk of process.stdin) raw += chunk;
+const file = JSON.parse(raw).tool_input?.file_path ?? "";
+if (!/\.acceptance\.test\.tsx?$/.test(file)) process.exit(0);
+
+try {
+  execFileSync("git", ["ls-files", "--error-unmatch", file], { stdio: "ignore" });
+} catch {
+  process.exit(0); // new, uncommitted acceptance test: allowed while writing tests first
+}
+process.stderr.write(
+  "Blocked: this acceptance test is part of the approved spec. Do not change it to make code pass. " +
+    "If the spec is wrong, stop and ask the user.\n",
+);
+process.exit(2);</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">scripts/agent/lint-edited-file.mjs</span
+              ><button type="button" class="copy" data-copy="t-lint">Copy</button>
+            </div>
+            <pre
+              id="t-lint"
+            ><code>// PostToolUse: lint the file the agent just edited and send problems straight back to it.
+import { ESLint } from "eslint";
+
+let raw = "";
+for await (const chunk of process.stdin) raw += chunk;
+const file = JSON.parse(raw).tool_input?.file_path ?? "";
+if (!/\.(ts|tsx|mjs)$/.test(file) || file.includes("generated")) process.exit(0);
+
+const eslint = new ESLint({ cwd: process.env.CLAUDE_PROJECT_DIR ?? process.cwd(), warnIgnored: false });
+const results = await eslint.lintFiles([file]);
+if (results.some((r) =&gt; r.errorCount &gt; 0 || r.warningCount &gt; 0)) {
+  const formatter = await eslint.loadFormatter("stylish");
+  process.stderr.write(await formatter.format(results));
+  process.exit(2);
+}</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">scripts/agent/verify-before-stop.mjs</span
+              ><button type="button" class="copy" data-copy="t-stop">Copy</button>
+            </div>
+            <pre id="t-stop"><code>// Stop: do not let the agent finish a turn with lint or type errors in changed code.
+import { execSync } from "node:child_process";
+
+let raw = "";
+for await (const chunk of process.stdin) raw += chunk;
+const { stop_hook_active: retried } = JSON.parse(raw || "{}");
+
+const changed = execSync("git status --porcelain", { encoding: "utf8" })
+  .split("\n")
+  .some((line) =&gt; /\.(ts|tsx|mjs|prisma)$/.test(line.trim()));
+// Nothing to check, or already blocked once this turn. CI stays the final gate.
+if (!changed || retried) process.exit(0);
+
+for (const command of ["npm run lint", "npm run typecheck"]) {
+  try {
+    execSync(command, { stdio: "pipe", encoding: "utf8" });
+  } catch (error) {
+    process.stderr.write(`${command} failed. Fix it before you finish:\n${String(error.stdout ?? "").slice(-4000)}`);
+    process.exit(2);
+  }
+}</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">E</span>Staging deploy gated on CI</h3>
+          <p class="small">
+            Replaces <code>.github/workflows/deploy-staging.yml</code>. Have <code>/api/health</code> return the commit
+            SHA so the smoke job can tell the new build from the old one. If Vercel deploys the web app through its Git
+            integration, it will not wait for this workflow; deploy it from here with the Vercel CLI instead.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.github/workflows/deploy-staging.yml</span
+              ><button type="button" class="copy" data-copy="t-deploy">Copy</button>
+            </div>
+            <pre id="t-deploy"><code>name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows: ["CI Quality Gate"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Require staging secrets
+        run: |
+          [ -n "$DIRECT_URL" ] || { echo "::error::STAGING_DIRECT_URL is not set"; exit 1; }
+          [ -n "$RENDER_DEPLOY_HOOK_URL" ] || { echo "::error::RENDER_DEPLOY_HOOK_URL is not set"; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
+      - run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      STAGING_URL: ${{ vars.STAGING_URL }}
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Wait until staging serves the new commit
+        run: |
+          for i in $(seq 1 40); do
+            curl -fsS "$STAGING_URL/api/health" | grep -q "$EXPECTED_SHA" &amp;&amp; exit 0
+            sleep 15
+          done
+          echo "::error::Staging never reported $EXPECTED_SHA"; exit 1
+      # Next: run a Playwright login journey against $STAGING_URL.</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">F</span>Branch protection</h3>
+          <p class="small">
+            Run this yourself; it changes repository settings. Reviews stay off because GitHub does not let you approve
+            your own PR. Your merge, after reading the evidence table, is the approval.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">protection.json</span
+              ><button type="button" class="copy" data-copy="t-prot">Copy</button>
+            </div>
+            <pre id="t-prot"><code>{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Verify Quality Gates", "Playwright E2E Smoke Tests"]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": true
+}</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">terminal</span><button type="button" class="copy" data-copy="t-gh">Copy</button>
+            </div>
+            <pre
+              id="t-gh"
+            ><code>gh api -X PUT repos/munna7862/TestPulse/branches/main/protection --input protection.json</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">G</span>Coverage thresholds</h3>
+          <p class="small">
+            Add <code>@vitest/coverage-v8</code> at the same major as Vitest and change the package's test script to
+            <code>vitest run --coverage</code>. Start at today's measured numbers if they are below these.
+          </p>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">apps/api/vitest.config.ts (excerpt)</span
+              ><button type="button" class="copy" data-copy="t-cov">Copy</button>
+            </div>
+            <pre id="t-cov"><code>export default defineConfig({
+  test: {
+    // ...existing options
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      reporter: ["text-summary", "lcov"],
+      // Raise after each slice. Never lower without a written reason.
+      thresholds: { lines: 60, statements: 60, functions: 60, branches: 50 },
+    },
+  },
+});</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">H</span>PR evidence section</h3>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.github/pull_request_template.md (add)</span
+              ><button type="button" class="copy" data-copy="t-pr">Copy</button>
+            </div>
+            <pre id="t-pr"><code>## Evidence
+| AC  | Test (file › name)                                              | Result        |
+| --- | --------------------------------------------------------------- | ------------- |
+| AC1 | apps/api/test/invitations.acceptance.test.ts › [SC-ORG-010] ... | pass, CI #... |
+
+## Independent review
+| Reviewer          | Findings | Fixed | Deferred (issue link) |
+| ----------------- | -------- | ----- | --------------------- |
+| claims-auditor    |          |       |                       |
+| security-reviewer |          |       |                       |
+| test-auditor      |          |       |                       |
+
+## Not done
+Anything from the brief that did not ship, and where it went.</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">I</span>PR size check</h3>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">scripts/check-pr-size.mjs</span
+              ><button type="button" class="copy" data-copy="t-size">Copy</button>
+            </div>
+            <pre
+              id="t-size"
+            ><code>// Fail PRs that are too large to review well. Override with the size/exception label.
+import { execFileSync } from "node:child_process";
+
+const base = process.env.BASE_REF ?? "origin/main";
+const limit = Number(process.env.PR_SIZE_LIMIT ?? 800);
+const ignored = [
+  /(^|\/)package-lock\.json$/,
+  /\/src\/generated\//,
+  /\/prisma\/migrations\//,
+  /^(docs|planning)\//,
+  /\.md$/,
+  /\.(test|spec)\.tsx?$/,
+  /\/(test|e2e)\//,
+];
+
+const numstat = execFileSync("git", ["diff", "--numstat", `${base}...HEAD`], { encoding: "utf8" });
+let changed = 0;
+for (const line of numstat.trim().split("\n")) {
+  const [added, deleted, file] = line.split("\t");
+  if (!file || added === "-" || ignored.some((re) =&gt; re.test(file))) continue;
+  changed += Number(added) + Number(deleted);
+}
+
+console.info(`Product lines changed: ${changed} (limit ${limit})`);
+if (changed &gt; limit &amp;&amp; process.env.PR_SIZE_OVERRIDE !== "true") {
+  console.error("PR too large to review well. Split it, or add the size/exception label with a reason.");
+  process.exit(1);
+}</code></pre>
+          </figure>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">.github/workflows/ci.yml (verify job, new step)</span
+              ><button type="button" class="copy" data-copy="t-sizeci">Copy</button>
+            </div>
+            <pre id="t-sizeci"><code>      - name: PR size budget
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          PR_SIZE_OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'size/exception') }}
+        run: node scripts/check-pr-size.mjs</code></pre>
+          </figure>
+
+          <h3><span class="tpl-label">J</span>Stub detection</h3>
+          <figure class="code">
+            <div class="code-head">
+              <span class="code-path">eslint.config.mjs (add to the main rules block)</span
+              ><button type="button" class="copy" data-copy="t-stub">Copy</button>
+            </div>
+            <pre id="t-stub"><code>"no-restricted-syntax": [
+  "error",
+  {
+    selector: "ExpressionStatement &gt; UnaryExpression[operator='void'][argument.type='Identifier']",
+    message: "Looks like a stub (void x;). Implement it or delete it.",
+  },
+],
+"no-warning-comments": ["error", { terms: ["todo", "fixme", "stub"], location: "start" }],</code></pre>
+          </figure>
+
+          <div class="foot">
+            <p>
+              How the numbers were measured: commit and PR data from <code>git log</code> and <code>gh pr list</code>;
+              CI outcomes from <code>gh run list</code> and <code>gh run view</code>; token estimates as bytes ÷ 4 over
+              the files each sprint prompt tells the agent to read; code size excludes <code>node_modules</code>,
+              generated Prisma code and build output. Findings 01–06 were read directly from the source at commit
+              <code>6ac3ac0</code>.
+            </p>
+            <p>Prepared in Claude Code on 2 October 2026.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        document.querySelectorAll("[data-copy]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            var target = document.getElementById(button.getAttribute("data-copy"));
+            if (!target) return;
+            var text = target.innerText;
+            var done = function (label) {
+              button.textContent = label;
+              setTimeout(function () {
+                button.textContent = "Copy";
+              }, 1800);
+            };
+            var selectFallback = function () {
+              var range = document.createRange();
+              range.selectNodeContents(target);
+              var selection = window.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
+              done("Selected, press Ctrl+C");
+            };
+            try {
+              navigator.clipboard.writeText(text).then(function () {
+                done("Copied");
+              }, selectFallback);
+            } catch (e) {
+              selectFallback();
+            }
+          });
+        });
+
+        var KEY = "verified-delivery-playbook:checklist";
+        var state = {};
+        try {
+          state = JSON.parse(localStorage.getItem(KEY) || "{}") || {};
+        } catch (e) {
+          state = {};
+        }
+        document.querySelectorAll(".checklist input[type=checkbox]").forEach(function (box) {
+          if (state[box.id]) box.checked = true;
+          box.addEventListener("change", function () {
+            state[box.id] = box.checked;
+            try {
+              localStorage.setItem(KEY, JSON.stringify(state));
+            } catch (e) {
+              /* storage unavailable: ticks last for this visit only */
+            }
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "start:worker": "node dist/worker-main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:contract": "vitest run --config vitest.contract.config.ts",
     "lint": "eslint ."
   },
@@ -33,6 +33,7 @@
   "devDependencies": {
     "@types/ioredis-mock": "^8.2.8",
     "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "^5.0.3",
     "ioredis-mock": "^8.13.1",
     "msw": "^2.15.0",
     "tsup": "^8.5.1",
