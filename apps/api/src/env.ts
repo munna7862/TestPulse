@@ -41,7 +41,17 @@ export const ApiEnvSchema = z.object({
         });
         return z.NEVER;
       }
-      if (/^\d+$/.test(trimmed)) return Number(trimmed);
+      if (/^\d+$/.test(trimmed)) {
+        const hops = Number(trimmed);
+        if (hops > 5) {
+          ctx.addIssue({
+            code: "custom",
+            message: "TRUST_PROXY hop count must be 0-5; a larger count trusts client-written entries.",
+          });
+          return z.NEVER;
+        }
+        return hops;
+      }
       return value
         .split(",")
         .map((entry) => entry.trim())

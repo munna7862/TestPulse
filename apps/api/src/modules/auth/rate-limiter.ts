@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { normalizeIP } from "@fastify/rate-limit";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "../../lib/redis";
 
@@ -96,7 +97,9 @@ export class RateLimitUnavailableError extends Error {
 }
 
 /** Per-IP key. `request.ip` honours X-Forwarded-For only for the proxy hops configured in TRUST_PROXY. */
-export const byIp = (request: FastifyRequest): string => `ip:${request.ip}`;
+// IPv6 clients are keyed by /64 (one customer allocation) and IPv4-mapped addresses as plain IPv4, so rotating
+// addresses inside one block cannot dodge the limit.
+export const byIp = (request: FastifyRequest): string => `ip:${normalizeIP(request.ip, 64)}`;
 
 /** Per-account key from the request body. Emails are normalised like the service does, then hashed (no PII in Redis). */
 export function byEmail(request: FastifyRequest): string | undefined {
