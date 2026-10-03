@@ -11,7 +11,9 @@ import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
 import type { RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
+import { orgRoutes } from "./modules/orgs";
 import { registerErrorHandling } from "./plugins/error-handler";
+import { createTenantContextHook, registerTenantRouteGuard } from "./plugins/tenant-context";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
 export interface BuildAppOptions {
@@ -71,6 +73,18 @@ export async function buildApp({
   await app.register(sensible);
   registerErrorHandling(app);
 
+  let activeDb: PrismaClient | undefined = injectedDb;
+  if (!activeDb && env.DATABASE_URL) {
+    try {
+      activeDb = getSystemDb();
+    } catch {
+      // Ignore if not configured
+    }
+  }
+
+  // Before any route: every route under /api/v1/orgs/:orgId must be in the isolation table (master plan §7.2).
+  registerTenantRouteGuard(app, activeDb ? createTenantContextHook(activeDb, env) : undefined);
+
   await app.register(cookie);
   await app.register(jwt, {
     secret: env.JWT_ACCESS_SECRET,
@@ -104,15 +118,6 @@ export async function buildApp({
     }),
   );
 
-  let activeDb: PrismaClient | undefined = injectedDb;
-  if (!activeDb && env.DATABASE_URL) {
-    try {
-      activeDb = getSystemDb();
-    } catch {
-      // Ignore if not configured
-    }
-  }
-
   if (activeDb) {
     const mailer = injectedMailer ?? new ConsoleMailer({ revealSecrets: env.NODE_ENV !== "production" });
     if (!injectedMailer && env.NODE_ENV === "production") {
@@ -133,6 +138,7 @@ export async function buildApp({
       prefix: "/api/v1/auth",
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
+    await app.register(orgRoutes({ db: activeDb, env }));
   }
 
   return app;
