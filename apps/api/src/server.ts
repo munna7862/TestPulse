@@ -3,6 +3,7 @@ import { checkDatabase, createPrismaClient } from "@testpulse/db";
 import { buildApp } from "./app";
 import { loadApiEnv } from "./env";
 import { checkRedis, createRedis } from "./lib/redis";
+import { RedisRateLimitStore } from "./modules/auth/rate-limiter";
 import { startWorkers, type WorkerHandle } from "./worker";
 
 // Local development convenience: load apps/api/.env if present (never in production).
@@ -13,9 +14,15 @@ if (process.env.NODE_ENV !== "production" && existsSync(".env")) {
 const env = loadApiEnv();
 const db = env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
 const redis = env.REDIS_URL ? createRedis(env.REDIS_URL) : undefined;
+// Separate fail-fast client for auth rate limits; with no offline queue it must be connected explicitly.
+const limiterRedis = env.REDIS_URL ? createRedis(env.REDIS_URL, { failFast: true }) : undefined;
+limiterRedis?.connect().catch((error: unknown) => {
+  console.error("Rate-limit Redis connection failed; auth routes return 503 until it recovers", error);
+});
 
 const app = await buildApp({
   env,
+  ...(limiterRedis ? { rateLimitStore: new RedisRateLimitStore(limiterRedis) } : {}),
   health: {
     ...(db ? { database: () => checkDatabase(db) } : {}),
     ...(redis ? { redis: () => checkRedis(redis) } : {}),
@@ -37,6 +44,7 @@ async function shutdown(signal: string): Promise<void> {
     await workers?.close();
     await db?.$disconnect();
     redis?.disconnect();
+    limiterRedis?.disconnect();
     process.exit(0);
   } catch (error) {
     app.log.error({ err: error }, "error during shutdown");

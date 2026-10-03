@@ -28,7 +28,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `API_INTERNAL_URL` | W | `https://testpulse-api.onrender.com` | Target of the `/api/:path*` rewrite |
 | `NEXT_PUBLIC_SOCKET_URL` | W | `https://testpulse-api.onrender.com` | Direct WebSocket endpoint (ticket auth) |
 | `NEXT_PUBLIC_APP_URL` | W | `https://testpulse-staging.vercel.app` | Canonical URLs, OG tags |
-| `TRUST_PROXY` | A | `true` | Fastify `trustProxy` for correct client IPs behind the proxies |
+| `TRUST_PROXY` | A | `1` | Proxies allowed to set X-Forwarded-For: `false`, a hop count (`1` = Render's load balancer only), or comma-separated trusted IPs/CIDRs. `true` is rejected at startup because it lets clients spoof their IP |
 
 ## Auth & secrets
 
@@ -42,6 +42,12 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `OAUTH_REDIRECT_BASE_URL` | A | Optional. Origin used to build provider callback URLs; defaults to `WEB_ORIGIN` (same-origin `/api` proxy) |
 | `OAUTH_PROVIDER_TIMEOUT_MS` | A | Default `10000`. Bound for each outbound provider call |
 | `OAUTH_RATE_LIMIT_PER_MINUTE` | A | Default `30`. Per-IP limit for OAuth start/callback |
+| `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE` | A | Default `10`. Password logins per IP per minute (security model §5) |
+| `AUTH_RATE_LIMIT_LOGIN_PER_EMAIL_PER_15_MIN` | A | Default `5`. Password logins per account per 15 minutes, from any IP |
+| `AUTH_RATE_LIMIT_RECOVERY_PER_HOUR` | A | Default `20`. Register, resend, forgot/reset and verify-email requests per IP per hour |
+| `AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR` | A | Default `5`. Register, resend and forgot requests per email per hour |
+| `AUTH_GENERIC_RESPONSE_MIN_MS` | A | Default `250` (`0` when `NODE_ENV=test`). Minimum time for register/resend/forgot responses so timing cannot reveal accounts (ADR-005 §9) |
+| `TRUST_PROXY` (note) | A | Auth rate limits key on `request.ip`, which follows `TRUST_PROXY`. Counters live in Redis when `REDIS_URL` is set (a separate fail-fast client, 500 ms per command); auth routes return 503 when Redis is unreachable. Behind the Vercel `/api` rewrite, per-IP keys are Vercel's egress IPs until G8 adds a verified proxy header |
 | `WEBHOOK_SECRET_ENCRYPTION_KEY` (S) | A | 32-byte base64 key for AES-256-GCM |
 | `UNSUBSCRIBE_SIGNING_SECRET` (S) | A | HMAC for unsubscribe links |
 

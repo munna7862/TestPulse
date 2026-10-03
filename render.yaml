@@ -22,7 +22,10 @@ services:
       - key: LOG_LEVEL
         value: info
       - key: TRUST_PROXY
-        value: "true"
+        # Trust only Render's load balancer (one hop): it appends the real caller's IP, so it cannot be spoofed,
+        # even when the API host is called directly. Requests via the Vercel /api rewrite are keyed by Vercel's
+        # egress IP for per-IP limits (per-email limits still apply). See task.md G8.
+        value: "1"
       - key: WEB_ORIGIN
         sync: false
       - key: DATABASE_URL

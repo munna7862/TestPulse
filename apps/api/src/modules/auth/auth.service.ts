@@ -11,6 +11,8 @@ export interface AuthDependencies {
   mailer: Mailer;
   jwtSign: (payload: { sub: string; sid: string }) => string;
   env: ApiEnv;
+  /** Called when background mail delivery fails. Mail is sent off the response path (ADR-005 §9 timing). */
+  onMailError?: (error: unknown) => void;
 }
 
 export class AuthError extends Error {
@@ -27,6 +29,14 @@ export class AuthError extends Error {
 export class AuthService {
   constructor(private readonly deps: AuthDependencies) {}
 
+  /** Sends mail without making the response wait for the provider, so timing never depends on it. */
+  private deliver(send: () => Promise<void>): void {
+    // Promise.resolve().then(...) also captures a mailer that throws synchronously (review suspicion 3).
+    void Promise.resolve()
+      .then(send)
+      .catch((error: unknown) => this.deps.onMailError?.(error));
+  }
+
   public get db(): PrismaClient {
     return this.deps.db;
   }
@@ -40,7 +50,8 @@ export class AuthService {
     const existing = await this.deps.db.user.findUnique({ where: { email } });
 
     if (existing) {
-      // Do not disclose account presence; return generic 202 message
+      // Do not disclose account presence: same argon2 cost and the same generic 202 (ADR-005 §9).
+      await hashPassword(params.password);
       return {
         message: "If your email is not already registered, you will receive a verification link.",
       };
@@ -73,12 +84,14 @@ export class AuthService {
     });
 
     const verifyUrl = `${this.deps.env.APP_URL}/verify-email?token=${token}`;
-    await this.deps.mailer.sendVerificationEmail({
-      to: user.email,
-      name: user.name,
-      token,
-      verifyUrl,
-    });
+    this.deliver(() =>
+      this.deps.mailer.sendVerificationEmail({
+        to: user.email,
+        name: user.name,
+        token,
+        verifyUrl,
+      }),
+    );
 
     return {
       message: "If your email is not already registered, you will receive a verification link.",
@@ -105,10 +118,14 @@ export class AuthService {
     }
 
     await this.deps.db.$transaction(async (tx) => {
-      await tx.verificationToken.update({
-        where: { id: verificationToken.id },
+      // Conditional update: under concurrency only one request can consume the token.
+      const consumed = await tx.verificationToken.updateMany({
+        where: { id: verificationToken.id, usedAt: null },
         data: { usedAt: new Date() },
       });
+      if (consumed.count !== 1) {
+        throw new AuthError(400, "INVALID_TOKEN", "Verification token is invalid or has expired.");
+      }
 
       await tx.user.update({
         where: { id: verificationToken.userId },
@@ -156,12 +173,14 @@ export class AuthService {
       });
 
       const verifyUrl = `${this.deps.env.APP_URL}/verify-email?token=${token}`;
-      await this.deps.mailer.sendVerificationEmail({
-        to: user.email,
-        name: user.name,
-        token,
-        verifyUrl,
-      });
+      this.deliver(() =>
+        this.deps.mailer.sendVerificationEmail({
+          to: user.email,
+          name: user.name,
+          token,
+          verifyUrl,
+        }),
+      );
     }
 
     return {
@@ -271,50 +290,46 @@ export class AuthService {
     const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     let raceDetected = false;
-    let newSession: { id: string } | null = null;
 
-    try {
-      newSession = await this.deps.db.$transaction(async (tx) => {
-        // Concurrency guard: atomically rotate this session. If another concurrent request
-        // already updated revokedAt, updateMany returns count: 0, preventing race conditions (G6).
-        const updateResult = await tx.session.updateMany({
-          where: {
-            id: session.id,
-            revokedAt: null,
-            replacedById: null,
-          },
-          data: {
-            revokedAt: new Date(),
-          },
-        });
-
-        if (updateResult.count === 0) {
-          raceDetected = true;
-          return null;
-        }
-
-        const created = await tx.session.create({
-          data: {
-            userId: session.userId,
-            familyId: session.familyId,
-            refreshTokenHash: newRefreshTokenHash,
-            expiresAt: newExpiresAt,
-            userAgent: params.userAgent ?? session.userAgent,
-          },
-        });
-
-        await tx.session.update({
-          where: { id: session.id },
-          data: {
-            replacedById: created.id,
-          },
-        });
-
-        return created;
+    // Database errors propagate as 500s; only a lost race (count === 0) counts as token reuse.
+    const newSession = await this.deps.db.$transaction(async (tx) => {
+      // Concurrency guard: atomically rotate this session. If another concurrent request
+      // already updated revokedAt, updateMany returns count: 0, preventing race conditions (G6).
+      const updateResult = await tx.session.updateMany({
+        where: {
+          id: session.id,
+          revokedAt: null,
+          replacedById: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
       });
-    } catch {
-      raceDetected = true;
-    }
+
+      if (updateResult.count === 0) {
+        raceDetected = true;
+        return null;
+      }
+
+      const created = await tx.session.create({
+        data: {
+          userId: session.userId,
+          familyId: session.familyId,
+          refreshTokenHash: newRefreshTokenHash,
+          expiresAt: newExpiresAt,
+          userAgent: params.userAgent ?? session.userAgent,
+        },
+      });
+
+      await tx.session.update({
+        where: { id: session.id },
+        data: {
+          replacedById: created.id,
+        },
+      });
+
+      return created;
+    });
 
     if (raceDetected || !newSession) {
       await this.deps.db.session.updateMany({
@@ -394,12 +409,14 @@ export class AuthService {
       });
 
       const resetUrl = `${this.deps.env.APP_URL}/reset-password?token=${token}`;
-      await this.deps.mailer.sendPasswordResetEmail({
-        to: user.email,
-        name: user.name,
-        token,
-        resetUrl,
-      });
+      this.deliver(() =>
+        this.deps.mailer.sendPasswordResetEmail({
+          to: user.email,
+          name: user.name,
+          token,
+          resetUrl,
+        }),
+      );
     }
 
     return {
@@ -434,10 +451,14 @@ export class AuthService {
         data: { passwordHash: newPasswordHash },
       });
 
-      await tx.verificationToken.update({
-        where: { id: verificationToken.id },
+      // Conditional update: under concurrency only one request can consume the token.
+      const consumed = await tx.verificationToken.updateMany({
+        where: { id: verificationToken.id, usedAt: null },
         data: { usedAt: new Date() },
       });
+      if (consumed.count !== 1) {
+        throw new AuthError(400, "INVALID_TOKEN", "Password reset token is invalid or has expired.");
+      }
 
       // Revoke all existing sessions for this user (ADR-005)
       await tx.session.updateMany({

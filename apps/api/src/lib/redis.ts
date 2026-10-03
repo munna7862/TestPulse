@@ -6,7 +6,22 @@ export type { Redis };
  * Creates an ioredis 5 client (ADR-004). Server-only — never import from @testpulse/shared.
  * BullMQ workers require `maxRetriesPerRequest: null` (blocking commands).
  */
-export function createRedis(url: string, { forWorker = false }: { forWorker?: boolean } = {}): Redis {
+export function createRedis(
+  url: string,
+  { forWorker = false, failFast = false }: { forWorker?: boolean; failFast?: boolean } = {},
+): Redis {
+  if (failFast) {
+    // Request-path checks (auth rate limits): reject immediately while disconnected instead of queueing,
+    // and bound every command, so an outage yields a fast 503 (security model §5).
+    return new Redis(url, {
+      lazyConnect: true,
+      enableReadyCheck: true,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      commandTimeout: 500,
+      connectTimeout: 2_000,
+    });
+  }
   return new Redis(url, {
     lazyConnect: true,
     enableReadyCheck: true,

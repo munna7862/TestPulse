@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { AuthError } from "./auth.service";
+import { RateLimitUnavailableError } from "./rate-limiter";
 
 /**
  * Maps `AuthError` to the shared failure envelope inside an encapsulated auth plugin. Any other error is
@@ -14,6 +15,13 @@ export function registerAuthErrorHandler(app: FastifyInstance): void {
           code: error.code,
           message: error.message,
         },
+      });
+    }
+    if (error instanceof RateLimitUnavailableError) {
+      // Fail closed (security model §5): no limit store, no password auth.
+      return reply.code(503).send({
+        success: false,
+        error: { code: "SERVICE_UNAVAILABLE", message: error.message },
       });
     }
     throw error;

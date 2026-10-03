@@ -96,7 +96,7 @@ See ADR-006 (five layers). Code-review checklist for every PR touching data acce
 - [ ] New route registered in the isolation table with its expected 404/403 behavior.
 - [ ] Socket events and jobs carry tenant IDs and never leak across rooms.
 
-## 5. Rate limiting (Redis-backed, `@fastify/rate-limit`)
+## 5. Rate limiting (Redis-backed; password auth uses `modules/auth/rate-limiter.ts`, OAuth uses `@fastify/rate-limit`)
 
 | Category | Key | Initial limit (tune in P03-S06 / P04-S06) | On Redis outage |
 | :--- | :--- | :--- | :--- |
@@ -108,7 +108,7 @@ See ADR-006 (five layers). Code-review checklist for every PR touching data acce
 | Realtime ticket | user | 30/min | Fail closed |
 | Webhook test / redeliver | project | 10/min | Fail closed |
 
-The client IP comes from `x-forwarded-for` with `trustProxy` limited to the known proxy hops (Vercel rewrite → Render).
+The client IP comes from `x-forwarded-for` with `trustProxy` limited to the known proxy hops (`TRUST_PROXY=1`: Render's load balancer). `true` is rejected because it trusts client-written entries. Behind the Vercel rewrite the trusted entry is Vercel's egress IP; a verified proxy header (task.md G8) would allow per-client keys there.
 
 ## 6. Web security
 
