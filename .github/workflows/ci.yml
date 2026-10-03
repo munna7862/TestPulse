@@ -62,6 +62,9 @@ jobs:
       - name: Prettier format check
         run: npm run format:check
 
+      - name: Claude Code skills in sync with .agents/skills
+        run: npm run check:skills
+
       - name: Scenario traceability check
         run: npm run check:traceability
 

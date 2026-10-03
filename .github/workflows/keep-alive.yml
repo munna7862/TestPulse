@@ -1,7 +1,8 @@
 name: Keep-Alive Staging Ping
 
-# Pings staging /health during working hours (Monday-Friday 08:00-18:00 UTC)
-# to minimize Render free-tier cold starts during development & demos (master plan §4.4, P02-S05).
+# Pings staging /health during working hours (Monday-Friday 08:00-18:00 UTC) to reduce Render free-tier
+# cold starts (master plan §4.4). Runs only once the repo variable STAGING_API_URL exists, and fails when
+# staging does not answer, so a green run always means staging is up.
 on:
   schedule:
     - cron: "*/14 8-18 * * 1-5"
@@ -10,10 +11,10 @@ on:
 jobs:
   ping:
     name: Ping Staging Health
+    if: vars.STAGING_API_URL != ''
     runs-on: ubuntu-latest
+    env:
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
     steps:
       - name: Ping Render Staging API Health Endpoint
-        run: |
-          TARGET_URL="${{ secrets.STAGING_API_URL || 'https://testpulse-api-staging.onrender.com' }}/health"
-          echo "Pinging $TARGET_URL ..."
-          curl -f -s -m 30 "$TARGET_URL" || echo "Warning: ping timed out or service waking up."
+        run: curl -fsS -m 60 --retry 3 --retry-delay 20 --retry-all-errors "$STAGING_API_URL/health"

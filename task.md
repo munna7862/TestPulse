@@ -32,6 +32,13 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [x] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
 - [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
 
+## 🧭 Delivery process changes (docs/process/ai-delivery-playbook.html §6)
+
+- [x] **Step 0** quality gates and branch protection: PR #9.
+- [x] **Step 1** hardening slice H1 (G4–G6): PR #10. Independent review of H1 runs with the Step 2 reviewer agents.
+- [/] **Step 2** context diet: lean AGENTS.md + folder rules, skills in `.claude/skills` (synced, CI-checked),
+  reviewer agents, Claude Code hooks, slice brief template, `planning/NOW.md`.
+
 ## ✅ Completion Log
 
 | Phase / Sprint | Completed | Evidence | Notes |

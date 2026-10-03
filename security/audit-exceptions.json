@@ -18,6 +18,15 @@
       "addedBy": "P02-S05 audit gate fix",
       "added": "2026-10-02",
       "expires": "2026-11-30"
+    },
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "severity": "high",
+      "reason": "Only path is @next/eslint-plugin-next@16.3.8 -> fast-glob@3.3.1 -> micromatch -> braces@3.0.3 (root devDependency, ESLint only). It expands glob patterns written in our own config against our own repo files, never user input, and is not in any app bundle. No patched braces release exists (3.0.3 is latest); npm's suggested fix downgrades the plugin to Next 14, which ADR-004 forbids.",
+      "addedBy": "Step 2 context diet (advisory published 2026-10-02)",
+      "added": "2026-10-03",
+      "expires": "2026-11-30"
     }
   ]
 }
