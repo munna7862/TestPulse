@@ -16,7 +16,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
 - **Current Active Sprint:** P03-S03: Organization & Project CRUD and Membership
 - **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** H1 (PR #10) merged; its independent review reopened G4 and G5 and found G7. Slice H1b fixes them. Next: P03-S03.
+- **Current Status:** H1b (PR #12) and Step 2 (PR #11) merged. P03-S03 runs as slices: S-001 orgs and tenant context merged (PR #13); next S-002 projects, then S-003 purge job, S-004 web. Per-slice metrics in `planning/metrics.md`.
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
