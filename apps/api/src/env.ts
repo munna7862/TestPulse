@@ -36,14 +36,28 @@ export const ApiEnvSchema = z.object({
   OAUTH_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(10_000),
   /** Per-IP limit for OAuth start/callback (security model §5). */
   OAUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(30),
-  /** Per-IP limit for password login (security model §5). */
-  AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(60),
-  /** Per-IP limit for register, forgot-password, reset-password (security model §5). */
-  AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(60),
+  /** Password login attempts per IP per minute (security model §5). */
+  AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(10),
+  /** Password login attempts per account (email) per 15 minutes, from any IP (security model §5). */
+  AUTH_RATE_LIMIT_LOGIN_PER_EMAIL_PER_15_MIN: z.coerce.number().int().min(1).max(10_000).default(5),
+  /** Register, resend-verification, forgot/reset password and verify-email requests per IP per hour. */
+  AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(20),
+  /** Register, resend-verification and forgot-password requests per email per hour, from any IP. */
+  AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(5),
+  /**
+   * Generic auth responses (register, resend-verification, forgot-password) never return sooner than this,
+   * so response time cannot reveal whether an account exists (ADR-005 §9). 0 disables the floor.
+   */
+  AUTH_GENERIC_RESPONSE_MIN_MS: z.coerce.number().int().min(0).max(10_000).default(250),
 });
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 
 export function loadApiEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
   // Render exposes the deployed commit as RENDER_GIT_COMMIT; the staging smoke check compares it via /health.
-  return parseEnv(ApiEnvSchema, { ...source, GIT_COMMIT_SHA: source.GIT_COMMIT_SHA ?? source.RENDER_GIT_COMMIT });
+  return parseEnv(ApiEnvSchema, {
+    ...source,
+    GIT_COMMIT_SHA: source.GIT_COMMIT_SHA ?? source.RENDER_GIT_COMMIT,
+    // Keep unit and integration suites fast; tests that check the floor set it explicitly.
+    AUTH_GENERIC_RESPONSE_MIN_MS: source.AUTH_GENERIC_RESPONSE_MIN_MS ?? (source.NODE_ENV === "test" ? "0" : undefined),
+  });
 }

@@ -42,6 +42,12 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `OAUTH_REDIRECT_BASE_URL` | A | Optional. Origin used to build provider callback URLs; defaults to `WEB_ORIGIN` (same-origin `/api` proxy) |
 | `OAUTH_PROVIDER_TIMEOUT_MS` | A | Default `10000`. Bound for each outbound provider call |
 | `OAUTH_RATE_LIMIT_PER_MINUTE` | A | Default `30`. Per-IP limit for OAuth start/callback |
+| `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE` | A | Default `10`. Password logins per IP per minute (security model §5) |
+| `AUTH_RATE_LIMIT_LOGIN_PER_EMAIL_PER_15_MIN` | A | Default `5`. Password logins per account per 15 minutes, from any IP |
+| `AUTH_RATE_LIMIT_RECOVERY_PER_HOUR` | A | Default `20`. Register, resend, forgot/reset and verify-email requests per IP per hour |
+| `AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR` | A | Default `5`. Register, resend and forgot requests per email per hour |
+| `AUTH_GENERIC_RESPONSE_MIN_MS` | A | Default `250` (`0` when `NODE_ENV=test`). Minimum time for register/resend/forgot responses so timing cannot reveal accounts (ADR-005 §9) |
+| `TRUST_PROXY` (note) | A | Auth rate limits key on `request.ip`; X-Forwarded-For counts only when this is set to the real proxy hops. Counters live in Redis when `REDIS_URL` is set, and auth routes return 503 if Redis is unreachable |
 | `WEBHOOK_SECRET_ENCRYPTION_KEY` (S) | A | 32-byte base64 key for AES-256-GCM |
 | `UNSUBSCRIBE_SIGNING_SECRET` (S) | A | HMAC for unsubscribe links |
 

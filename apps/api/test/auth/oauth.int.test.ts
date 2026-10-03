@@ -17,6 +17,12 @@ import {
 const ORIGIN = "https://testpulse.example.com";
 const PASSWORD = "ValidPassword123!";
 const BASE_ENV = {
+  // Not a rate-limit test: generous limits so many logins from one address don't trip them.
+  AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: "1000",
+  AUTH_RATE_LIMIT_LOGIN_PER_EMAIL_PER_15_MIN: "1000",
+  AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: "1000",
+  AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR: "1000",
+  AUTH_GENERIC_RESPONSE_MIN_MS: "0",
   NODE_ENV: "production",
   JWT_ACCESS_SECRET: "test-access-secret-at-least-32-chars-long",
   JWT_REFRESH_SECRET: "test-refresh-secret-at-least-32-chars-long",

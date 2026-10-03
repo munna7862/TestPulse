@@ -3,6 +3,7 @@ import { checkDatabase, createPrismaClient } from "@testpulse/db";
 import { buildApp } from "./app";
 import { loadApiEnv } from "./env";
 import { checkRedis, createRedis } from "./lib/redis";
+import { RedisRateLimitStore } from "./modules/auth/rate-limiter";
 import { startWorkers, type WorkerHandle } from "./worker";
 
 // Local development convenience: load apps/api/.env if present (never in production).
@@ -16,6 +17,7 @@ const redis = env.REDIS_URL ? createRedis(env.REDIS_URL) : undefined;
 
 const app = await buildApp({
   env,
+  ...(redis ? { rateLimitStore: new RedisRateLimitStore(redis) } : {}),
   health: {
     ...(db ? { database: () => checkDatabase(db) } : {}),
     ...(redis ? { redis: () => checkRedis(redis) } : {}),

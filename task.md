@@ -16,7 +16,7 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
 - **Current Active Sprint:** P03-S03: Organization & Project CRUD and Membership
 - **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** Slice H1 (auth security hardening) merged in PR #10 (G4, G5, G6 resolved). Next: P03-S03.
+- **Current Status:** H1 (PR #10) merged; its independent review reopened G4 and G5 and found G7. Slice H1b fixes them. Next: P03-S03.
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -28,9 +28,10 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [/] **G1 · P02-S05** Staging deploy reported green while skipping every step and did not wait for CI. Fix in the Step 0 PR (CI-gated, fails on missing secrets, smoke check). Still needs the staging secrets and the `STAGING_API_URL` variable to be added by the owner.
 - [/] **G2 · P02-S05** Sentry helpers were no-op stubs. Step 0 PR removes the stubs; error tracking is deferred until the first real staging deploy (owner decision, 2026-10-02).
 - [/] **G3 · P02-S05** Coverage thresholds were not enforced. Step 0 PR sets thresholds at measured floors. `apps/web` unit coverage is ~9%, below the 40% target in testing-strategy.md §4.
-- [x] **G4 · P03-S01** Password register/login/reset have no rate limiting (sprint task 12, SC-AUTH-017). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
-- [x] **G5 · P03-S01** Response timing reveals which emails have accounts (violates ADR-005 §9, threat model T11). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
-- [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10).
+- [/] **G4 · P03-S01** Rate limiting (sprint task 12, SC-AUTH-017). PR #10 added per-IP limits, but the review found them spoofable via X-Forwarded-For, with no per-email limit, in memory only and with loose defaults. Fixed in slice H1b.
+- [/] **G5 · P03-S01** Timing enumeration (ADR-005 §9, T11). PR #10 fixed login; register (2 ms vs 48 ms), resend and forgot still leaked. Fixed in slice H1b.
+- [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10); confirmed by independent review (20/20 races).
+- [/] **G7 · P03-S01** Verify-email and password-reset tokens could be used several times concurrently (review: 5 of 5 resets succeeded with one token); refresh treated any DB error as token reuse. Fixed in slice H1b.
 
 ## 🧭 Delivery process changes (docs/process/ai-delivery-playbook.html §6)
 

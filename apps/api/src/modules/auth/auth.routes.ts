@@ -1,4 +1,3 @@
-import rateLimit from "@fastify/rate-limit";
 import {
   apiSuccess,
   AuthMeResponseSchema,
@@ -17,68 +16,70 @@ import {
   VerifyEmailBodySchema,
   VerifyEmailResponseSchema,
 } from "@testpulse/shared";
-import type { FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { ApiEnv } from "../../env";
 import { registerAuthErrorHandler } from "./auth-error-handler";
 import { createAuthMiddleware } from "./auth.middleware";
 import { AuthError, type AuthService } from "./auth.service";
+import { byEmail, byIp, MemoryRateLimitStore, type RateLimitStore, rateLimitHook } from "./rate-limiter";
 import { clearAuthCookies, REFRESH_COOKIE_NAME, setAuthCookies } from "./tokens";
 
 export interface AuthRoutesOptions {
   authService: AuthService;
   env: ApiEnv;
+  /** Shared counter store; Redis in deployed environments so limits hold across instances. */
+  rateLimitStore?: RateLimitStore;
 }
 
-function getClientIp(request: FastifyRequest): string {
-  const forwarded = request.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return request.ip;
+const MINUTE = 60_000;
+
+/** Waits until at least `minMs` have passed since `startedAt`, so timing cannot reveal account existence. */
+async function holdUntil(startedAt: number, minMs: number): Promise<void> {
+  const remaining = minMs - (performance.now() - startedAt);
+  if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
-export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPluginAsyncZod {
+export function authRoutes({
+  authService,
+  env,
+  rateLimitStore = new MemoryRateLimitStore(),
+}: AuthRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
     const isProduction = env.NODE_ENV === "production";
     const middleware = createAuthMiddleware(authService.db, env);
 
     registerAuthErrorHandler(app);
 
-    await app.register(rateLimit, {
-      global: false,
-    });
-
-    const loginRateLimit = {
-      max: env.AUTH_RATE_LIMIT_LOGIN_PER_MINUTE,
-      timeWindow: "1 minute",
-      keyGenerator: (request: FastifyRequest) => getClientIp(request),
-      errorResponseBuilder: (_request: FastifyRequest, context: { ttl: number }) =>
-        Object.assign(
-          new Error(`Too many login attempts. Please try again in ${Math.ceil(context.ttl / 1000)} seconds.`),
-          { statusCode: 429 },
-        ),
+    // Security model §5. Per-IP keys use request.ip, which trusts X-Forwarded-For only per TRUST_PROXY.
+    const loginIp = { bucket: "login", max: env.AUTH_RATE_LIMIT_LOGIN_PER_MINUTE, windowMs: MINUTE, key: byIp };
+    const loginEmail = {
+      bucket: "login",
+      max: env.AUTH_RATE_LIMIT_LOGIN_PER_EMAIL_PER_15_MIN,
+      windowMs: 15 * MINUTE,
+      key: byEmail,
     };
-
-    const recoveryRateLimit = {
+    const recoveryIp = {
+      bucket: "recovery",
       max: env.AUTH_RATE_LIMIT_RECOVERY_PER_HOUR,
-      timeWindow: "1 hour",
-      keyGenerator: (request: FastifyRequest) => getClientIp(request),
-      errorResponseBuilder: (_request: FastifyRequest, context: { ttl: number }) =>
-        Object.assign(new Error(`Too many requests. Please try again in ${Math.ceil(context.ttl / 1000)} seconds.`), {
-          statusCode: 429,
-        }),
+      windowMs: 60 * MINUTE,
+      key: byIp,
     };
+    const recoveryEmail = {
+      bucket: "recovery",
+      max: env.AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR,
+      windowMs: 60 * MINUTE,
+      key: byEmail,
+    };
+    const limitLogin = rateLimitHook(rateLimitStore, [loginIp, loginEmail]);
+    const limitRecovery = rateLimitHook(rateLimitStore, [recoveryIp, recoveryEmail]);
+    const limitTokenRoutes = rateLimitHook(rateLimitStore, [recoveryIp]);
 
     // 1. Register (SC-AUTH-001, SC-AUTH-002, SC-AUTH-003, SC-AUTH-017)
     app.post(
       "/register",
       {
-        config: {
-          rateLimit: recoveryRateLimit,
-        },
+        preHandler: limitRecovery,
         schema: {
           body: RegisterBodySchema,
           response: {
@@ -87,7 +88,9 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
         },
       },
       async (request, reply) => {
+        const startedAt = performance.now();
         const result = await authService.register(request.body);
+        await holdUntil(startedAt, env.AUTH_GENERIC_RESPONSE_MIN_MS);
         return reply.code(202).send({
           success: true,
           data: result,
@@ -99,6 +102,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/verify-email",
       {
+        preHandler: limitTokenRoutes,
         schema: {
           body: VerifyEmailBodySchema,
           response: {
@@ -119,9 +123,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/resend-verification",
       {
-        config: {
-          rateLimit: recoveryRateLimit,
-        },
+        preHandler: limitRecovery,
         schema: {
           body: ResendVerificationBodySchema,
           response: {
@@ -130,7 +132,9 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
         },
       },
       async (request, reply) => {
+        const startedAt = performance.now();
         const result = await authService.resendVerification(request.body.email);
+        await holdUntil(startedAt, env.AUTH_GENERIC_RESPONSE_MIN_MS);
         return reply.code(202).send({
           success: true,
           data: result,
@@ -142,9 +146,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/login",
       {
-        config: {
-          rateLimit: loginRateLimit,
-        },
+        preHandler: limitLogin,
         schema: {
           body: LoginBodySchema,
           response: {
@@ -268,9 +270,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/password/forgot",
       {
-        config: {
-          rateLimit: recoveryRateLimit,
-        },
+        preHandler: limitRecovery,
         schema: {
           body: ForgotPasswordBodySchema,
           response: {
@@ -279,7 +279,9 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
         },
       },
       async (request, reply) => {
+        const startedAt = performance.now();
         const result = await authService.forgotPassword(request.body.email);
+        await holdUntil(startedAt, env.AUTH_GENERIC_RESPONSE_MIN_MS);
         return reply.code(202).send({
           success: true,
           data: result,
@@ -291,9 +293,7 @@ export function authRoutes({ authService, env }: AuthRoutesOptions): FastifyPlug
     app.post(
       "/password/reset",
       {
-        config: {
-          rateLimit: recoveryRateLimit,
-        },
+        preHandler: limitTokenRoutes,
         schema: {
           body: ResetPasswordBodySchema,
           response: {

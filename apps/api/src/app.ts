@@ -9,6 +9,7 @@ import type { ApiEnv } from "./env";
 import { ConsoleMailer, type Mailer } from "./lib/mailer";
 import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
+import type { RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
@@ -20,6 +21,8 @@ export interface BuildAppOptions {
   mailer?: Mailer;
   /** Disable request logging in tests. */
   logger?: boolean;
+  /** Auth rate-limit counters. server.ts passes a Redis store; defaults to per-process memory. */
+  rateLimitStore?: RateLimitStore;
 }
 
 export async function buildApp({
@@ -28,6 +31,7 @@ export async function buildApp({
   db: injectedDb,
   mailer: injectedMailer,
   logger = true,
+  rateLimitStore,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger
@@ -111,9 +115,15 @@ export async function buildApp({
       mailer,
       jwtSign: (payload) => app.jwt.sign(payload, { expiresIn: "15m" }),
       env,
+      onMailError: (error) => app.log.error({ err: error }, "background mail delivery failed"),
     });
 
-    await app.register(authRoutes({ authService, env }), { prefix: "/api/v1/auth" });
+    if (!rateLimitStore && env.NODE_ENV === "production") {
+      app.log.warn("REDIS_URL is not set: auth rate limits are per process and reset on restart");
+    }
+    await app.register(authRoutes({ authService, env, ...(rateLimitStore ? { rateLimitStore } : {}) }), {
+      prefix: "/api/v1/auth",
+    });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
   }
 

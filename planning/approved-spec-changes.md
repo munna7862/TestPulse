@@ -6,4 +6,3 @@ root), so the approval is visible in the PR diff. Remove the line in the same PR
 
 | File | Approved by / when | Why |
 | --- | --- | --- |
-| apps/api/test/auth/auth-hardening.acceptance.test.ts | Owner, in chat, 2026-10-03 | Simulate client IPs with `remoteAddress` instead of the spoofable X-Forwarded-For header (review F1); assert exactly one refresh success and family revocation (review T1). |
