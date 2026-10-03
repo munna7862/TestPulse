@@ -52,7 +52,7 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `GET /orgs` | A | My orgs (`?slug=` resolves a slug) | P03-S03 |
 | `GET /orgs/:orgId` | V | Org details | P03-S03 |
 | `PATCH /orgs/:orgId` | Ad | Update org | P03-S03 |
-| `DELETE /orgs/:orgId` | O | Soft-delete + async purge | P03-S03 |
+| `DELETE /orgs/:orgId` | O | Soft-delete (S-001); async purge job (S-002) | P03-S03 |
 | `POST /orgs/:orgId/transfer-ownership` | O | Transfer to an existing Admin | P03-S03 |
 | `GET /orgs/:orgId/members` | V | List members | P03-S03 |
 | `PATCH /orgs/:orgId/members/:userId` | Ad | Change role (not Owner) | P03-S04 |
@@ -71,7 +71,7 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 - `GET /orgs/:orgId/members` returns `{ userId, name, email, role, joinedAt }` per member and nothing else about users.
 - `DELETE /orgs/:orgId` returns 204 and soft-deletes; every route under the org returns 404 from then on.
 - `POST /orgs/:orgId/transfer-ownership` takes `{ userId }` and returns the org with the caller's new role (`ADMIN`). The target must be an Admin of the org: a Member, Viewer or the caller returns 400, a non-member 404.
-- Every route under `/orgs/:orgId` must be listed in `ORG_ROUTE_POLICY` (`apps/api/src/plugins/tenant-context.ts`) with its minimum role; an unlisted route fails at startup. The tenant check runs before body validation, so non-members get 404 whatever they send.
+- Every route under `/orgs/:orgId` must be listed in `ORG_ROUTE_POLICY` (`apps/api/src/plugins/tenant-context.ts`) with its minimum role; an unlisted route, or an org route whose parameter is not named exactly `:orgId`, fails at startup. A route serving several methods enforces each method's own minimum role. The tenant check runs before body validation, so non-members get 404 whatever they send; a malformed org id also gets 404 without a query (ids longer than the router's 100-character parameter limit get 414 from Fastify before any check). Writes to the org row re-check the caller's role, so a role lost mid-request returns 403.
 
 ### Projects
 

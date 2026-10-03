@@ -1,5 +1,5 @@
 import { createTenantDb, type PrismaClient } from "@testpulse/db";
-import { type CreateOrgBody, type Org, type OrgMember, type OrgRole, slugify } from "@testpulse/shared";
+import { type CreateOrgBody, type Org, type OrgMember, type OrgRole, rolesAtLeast, slugify } from "@testpulse/shared";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
 
 /** Domain error carrying an HTTP status; the shared error handler maps it to the envelope code. */
@@ -78,22 +78,38 @@ export class OrgService {
     return toOrg(org, ctx.role);
   }
 
+  /**
+   * Writes to the org row are conditional on the caller still holding the route's minimum role, so a role lost
+   * between the tenant check and the write (a transfer, later a demotion) is not used.
+   */
+  private stillAllowed(ctx: TenantRequestContext) {
+    return { deletedAt: null, members: { some: { userId: ctx.userId, role: { in: rolesAtLeast(ctx.minRole) } } } };
+  }
+
+  /** 403 while the org is live (the caller's role changed), 404 once it is gone. */
+  private async refusal(ctx: TenantRequestContext): Promise<OrgError> {
+    const live = await createTenantDb(this.db, ctx).organization.count({ where: { deletedAt: null } });
+    return live === 1
+      ? new OrgError(403, "Your role does not allow this action.")
+      : new OrgError(404, "Organization not found.");
+  }
+
   async rename(ctx: TenantRequestContext, name: string): Promise<Org> {
     const { count } = await createTenantDb(this.db, ctx).organization.updateMany({
-      where: { deletedAt: null },
+      where: this.stillAllowed(ctx),
       data: { name },
     });
-    if (count !== 1) throw new OrgError(404, "Organization not found.");
+    if (count !== 1) throw await this.refusal(ctx);
     return this.get(ctx);
   }
 
   /** Soft delete: every org route returns 404 from now on; the purge job (S-002) removes the data. */
   async softDelete(ctx: TenantRequestContext): Promise<void> {
     const { count } = await createTenantDb(this.db, ctx).organization.updateMany({
-      where: { deletedAt: null },
+      where: this.stillAllowed(ctx),
       data: { deletedAt: new Date() },
     });
-    if (count !== 1) throw new OrgError(404, "Organization not found.");
+    if (count !== 1) throw await this.refusal(ctx);
   }
 
   async listMembers(ctx: TenantRequestContext): Promise<OrgMember[]> {

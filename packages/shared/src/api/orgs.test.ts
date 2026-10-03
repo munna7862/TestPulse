@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateOrgBodySchema, hasOrgRole, OrgSlugSchema, slugify } from "./orgs";
+import { CreateOrgBodySchema, hasOrgRole, OrgIdSchema, OrgSlugSchema, rolesAtLeast, slugify } from "./orgs";
 
 describe("slugify", () => {
   it("[SC-ORG-001] lowercases, strips accents and collapses separators", () => {
@@ -45,5 +45,23 @@ describe("hasOrgRole", () => {
     expect(hasOrgRole("VIEWER", "VIEWER")).toBe(true);
     expect(hasOrgRole("VIEWER", "MEMBER")).toBe(false);
     expect(hasOrgRole("ADMIN", "OWNER")).toBe(false);
+  });
+});
+
+describe("rolesAtLeast", () => {
+  it("[SC-SEC-002] lists every role meeting the minimum", () => {
+    expect(rolesAtLeast("VIEWER")).toEqual(["VIEWER", "MEMBER", "ADMIN", "OWNER"]);
+    expect(rolesAtLeast("ADMIN")).toEqual(["ADMIN", "OWNER"]);
+    expect(rolesAtLeast("OWNER")).toEqual(["OWNER"]);
+  });
+});
+
+describe("OrgIdSchema", () => {
+  it("[SC-SEC-001] accepts UUIDs (v4 and v7) and rejects anything else", () => {
+    expect(OrgIdSchema.safeParse("01999999-0000-7000-8000-000000000000").success).toBe(true);
+    expect(OrgIdSchema.safeParse("3b241101-e2bb-4255-8caf-4136c566a962").success).toBe(true);
+    for (const id of ["", "not-an-id", "a\u0000b", "3b241101-e2bb-4255-8caf-4136c566a96"]) {
+      expect(OrgIdSchema.safeParse(id).success).toBe(false);
+    }
   });
 });

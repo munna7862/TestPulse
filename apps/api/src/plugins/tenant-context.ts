@@ -1,5 +1,5 @@
 import { createTenantDb, type PrismaClient } from "@testpulse/db";
-import { hasOrgRole, OrgParamsSchema, type OrgRole } from "@testpulse/shared";
+import { hasOrgRole, OrgIdSchema, OrgParamsSchema, type OrgRole } from "@testpulse/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteOptions } from "fastify";
 import type { ApiEnv } from "../env";
 import { createAuthMiddleware } from "../modules/auth/auth.middleware";
@@ -29,6 +29,8 @@ export interface TenantRequestContext {
   orgId: string;
   userId: string;
   role: OrgRole;
+  /** The route's minimum role; writes re-check it so a role lost mid-request is not used (S-001 review F3). */
+  minRole: OrgRole;
 }
 
 declare module "fastify" {
@@ -40,33 +42,49 @@ declare module "fastify" {
 type TenantHook = (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
 export type TenantHookFactory = (policy: OrgRoutePolicy) => TenantHook;
 
-function isTenantRoute(url: string): boolean {
-  return url === ORG_ROUTE_PREFIX || url.startsWith(`${ORG_ROUTE_PREFIX}/`);
+/** Any parameterised path under /api/v1/orgs/ is an org route, whatever the parameter is called. */
+const ORG_ROUTE_ROOT = "/api/v1/orgs/:";
+
+/** Fastify adds a HEAD twin for every GET route; it inherits the GET policy. */
+function effectiveMethod(method: string): string {
+  return method === "HEAD" ? "GET" : method;
 }
 
 /**
- * Classifies every route as it is registered. Tenant routes without a policy entry throw (fail closed); tenant
- * routes with one get the tenant-context hook as their first preValidation step, so it runs before body
- * validation and a non-member never learns anything from a 400.
+ * Classifies every route as it is registered, failing closed: an org route must name its parameter exactly
+ * `:orgId` (no other name, no regex) and every one of its methods needs a policy entry, or startup throws. Each
+ * org route gets the tenant-context hook as its first preValidation step, so it runs before body validation and
+ * a non-member never learns anything from a 400. The hook picks the policy of the request's own method, so a
+ * route serving several methods enforces each method's minimum role.
  */
 export function registerTenantRouteGuard(app: FastifyInstance, createHook?: TenantHookFactory): void {
   app.addHook("onRoute", (route: RouteOptions) => {
-    if (!isTenantRoute(route.url)) return;
+    if (!route.url.startsWith(ORG_ROUTE_ROOT)) return;
+    if (route.url !== ORG_ROUTE_PREFIX && !route.url.startsWith(`${ORG_ROUTE_PREFIX}/`)) {
+      throw new Error(
+        `${route.url}: org routes must name the org parameter exactly :orgId (no other name, no regex) so the tenant guard applies.`,
+      );
+    }
     const methods = Array.isArray(route.method) ? route.method : [route.method];
-    const policies = methods.map((method) => {
-      // Fastify adds a HEAD twin for every GET route; it inherits the GET policy.
-      const effective = method === "HEAD" ? "GET" : method;
+    const hooks = new Map<string, TenantHook>();
+    for (const method of methods) {
+      const effective = effectiveMethod(method);
       const policy = ORG_ROUTE_POLICY.find((entry) => entry.method === effective && entry.url === route.url);
       if (!policy) {
         throw new Error(`${method} ${route.url} has no entry in the tenant isolation table (ORG_ROUTE_POLICY).`);
       }
-      return policy;
-    });
-    const [policy] = policies;
-    if (!createHook || !policy) return;
+      if (createHook) hooks.set(effective, createHook(policy));
+    }
+    if (!createHook) return;
+
+    const guard: TenantHook = async (request, reply) => {
+      const hook = hooks.get(effectiveMethod(request.method));
+      if (!hook) throw request.server.httpErrors.notFound("Organization not found.");
+      return hook(request, reply);
+    };
     const existing = route.preValidation;
     const rest = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
-    route.preValidation = [createHook(policy), ...rest];
+    route.preValidation = [guard, ...rest];
   });
 }
 
@@ -85,8 +103,10 @@ export function createTenantContextHook(db: PrismaClient, env: ApiEnv): TenantHo
     const user = request.authUser;
     if (!user) throw request.server.httpErrors.unauthorized("Authentication required.");
 
+    // Malformed ids (including NUL bytes Postgres rejects) get the same 404 without a query.
     const params = OrgParamsSchema.safeParse(request.params);
-    const orgId = params.success ? params.data.orgId : "";
+    const id = params.success ? OrgIdSchema.safeParse(params.data.orgId) : null;
+    const orgId = id?.success ? id.data : "";
     const membership = orgId
       ? await createTenantDb(db, { orgId }).orgMember.findFirst({
           where: { userId: user.id, org: { deletedAt: null } },
@@ -98,7 +118,7 @@ export function createTenantContextHook(db: PrismaClient, env: ApiEnv): TenantHo
       throw request.server.httpErrors.forbidden("Your role does not allow this action.");
     }
 
-    request.tenantContext = { orgId, userId: user.id, role: membership.role };
+    request.tenantContext = { orgId, userId: user.id, role: membership.role, minRole: policy.minRole };
     return undefined;
   };
 }

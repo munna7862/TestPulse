@@ -278,7 +278,7 @@ Every tenant-owned table carries `projectId` and/or `orgId` directly (denormaliz
 | `OAuthAccount` | `id`, `userId`, `provider` [GOOGLE, GITHUB], `providerAccountId`; `@@unique([provider, providerAccountId])` | P03-S02 |
 | `Session` | `id`, `userId`, `familyId`, `refreshTokenHash`, `expiresAt`, `revokedAt?`, `replacedById?`, `userAgent?` | P03-S01 |
 | `VerificationToken` | `id`, `userId`, `type` [EMAIL_VERIFY, PASSWORD_RESET], `tokenHash`, `expiresAt`, `usedAt?` | P03-S01 |
-| `Organization` | `id`, `name`, `slug` (unique), `planTier` [FREE, PRO, ENTERPRISE] | P03-S03 |
+| `Organization` | `id`, `name`, `slug` (unique), `planTier` [FREE, PRO, ENTERPRISE], `deletedAt?` (soft delete; purged asynchronously) | P03-S03 |
 | `OrgMember` | `id`, `orgId`, `userId`, `role` [OWNER, ADMIN, MEMBER, VIEWER]; `@@unique([orgId, userId])` | P03-S03 |
 | `Invitation` | `id`, `orgId`, `email`, `role`, `tokenHash`, `invitedById`, `expiresAt`, `acceptedAt?`, `revokedAt?` | P03-S04 |
 | `Project` | `id`, `orgId`, `name`, `slug`, `description?`, `defaultBranch`, `runCounter`, settings: `slaDays` (14), `retentionDays`, `flakyWindow` (10), `flakyThreshold` (3), `trackedBranches[]`; `@@unique([orgId, slug])` | P03-S03 |

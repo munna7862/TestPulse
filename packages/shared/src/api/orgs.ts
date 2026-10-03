@@ -13,6 +13,11 @@ export function hasOrgRole(role: OrgRole, required: OrgRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[required];
 }
 
+/** Every role that meets the minimum role `required`. */
+export function rolesAtLeast(required: OrgRole): OrgRole[] {
+  return OrgRoleSchema.options.filter((role) => hasOrgRole(role, required));
+}
+
 export const OrgNameSchema = z
   .string()
   .trim()
@@ -37,6 +42,9 @@ export function slugify(name: string): string {
     .replace(/-+$/, "");
   return slug || "org";
 }
+
+/** Org ids are UUIDs (uuid v7 from Prisma). */
+export const OrgIdSchema = z.uuid();
 
 export const OrgParamsSchema = z.object({ orgId: z.string() });
 
