@@ -64,6 +64,7 @@
 | SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | — |
 | SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | — |
 | SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | — |
+| SC-ORG-017 | The shared plan limits are read and `checkLimit` is called below, at and above each limit | `PLAN_LIMITS` matches master plan §8 (`null` = unlimited); usage below the limit is allowed, at the limit blocked, unlimited quotas always allowed | U | FR-PLAN-01 | packages/shared/src/plans.acceptance.test.ts |
 
 ## KEY — API keys
 

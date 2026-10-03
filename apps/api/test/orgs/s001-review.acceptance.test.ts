@@ -206,11 +206,15 @@ describe("Acceptance S-001-review: role is re-checked at write time (F3)", () =>
 describe("Acceptance S-001-review: malformed org ids (F4)", () => {
   it("[SC-SEC-001] a NUL byte or other non-id in :orgId returns the standard 404, not 500", async () => {
     const user = await createUser(app, testDb.db, "rv-nul@example.com");
-    for (const id of ["%00", "a%00b", "not-an-id", "x".repeat(200)]) {
+    for (const id of ["%00", "a%00b", "not-an-id", "x".repeat(100)]) {
       const res = await callAs(app, user, "GET", `/api/v1/orgs/${id}`);
       expect(res.statusCode, id).toBe(404);
       expect(res.json()).toMatchObject({ error: { code: "NOT_FOUND", message: "Organization not found." } });
     }
+    // Over Fastify's 100-character parameter limit the router answers 414 before any tenant check, for every
+    // id alike, so it discloses nothing (approved spec change, planning/approved-spec-changes.md).
+    const tooLong = await callAs(app, user, "GET", `/api/v1/orgs/${"x".repeat(200)}`);
+    expect(tooLong.statusCode).toBe(414);
   });
 });
 
