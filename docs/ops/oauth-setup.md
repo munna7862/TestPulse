@@ -59,7 +59,7 @@ Scopes requested: `read:user` and `user:email`. TestPulse **ignores the profile 
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | unset | Both required to enable GitHub |
 | `OAUTH_REDIRECT_BASE_URL` | `WEB_ORIGIN` | Origin used to build the provider callback URL |
 | `OAUTH_PROVIDER_TIMEOUT_MS` | `10000` | Upper bound for each outbound provider call (token exchange, profile) |
-| `OAUTH_RATE_LIMIT_PER_MINUTE` | `30` | Per-IP limit shared by `/start` and `/callback` (security model §5). Set `TRUST_PROXY=true` behind Render/Vercel so the real client IP is used |
+| `OAUTH_RATE_LIMIT_PER_MINUTE` | `30` | Per-IP limit shared by `/start` and `/callback` (security model §5). Set `TRUST_PROXY=1` on Render (never `true`, which lets clients spoof their IP) |
 
 Restart the API after changing credentials. On Render, set them as environment secrets (never in `render.yaml`).
 

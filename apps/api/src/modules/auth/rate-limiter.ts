@@ -45,10 +45,24 @@ export class RedisRateLimitStore implements RateLimitStore {
   constructor(
     private readonly redis: Redis,
     private readonly prefix = "tp:rl",
+    /** Upper bound per hit. A partitioned Redis must yield a fast 503, not a request that hangs (review F2). */
+    private readonly timeoutMs = 500,
   ) {}
 
   async hit(key: string, windowMs: number): Promise<{ count: number; resetMs: number }> {
-    const reply: unknown = await this.redis.eval(HIT_SCRIPT, 1, `${this.prefix}:${key}`, String(windowMs));
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`Rate-limit store did not answer within ${this.timeoutMs} ms`)),
+        this.timeoutMs,
+      );
+    });
+    let reply: unknown;
+    try {
+      reply = await Promise.race([this.redis.eval(HIT_SCRIPT, 1, `${this.prefix}:${key}`, String(windowMs)), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
     if (!Array.isArray(reply) || typeof reply[0] !== "number" || typeof reply[1] !== "number") {
       throw new Error("Unexpected rate-limit reply from Redis");
     }

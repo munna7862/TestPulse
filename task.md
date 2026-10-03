@@ -32,6 +32,8 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [/] **G5 · P03-S01** Timing enumeration (ADR-005 §9, T11). PR #10 fixed login; register (2 ms vs 48 ms), resend and forgot still leaked. Fixed in slice H1b.
 - [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10); confirmed by independent review (20/20 races).
 - [/] **G7 · P03-S01** Verify-email and password-reset tokens could be used several times concurrently (review: 5 of 5 resets succeeded with one token); refresh treated any DB error as token reuse. Fixed in slice H1b.
+- [ ] **G8 · security model §5** Behind the Vercel `/api` rewrite, per-IP auth limits key on Vercel's egress IP (`TRUST_PROXY=1` is the only setting that cannot be spoofed when the API host is called directly). Add a secret header set by the Vercel rewrite and trust X-Forwarded-For only when it is present. Also move the OAuth limiter (in-memory `@fastify/rate-limit`) to the shared Redis store. → P03-S06.
+- [ ] **G9 · P03-S01** No real mail transport exists; in production the console mailer now withholds tokens, so verification and reset emails are not delivered. Add a provider (free tier) before staging users. → before P10-S05.
 
 ## 🧭 Delivery process changes (docs/process/ai-delivery-playbook.html §6)
 

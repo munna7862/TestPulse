@@ -41,4 +41,25 @@ describe("Auth rate-limit store contract (real Redis)", () => {
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect((await store.hit("recovery:email:abc", 150)).count).toBe(1);
   });
+
+  it("[SC-AUTH-017] the window is fixed: later hits do not push the expiry out (no sliding window)", async () => {
+    const store = new RedisRateLimitStore(redisA, prefix);
+    await store.hit("login:email:fixed", 300);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const late = await store.hit("login:email:fixed", 300);
+    expect(late.count).toBe(2);
+    expect(late.resetMs).toBeLessThanOrEqual(150);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect((await store.hit("login:email:fixed", 300)).count).toBe(1);
+  });
+
+  it("[SC-AUTH-017] the fail-fast client rejects quickly when Redis is unreachable", async () => {
+    const unreachable = createRedis("redis://127.0.0.1:1", { failFast: true });
+    unreachable.on("error", () => undefined);
+    const store = new RedisRateLimitStore(unreachable, prefix);
+    const started = performance.now();
+    await expect(store.hit("login:ip:down", 60_000)).rejects.toThrow();
+    expect(performance.now() - started).toBeLessThan(2_000);
+    unreachable.disconnect();
+  });
 });

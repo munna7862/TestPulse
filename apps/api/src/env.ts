@@ -22,7 +22,31 @@ export const ApiEnvSchema = z.object({
   APP_URL: z.string().default("http://localhost:3000"),
   JWT_ACCESS_SECRET: z.string().min(16).default("dev-jwt-access-secret-32-chars-long-min!!"),
   JWT_REFRESH_SECRET: z.string().min(16).default("dev-jwt-refresh-secret-32-chars-long-min!!"),
-  TRUST_PROXY: booleanString.default(false),
+  /**
+   * Which proxies may set X-Forwarded-For (security model §5): `false`, a hop count (`1` = trust only the proxy
+   * that connects to us, e.g. Render's load balancer), or a comma-separated list of trusted proxy IPs/CIDRs.
+   * `true` is rejected: it trusts every hop, so clients could spoof their IP and dodge per-IP rate limits.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default("false")
+    .transform((value, ctx): false | number | string[] => {
+      const trimmed = value.trim().toLowerCase();
+      if (trimmed === "false" || trimmed === "0" || trimmed === "") return false;
+      if (trimmed === "true") {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "TRUST_PROXY=true trusts client-supplied X-Forwarded-For. Use a hop count (e.g. 1) or trusted proxy CIDRs.",
+        });
+        return z.NEVER;
+      }
+      if (/^\d+$/.test(trimmed)) return Number(trimmed);
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+    }),
   DATABASE_URL: z.string().min(1).optional(),
   REDIS_URL: z.string().min(1).optional(),
   GIT_COMMIT_SHA: z.string().optional(),

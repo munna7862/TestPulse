@@ -50,7 +50,12 @@ export async function buildApp({
           },
         }
       : false,
-    trustProxy: env.TRUST_PROXY,
+    // A hop count trusts that many proxies counted from the socket peer (proxy-addr semantics), so the client IP
+    // is the entry the outermost trusted proxy appended, never one the client wrote (security model §5).
+    trustProxy:
+      typeof env.TRUST_PROXY === "number"
+        ? (_address: string, hop: number) => hop < (env.TRUST_PROXY as number)
+        : env.TRUST_PROXY,
     bodyLimit: 1_048_576,
     requestIdHeader: "x-request-id",
     genReqId: () => `req_${crypto.randomUUID()}`,
@@ -109,7 +114,10 @@ export async function buildApp({
   }
 
   if (activeDb) {
-    const mailer = injectedMailer ?? new ConsoleMailer();
+    const mailer = injectedMailer ?? new ConsoleMailer({ revealSecrets: env.NODE_ENV !== "production" });
+    if (!injectedMailer && env.NODE_ENV === "production") {
+      app.log.warn("No mail transport configured: verification and reset emails are not delivered (task.md G9)");
+    }
     const authService = new AuthService({
       db: activeDb,
       mailer,

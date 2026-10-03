@@ -31,7 +31,10 @@ export class AuthService {
 
   /** Sends mail without making the response wait for the provider, so timing never depends on it. */
   private deliver(send: () => Promise<void>): void {
-    void send().catch((error: unknown) => this.deps.onMailError?.(error));
+    // Promise.resolve().then(...) also captures a mailer that throws synchronously (review suspicion 3).
+    void Promise.resolve()
+      .then(send)
+      .catch((error: unknown) => this.deps.onMailError?.(error));
   }
 
   public get db(): PrismaClient {
