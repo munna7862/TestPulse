@@ -28,7 +28,9 @@
     "check:traceability": "node scripts/check-traceability.mjs",
     "audit": "node scripts/audit-gate.mjs",
     "verify": "node scripts/verify.mjs",
-    "check:pr-size": "node scripts/check-pr-size.mjs"
+    "check:pr-size": "node scripts/check-pr-size.mjs",
+    "sync:skills": "node scripts/sync-skills.mjs",
+    "check:skills": "node scripts/sync-skills.mjs --check"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

@@ -9,6 +9,7 @@ const steps = [
   ["lint", "npm run lint"],
   ["typecheck", "npm run typecheck"],
   ["format", "npm run format:check"],
+  ["skills", "npm run check:skills"],
   ["traceability", "npm run check:traceability"],
   ["test + coverage", "npm run test"],
   ...(process.env.REDIS_URL ? [["contract", "npm run test:contract"]] : []),

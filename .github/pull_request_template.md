@@ -9,8 +9,26 @@
 - **Scenarios (SC) covered:** <!-- e.g. SC-ING-004, SC-ING-005 — see docs/testing/scenario-catalog.md -->
 - **New scenarios added to the master catalog:** <!-- IDs or "none" -->
 
+## Evidence
+
+| AC / SC | Test (file › name) | Result |
+| --- | --- | --- |
+|  |  |  |
+
+## Independent review
+
+| Reviewer | Findings | Fixed | Deferred (issue link) |
+| --- | --- | --- | --- |
+| claims-auditor |  |  |  |
+| security-reviewer (auth, tenancy, ingestion, webhooks, logging) |  |  |  |
+| test-auditor |  |  |  |
+
+## Not done
+<!-- Anything from the brief that did not ship, and where it went. -->
+
 ## Verification (paste real output summaries)
 
+- [ ] `npm run verify` (lint, typecheck, format, traceability, test + coverage, build, audit)
 - [ ] `npm run lint`
 - [ ] `npm run typecheck`
 - [ ] `npm run test` — <!-- N passed / 0 failed, duration -->
