@@ -114,6 +114,12 @@ export function registerTenantRouteGuard(app: FastifyInstance, createHook?: Tena
         `${route.url}: ${scope.kind} routes must name the parameter exactly ${scope.param} (no other name, no regex) so the tenant guard applies.`,
       );
     }
+    // The org hook only resolves the org, so a project id under it would never be checked against that org.
+    if (scope.kind === "org" && /:projectId(?![A-Za-z0-9_])/.test(route.url)) {
+      throw new Error(
+        `${route.url}: org routes must not carry :projectId; use ${PROJECT_ROUTE_PREFIX}/... so the project is resolved against the caller's org.`,
+      );
+    }
     const methods = Array.isArray(route.method) ? route.method : [route.method];
     const hooks = new Map<string, TenantHook>();
     for (const method of methods) {
@@ -157,7 +163,8 @@ async function resolveOrg(db: PrismaClient, params: unknown, userId: string): Pr
 
 /**
  * `project → org → membership` in one query. The org is unknown until the project is found, so this read uses the
- * system client; it is keyed by the caller's own `userId` and returns only the caller's membership row.
+ * system client (ADR-006 amendment 1: membership lookups keyed by the authenticated user); it returns only the
+ * caller's own membership row.
  */
 async function resolveProject(db: PrismaClient, params: unknown, userId: string): Promise<ResolvedMembership | null> {
   const parsed = ProjectParamsSchema.safeParse(params);

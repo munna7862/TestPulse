@@ -30,3 +30,24 @@ Isolation is enforced in **five layers**. PostgreSQL Row-Level Security is **not
 - **Positive:** a simple, fast data path; isolation is provable in CI; one resolver shared by REST, sockets, and jobs.
 - **Negative / trade-offs:** correctness depends on application code; `systemDb` and raw SQL are sharp edges.
 - **Mitigation:** the lint ban, a code-review checklist (Security Engineer skill), the meta-test, and audits in P03-S06 and P10-S04.
+
+## Amendment 1 (2026-10-03, S-002): membership lookups keyed by the authenticated user
+
+Layer 3 limits `systemDb` to the identity tables, API-key lookup, migrations and job bootstrap. Two reads cannot use
+a tenant client because the tenant is not known until the read returns:
+
+- **Project route resolution** (`resolveProject` in `apps/api/src/plugins/tenant-context.ts`): `project → org →
+  membership` in one `OrgMember` query, before any `orgId` is known.
+- **"My organizations"** (`OrgService.listForUser`, `GET /orgs`): the caller's memberships across orgs.
+
+Both are added to the `systemDb` list, under these conditions:
+
+- The query filters on the authenticated user's `userId`.
+- It returns only that user's membership rows, plus the tenant ids and fields the caller may see.
+- Soft-deleted tenants are excluded.
+- The routes that use it are covered by the table-driven isolation suite.
+
+Everything after resolution goes through `createTenantDb`.
+
+The org-row lock in project creation (`SELECT "planTier" … FOR UPDATE`, `ProjectService.create`) is raw SQL with
+an explicit `id = ctx.orgId` predicate. Its isolation test is `apps/api/test/projects/create-lock.int.test.ts`.

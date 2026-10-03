@@ -52,7 +52,9 @@ AC9 Writes to a project (update, delete) shall re-check the caller's role in the
   project keeps 7 days until upgraded. The master plan gives no default.
 - Soft-deleted projects keep their slug until S-003 purges them (409 meanwhile) but stop counting toward the limit.
 - The project-route resolver finds the project and the caller's membership in one query, filtered by the caller's
-  `userId`. This is the one system-client read in tenant resolution, as the org resolver's membership lookup is.
+  `userId`. It uses the system client because the org is unknown until the project is found (the org resolver uses
+  the tenant client). Review found this outside ADR-006's system-client list, so ADR-006 gains amendment 1 in this
+  PR covering it and S-001's "my orgs" listing.
 
 ## Contracts touched (read only these sections)
 Master plan §5 (Project), §7.1–7.2, §8. RBAC matrix `project.*`. `docs/api/rest-api.md` §2 Organizations

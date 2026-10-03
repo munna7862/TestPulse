@@ -54,8 +54,8 @@ export class OrgService {
   }
 
   /**
-   * The caller's own memberships across orgs. Keyed by the authenticated user, so it is the one cross-tenant read
-   * and cannot use a tenant client; it returns only rows where `userId` is the caller.
+   * The caller's own memberships across orgs. Keyed by the authenticated user, so it cannot use a tenant client
+   * (ADR-006 amendment 1); it returns only rows where `userId` is the caller.
    */
   async listForUser(userId: string, slug?: string): Promise<Org[]> {
     const memberships = await this.db.orgMember.findMany({

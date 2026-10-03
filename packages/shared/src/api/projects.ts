@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiSuccess } from "./envelope";
-import { OrgRoleSchema, OrgSlugSchema } from "./orgs";
+import { hasNoControlChars, hasNoNul, OrgRoleSchema, OrgSlugSchema } from "./orgs";
 
 /** Project ids are UUIDs (uuid v7 from Prisma). */
 export const ProjectIdSchema = z.uuid();
@@ -11,9 +11,15 @@ export const ProjectNameSchema = z
   .string()
   .trim()
   .min(1, "Name is required")
-  .max(100, "Name must not exceed 100 characters");
+  .max(100, "Name must not exceed 100 characters")
+  .refine(hasNoControlChars, { message: "Name must not contain control characters" });
 
-export const ProjectDescriptionSchema = z.string().trim().max(500, "Description must not exceed 500 characters");
+/** Free text: line breaks are fine, NUL is not (Postgres cannot store it). */
+export const ProjectDescriptionSchema = z
+  .string()
+  .trim()
+  .max(500, "Description must not exceed 500 characters")
+  .refine(hasNoNul, { message: "Description must not contain NUL characters" });
 
 /** Git branch names: no whitespace or control characters (git check-ref-format, simplified). */
 export const BranchNameSchema = z
@@ -21,9 +27,7 @@ export const BranchNameSchema = z
   .min(1, "Branch is required")
   .max(255)
   .regex(/^[^\s~^:?*[\\]+$/, "Not a valid branch name")
-  .refine((name) => [...name].every((char) => char.charCodeAt(0) > 0x1f && char.charCodeAt(0) !== 0x7f), {
-    message: "Not a valid branch name",
-  });
+  .refine(hasNoControlChars, { message: "Not a valid branch name" });
 
 /** Allowed quarantine SLAs in days (glossary: 7/14/30/60). */
 export const SlaDaysSchema = z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60)]);
@@ -53,7 +57,7 @@ export const UpdateProjectBodySchema = z
   .refine((body) => Object.keys(body).length > 0, { message: "Provide at least one field to update" });
 export type UpdateProjectBody = z.infer<typeof UpdateProjectBodySchema>;
 
-export const ListProjectsQuerySchema = z.object({ slug: z.string().max(48).optional() });
+export const ListProjectsQuerySchema = z.object({ slug: OrgSlugSchema.optional() });
 export type ListProjectsQuery = z.infer<typeof ListProjectsQuerySchema>;
 
 /** A project with its settings, as seen by one member: `role` is the caller's org role. */

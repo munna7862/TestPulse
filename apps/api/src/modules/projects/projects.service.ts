@@ -98,7 +98,7 @@ export class ProjectService {
           data: {
             orgId: ctx.orgId,
             name: body.name,
-            slug: body.slug ?? slugify(body.name),
+            slug: body.slug ?? slugify(body.name, "project"),
             ...(body.description === undefined ? {} : { description: body.description }),
           },
         });
