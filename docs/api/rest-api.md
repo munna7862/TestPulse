@@ -64,6 +64,13 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `GET /orgs/:orgId/audit-events` | Ad | Audit log | P03-S06 |
 | `GET /orgs/:orgId/projects` · `POST /orgs/:orgId/projects` | V / Ad | List / create project (`?slug=`) | P03-S03 |
 
+Project behavior (S-002; schemas in `packages/shared/src/api/projects.ts`):
+
+- `POST /orgs/:orgId/projects` takes `{ name, slug?, description? }` and creates the project with `defaultBranch "main"`, `slaDays 14`, `retentionDays 30`, `flakyWindow 10`, `flakyThreshold 3`, `trackedBranches ["main"]`. A slug used by another project in the org, including a soft-deleted one not yet purged, returns `409 CONFLICT`. Beyond the plan's project limit it returns `403 PLAN_LIMIT_REACHED` with `details: { limit, current }`; the check holds a lock on the org row, so concurrent creates cannot exceed it. Soft-deleted projects do not count.
+- Project responses carry every setting plus `role`, the caller's org role.
+- `PATCH /projects/:projectId` accepts any of `name`, `description` (string or null), `defaultBranch`, `slaDays` (7, 14, 30, 60) and `retentionDays` (1–365); other keys, including the flaky settings (editable from P06-S01) and `slug`, return 400. Effective retention is `min(retentionDays, plan maximum)`.
+- Routes under `/projects/:projectId` resolve project → org → membership through the same guard as org routes (`PROJECT_ROUTE_POLICY`): outsiders, missing, malformed, soft-deleted projects and projects of soft-deleted orgs get the same `404` ("Project not found."). Writes re-check the caller's role.
+
 Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 
 - `POST /orgs` takes `{ name, slug? }`. Without `slug`, it is derived from `name` (lowercase letters, digits, single hyphens, at most 48 characters). A taken slug returns `409 CONFLICT`, including slugs of soft-deleted orgs.
@@ -79,7 +86,7 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 | :--- | :--- | :--- | :--- |
 | `GET /projects/:projectId` | V | Project + settings | P03-S03 |
 | `PATCH /projects/:projectId` | Ad | Update name and settings (SLA, retention, flaky, branches) | P03-S03, P06 |
-| `DELETE /projects/:projectId` | Ad | Delete (async purge) | P03-S03 |
+| `DELETE /projects/:projectId` | Ad | Soft-delete (S-002); async purge job (S-003) | P03-S03 |
 | `GET/POST /projects/:projectId/api-keys` · `DELETE …/api-keys/:keyId` | Ad | API keys | P03-S05 |
 | `GET /projects/:projectId/runs` | V | Run list (filters) | P04-S04 |
 | `GET /projects/:projectId/runs/:runId` | V | Run summary (also `?runNumber=`) | P04-S04 |

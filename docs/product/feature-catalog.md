@@ -36,7 +36,7 @@
 | FR-ORG-02 | List/switch my organizations; view org details and members | P03-S03 | SC-ORG-002 | In progress |
 | FR-ORG-03 | Update org settings (Admin+); delete org (Owner, async purge) | P03-S03 | SC-ORG-003, SC-ORG-004 | In progress |
 | FR-ORG-04 | Ownership transfer (exactly one Owner) | P03-S03 | SC-ORG-005, SC-ORG-006 | In progress |
-| FR-ORG-05 | Project CRUD with settings (SLA, retention, flaky thresholds, tracked branches) | P03-S03, P06-S01, P06-S05 | SC-ORG-007, SC-ORG-008 | Planned |
+| FR-ORG-05 | Project CRUD with settings (SLA, retention, flaky thresholds, tracked branches) | P03-S03, P06-S01, P06-S05 | SC-ORG-007, SC-ORG-008 | In progress |
 | FR-ORG-06 | Onboarding to first org + project (golden-path checklist) | P03-S03, P01-S02 | SC-ORG-009, SC-E2E-001 | Planned |
 | FR-ORG-07 | Invitations: create, list, revoke, resend, accept (bound to verified email) | P03-S04 | SC-ORG-010, SC-ORG-011, SC-ORG-012, SC-ORG-013, SC-E2E-004 | Planned |
 | FR-ORG-08 | Role change and member removal (never to/from Owner); self-leave | P03-S04 | SC-ORG-014, SC-ORG-015 | Planned |
@@ -190,7 +190,7 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-PLAN-01 | Project and member limits (`403 PLAN_LIMIT_REACHED` + upgrade modal) | P03-S03, P03-S04 | SC-PLAN-001, SC-PLAN-002, SC-ORG-017 | Planned |
+| FR-PLAN-01 | Project and member limits (`403 PLAN_LIMIT_REACHED` + upgrade modal) | P03-S03, P03-S04 | SC-PLAN-001, SC-PLAN-002, SC-ORG-017 | In progress |
 | FR-PLAN-02 | Usage endpoint and over-quota banner | P04-S06 | SC-PLAN-003 | Planned |
 | FR-PLAN-03 | Retention = min(project setting, plan max), chunked deletion | P04-S06 | SC-PLAN-004 | Planned |
 

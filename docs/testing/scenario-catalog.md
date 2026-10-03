@@ -54,8 +54,8 @@
 | SC-ORG-004 | The Owner deletes the org; an Admin attempts to delete | Owner: org becomes inaccessible immediately (404) and the purge job removes its data; Admin: 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts (soft delete; purge job lands in S-002) |
 | SC-ORG-005 | The Owner transfers ownership to an Admin | New Owner set; previous Owner becomes Admin; exactly one Owner exists | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts |
 | SC-ORG-006 | Anyone tries to remove the Owner or change the Owner's role directly | Rejected (403/400); Owner unchanged | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts (transfer guards; member role and removal routes land in P03-S04) |
-| SC-ORG-007 | An Admin creates a project; a Member attempts the same | Admin: project with default settings (SLA 14, flaky window 10, threshold 3); Member: 403 | I | FR-ORG-05 | — |
-| SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | — |
+| SC-ORG-007 | An Admin creates a project; a Member attempts the same | Admin: project with default settings (SLA 14, flaky window 10, threshold 3); Member: 403 | I | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts |
+| SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts |
 | SC-ORG-009 | A user verifies their email without an invitation; another arrives via invitation | First user is guided to create an org and project; invited user lands in the inviting org | CT | FR-ORG-06 | — |
 | SC-ORG-010 | An Admin invites an email address | Invitation stored with a hashed token; email sent; the pending invite counts toward the member limit | I | FR-ORG-07 | — |
 | SC-ORG-011 | The invitee (same verified email) accepts | Joins with the invited role; the token can't be reused | I | FR-ORG-07 | — |
@@ -241,7 +241,7 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-PLAN-001 | A Free org creates its 3rd project | 403 `PLAN_LIMIT_REACHED`; the UI shows the upgrade (contact/waitlist) modal | I | FR-PLAN-01 | — |
+| SC-PLAN-001 | A Free org creates its 3rd project | 403 `PLAN_LIMIT_REACHED`; the UI shows the upgrade (contact/waitlist) modal | I | FR-PLAN-01 | apps/api/test/projects/projects.acceptance.test.ts (API 403; the upgrade modal lands in S-004) |
 | SC-PLAN-002 | A Free org with 2 members and 1 pending invite sends another invite | 403 `PLAN_LIMIT_REACHED` | I | FR-PLAN-01 | — |
 | SC-PLAN-003 | The usage endpoint is called before and after the quota is exceeded | Correct used/limit values; the over-quota banner shows | I | FR-PLAN-02, FR-ING-07 | — |
 | SC-PLAN-004 | A Free project has `retentionDays = 30` | Effective retention is 7 days; only older raw data is deleted, in chunks; daily aggregates are kept | I | FR-PLAN-03 | — |
@@ -250,8 +250,8 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-SEC-001 | Table-driven: every route is called by a user from another org | 404 for each | I | FR-SEC-01 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes) |
-| SC-SEC-002 | Table-driven: every route is called with each role below its minimum | 403 for each | I | FR-SEC-01, FR-ORG-09 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes) |
+| SC-SEC-001 | Table-driven: every route is called by a user from another org | 404 for each | I | FR-SEC-01 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes); apps/api/test/projects/project-tenant-context.acceptance.test.ts (project routes) |
+| SC-SEC-002 | Table-driven: every route is called with each role below its minimum | 403 for each | I | FR-SEC-01, FR-ORG-09 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes); apps/api/test/projects/project-tenant-context.acceptance.test.ts (project routes) |
 | SC-SEC-003 | A route is registered without an entry in the isolation table | The meta-test fails | U | FR-SEC-01 | apps/api/test/orgs/tenant-context.acceptance.test.ts |
 | SC-SEC-004 | The tenant client runs `findUnique` on a tenant model, a create with a foreign `projectId`, and `findMany` without a filter | Throws; throws; the scope is injected | U | FR-SEC-02 | packages/db/test/tenant-client.int.test.ts |
 | SC-SEC-005 | API and web responses are inspected; a request comes from a foreign origin | Expected security headers present; CORS rejects the foreign origin | I | FR-SEC-03 | — |
