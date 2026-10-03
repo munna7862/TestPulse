@@ -23,6 +23,7 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
       WEB_ORIGIN: "https://testpulse.example.com",
       AUTH_RATE_LIMIT_LOGIN_PER_MINUTE: "10",
       AUTH_RATE_LIMIT_RECOVERY_PER_HOUR: "20",
+      AUTH_GENERIC_RESPONSE_MIN_MS: "0",
     });
 
     app = await buildApp({
@@ -64,9 +65,7 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
         const res = await app.inject({
           method: "POST",
           url: "/api/v1/auth/login",
-          headers: {
-            "x-forwarded-for": clientIp,
-          },
+          remoteAddress: clientIp,
           payload: {
             email: "bruteforce@example.com",
             password: "WrongPassword!",
@@ -94,9 +93,7 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
         const res = await app.inject({
           method: "POST",
           url: "/api/v1/auth/password/forgot",
-          headers: {
-            "x-forwarded-for": clientIp,
-          },
+          remoteAddress: clientIp,
           payload: {
             email: `target-${i}@example.com`,
           },
@@ -173,23 +170,23 @@ describe("Acceptance H1: Auth Security Hardening (G4, G5, G6)", () => {
         }),
       ]);
 
-      const statuses = [res1.statusCode, res2.statusCode];
+      // Exactly one request rotates the token; the loser is treated as reuse (review T1 strengthened this).
+      const winner = [res1, res2].find((r) => r.statusCode === 200);
+      const loser = [res1, res2].find((r) => r.statusCode === 401);
+      expect(winner).toBeDefined();
+      expect(loser).toBeDefined();
+      expect(ApiFailureSchema.parse(loser?.json()).error.code).toBe("TOKEN_REUSE_DETECTED");
 
-      // CRITICAL: Both requests CANNOT succeed (200, 200). That was defect G6!
-      // At most one can succeed (200), and the other must be rejected (401).
-      // Or if token reuse is detected due to race, both terminate.
-      const successCount = statuses.filter((s) => s === 200).length;
-      expect(successCount).toBeLessThanOrEqual(1);
-
-      const has401 = statuses.includes(401);
-      expect(has401).toBe(true);
-
-      // Verify that if family reuse was triggered, subsequent refresh is blocked
-      if (res1.statusCode === 401 || res2.statusCode === 401) {
-        const errorJson: unknown = res1.statusCode === 401 ? res1.json() : res2.json();
-        const parsed = ApiFailureSchema.safeParse(errorJson);
-        expect(parsed.success).toBe(true);
-      }
+      // Reuse revokes the whole family, so even the winner's fresh refresh token is now dead.
+      const winnerToken = winner?.cookies.find((c) => c.name === "tp_refresh")?.value ?? "";
+      expect(winnerToken.length).toBeGreaterThan(0);
+      const afterRace = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { origin: "https://testpulse.example.com" },
+        cookies: { tp_refresh: winnerToken },
+      });
+      expect(afterRace.statusCode).toBe(401);
     });
   });
 });
