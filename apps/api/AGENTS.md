@@ -10,7 +10,9 @@ Fastify 5: `src/server.ts` (REST + Socket.IO gateway) and `src/worker.ts` (BullM
 - API keys are project-scoped and may call only `/api/v1/ingest/*` for their own project.
 - Every new route, socket room or job gets a cross-tenant (404) and a role (403) test.
 - Any read-then-write on security state (tokens, sessions, invitations, quotas) must be atomic
-  (conditional `updateMany` + count check) and gets a `Promise.all` concurrency test.
+  (conditional `updateMany` + count check) and gets a `Promise.all` concurrency test. The test must prove the
+  requests overlapped: hold each one at a barrier after its pre-check (role, token or quota read) and assert the
+  arrival count, then check the test fails with the atomic condition removed.
 
 ## Real-time
 - Handlers and workers never hold a Socket.IO server reference and never call `io.emit`.
