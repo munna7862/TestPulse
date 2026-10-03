@@ -125,15 +125,26 @@ model OrgMember {
   @@index([userId])
 }
 
-/// Org-scoped. Settings columns are added in P03-S03.
+/// Org-scoped. Settings defaults: master plan §5; retentionDays 30 (effective = min(project, plan max), §8).
 model Project {
-  id        String       @id @default(uuid(7))
-  orgId     String
-  name      String
-  slug      String
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  id              String       @id @default(uuid(7))
+  orgId           String
+  name            String
+  slug            String
+  description     String?
+  defaultBranch   String       @default("main")
+  /// Incremented atomically per run (P04).
+  runCounter      Int          @default(0)
+  slaDays         Int          @default(14)
+  retentionDays   Int          @default(30)
+  flakyWindow     Int          @default(10)
+  flakyThreshold  Int          @default(3)
+  trackedBranches String[]     @default(["main"])
+  /// Soft delete; the purge job (S-003) removes the row and its data.
+  deletedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  org             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([orgId, slug])
   @@index([orgId])

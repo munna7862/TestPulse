@@ -1,6 +1,7 @@
 import type { ApiErrorCode, ApiFailure } from "@testpulse/shared";
 import type { FastifyError, FastifyInstance } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
+import { ApiError } from "../lib/api-error";
 
 const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
   400: "VALIDATION_ERROR",
@@ -40,6 +41,10 @@ export function registerErrorHandling(app: FastifyInstance): void {
       return reply.status(500).send(failure("INTERNAL", "Something went wrong", request.id));
     }
 
+    if (error instanceof ApiError) {
+      const code = error.code ?? STATUS_TO_CODE[status] ?? "INTERNAL";
+      return reply.status(status).send(failure(code, error.message, request.id, error.details));
+    }
     const code = STATUS_TO_CODE[status] ?? "INTERNAL";
     return reply.status(status).send(failure(code, error.message, request.id));
   });
