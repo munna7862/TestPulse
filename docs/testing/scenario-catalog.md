@@ -48,12 +48,12 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-ORG-001 | A verified user creates an organization | User is OWNER; `planTier = FREE` | I | FR-ORG-01 | — |
-| SC-ORG-002 | A user who belongs to two orgs lists organizations | Only their memberships are returned; switching changes the active org in the UI | I | FR-ORG-02 | — |
-| SC-ORG-003 | An Admin updates the org name; a Member attempts the same | Admin succeeds; Member gets 403 | I | FR-ORG-03 | — |
-| SC-ORG-004 | The Owner deletes the org; an Admin attempts to delete | Owner: org becomes inaccessible immediately (404) and the purge job removes its data; Admin: 403 | I | FR-ORG-03 | — |
-| SC-ORG-005 | The Owner transfers ownership to an Admin | New Owner set; previous Owner becomes Admin; exactly one Owner exists | I | FR-ORG-04 | — |
-| SC-ORG-006 | Anyone tries to remove the Owner or change the Owner's role directly | Rejected (403/400); Owner unchanged | I | FR-ORG-04 | — |
+| SC-ORG-001 | A verified user creates an organization | User is OWNER; `planTier = FREE` | I | FR-ORG-01 | apps/api/test/orgs/orgs.acceptance.test.ts |
+| SC-ORG-002 | A user who belongs to two orgs lists organizations | Only their memberships are returned; switching changes the active org in the UI | I | FR-ORG-02 | apps/api/test/orgs/orgs.acceptance.test.ts (API; org switching in the UI lands in S-003) |
+| SC-ORG-003 | An Admin updates the org name; a Member attempts the same | Admin succeeds; Member gets 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts |
+| SC-ORG-004 | The Owner deletes the org; an Admin attempts to delete | Owner: org becomes inaccessible immediately (404) and the purge job removes its data; Admin: 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts (soft delete; purge job lands in S-002) |
+| SC-ORG-005 | The Owner transfers ownership to an Admin | New Owner set; previous Owner becomes Admin; exactly one Owner exists | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts |
+| SC-ORG-006 | Anyone tries to remove the Owner or change the Owner's role directly | Rejected (403/400); Owner unchanged | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts (transfer guards; member role and removal routes land in P03-S04) |
 | SC-ORG-007 | An Admin creates a project; a Member attempts the same | Admin: project with default settings (SLA 14, flaky window 10, threshold 3); Member: 403 | I | FR-ORG-05 | — |
 | SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | — |
 | SC-ORG-009 | A user verifies their email without an invitation; another arrives via invitation | First user is guided to create an org and project; invited user lands in the inviting org | CT | FR-ORG-06 | — |
@@ -249,9 +249,9 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-SEC-001 | Table-driven: every route is called by a user from another org | 404 for each | I | FR-SEC-01 | — |
-| SC-SEC-002 | Table-driven: every route is called with each role below its minimum | 403 for each | I | FR-SEC-01, FR-ORG-09 | — |
-| SC-SEC-003 | A route is registered without an entry in the isolation table | The meta-test fails | U | FR-SEC-01 | — |
+| SC-SEC-001 | Table-driven: every route is called by a user from another org | 404 for each | I | FR-SEC-01 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes) |
+| SC-SEC-002 | Table-driven: every route is called with each role below its minimum | 403 for each | I | FR-SEC-01, FR-ORG-09 | apps/api/test/orgs/tenant-context.acceptance.test.ts (org routes) |
+| SC-SEC-003 | A route is registered without an entry in the isolation table | The meta-test fails | U | FR-SEC-01 | apps/api/test/orgs/tenant-context.acceptance.test.ts |
 | SC-SEC-004 | The tenant client runs `findUnique` on a tenant model, a create with a foreign `projectId`, and `findMany` without a filter | Throws; throws; the scope is injected | U | FR-SEC-02 | packages/db/test/tenant-client.int.test.ts |
 | SC-SEC-005 | API and web responses are inspected; a request comes from a foreign origin | Expected security headers present; CORS rejects the foreign origin | I | FR-SEC-03 | — |
 | SC-SEC-006 | Login, refresh, and ingest requests are logged | Logs contain no passwords, tokens, cookies, or API keys | I | FR-SEC-04 | — |

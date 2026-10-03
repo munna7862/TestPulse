@@ -64,6 +64,15 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `GET /orgs/:orgId/audit-events` | Ad | Audit log | P03-S06 |
 | `GET /orgs/:orgId/projects` · `POST /orgs/:orgId/projects` | V / Ad | List / create project (`?slug=`) | P03-S03 |
 
+Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
+
+- `POST /orgs` takes `{ name, slug? }`. Without `slug`, it is derived from `name` (lowercase letters, digits, single hyphens, at most 48 characters). A taken slug returns `409 CONFLICT`, including slugs of soft-deleted orgs.
+- Org responses are `{ id, name, slug, planTier, role, createdAt }`, where `role` is the caller's role. `GET /orgs?slug=` returns at most one org, and only from the caller's memberships.
+- `GET /orgs/:orgId/members` returns `{ userId, name, email, role, joinedAt }` per member and nothing else about users.
+- `DELETE /orgs/:orgId` returns 204 and soft-deletes; every route under the org returns 404 from then on.
+- `POST /orgs/:orgId/transfer-ownership` takes `{ userId }` and returns the org with the caller's new role (`ADMIN`). The target must be an Admin of the org: a Member, Viewer or the caller returns 400, a non-member 404.
+- Every route under `/orgs/:orgId` must be listed in `ORG_ROUTE_POLICY` (`apps/api/src/plugins/tenant-context.ts`) with its minimum role; an unlisted route fails at startup. The tenant check runs before body validation, so non-members get 404 whatever they send.
+
 ### Projects
 
 | Method & path | Role | Purpose | Sprint |

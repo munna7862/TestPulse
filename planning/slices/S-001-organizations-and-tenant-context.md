@@ -66,8 +66,8 @@ Contract docs kept current: `docs/api/rest-api.md` §2 Organizations, `docs/secu
 - Free-tier profile: no new infra; DB only.
 
 ## Tests written first
-`apps/api/src/modules/orgs/orgs.acceptance.test.ts` covers AC1–AC9;
-`apps/api/src/plugins/tenant-context.acceptance.test.ts` covers AC9–AC10;
+`apps/api/test/orgs/orgs.acceptance.test.ts` covers AC1–AC8;
+`apps/api/test/orgs/tenant-context.acceptance.test.ts` covers AC9–AC10;
 `packages/shared/src/plans.acceptance.test.ts` covers AC11.
 SC IDs: SC-ORG-001…006, SC-SEC-001…003.
 
