@@ -1,14 +1,12 @@
 import { createTenantDb, type PrismaClient } from "@testpulse/db";
 import { type CreateOrgBody, type Org, type OrgMember, type OrgRole, rolesAtLeast, slugify } from "@testpulse/shared";
+import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
 
-/** Domain error carrying an HTTP status; the shared error handler maps it to the envelope code. */
-export class OrgError extends Error {
-  constructor(
-    readonly statusCode: 400 | 403 | 404 | 409,
-    message: string,
-  ) {
-    super(message);
+/** Org domain error; the shared error handler maps its status to the envelope code. */
+export class OrgError extends ApiError {
+  constructor(statusCode: 400 | 403 | 404 | 409, message: string) {
+    super(statusCode, message);
     this.name = "OrgError";
   }
 }
@@ -30,10 +28,6 @@ function toOrg(org: OrgRow, role: OrgRole): Org {
     role,
     createdAt: org.createdAt.toISOString(),
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
 export class OrgService {
@@ -60,8 +54,8 @@ export class OrgService {
   }
 
   /**
-   * The caller's own memberships across orgs. Keyed by the authenticated user, so it is the one cross-tenant read
-   * and cannot use a tenant client; it returns only rows where `userId` is the caller.
+   * The caller's own memberships across orgs. Keyed by the authenticated user, so it cannot use a tenant client
+   * (ADR-006 amendment 1); it returns only rows where `userId` is the caller.
    */
   async listForUser(userId: string, slug?: string): Promise<Org[]> {
     const memberships = await this.db.orgMember.findMany({

@@ -1,0 +1,10 @@
+-- AlterTable
+ALTER TABLE "Project" ADD COLUMN     "defaultBranch" TEXT NOT NULL DEFAULT 'main',
+ADD COLUMN     "deletedAt" TIMESTAMP(3),
+ADD COLUMN     "description" TEXT,
+ADD COLUMN     "flakyThreshold" INTEGER NOT NULL DEFAULT 3,
+ADD COLUMN     "flakyWindow" INTEGER NOT NULL DEFAULT 10,
+ADD COLUMN     "retentionDays" INTEGER NOT NULL DEFAULT 30,
+ADD COLUMN     "runCounter" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "slaDays" INTEGER NOT NULL DEFAULT 14,
+ADD COLUMN     "trackedBranches" TEXT[] DEFAULT ARRAY['main']::TEXT[];

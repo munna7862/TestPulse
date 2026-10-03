@@ -12,6 +12,7 @@ import { AuthService, authRoutes } from "./modules/auth";
 import type { RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
 import { orgRoutes } from "./modules/orgs";
+import { projectRoutes } from "./modules/projects";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { createTenantContextHook, registerTenantRouteGuard } from "./plugins/tenant-context";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
@@ -139,6 +140,7 @@ export async function buildApp({
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
     await app.register(orgRoutes({ db: activeDb, env }));
+    await app.register(projectRoutes({ db: activeDb }));
   }
 
   return app;

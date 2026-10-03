@@ -3,11 +3,9 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- Playbook catch-up: reviewer baseline and per-slice §8 metrics (`planning/metrics.md`), branch
-  `chore/playbook-metrics-baseline`.
+- S-002 Projects (`planning/slices/S-002-projects.md`), branch `feat/s-002-projects`.
 
 ## Next
-- S-002 Projects (`planning/slices/S-002-projects.md`, approved with the recommended defaults).
 - S-003 Purge job for soft-deleted orgs and projects. S-004 Web: org switcher, dialogs, onboarding.
 
 ## Later

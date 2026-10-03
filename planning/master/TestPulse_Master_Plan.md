@@ -281,7 +281,7 @@ Every tenant-owned table carries `projectId` and/or `orgId` directly (denormaliz
 | `Organization` | `id`, `name`, `slug` (unique), `planTier` [FREE, PRO, ENTERPRISE], `deletedAt?` (soft delete; purged asynchronously) | P03-S03 |
 | `OrgMember` | `id`, `orgId`, `userId`, `role` [OWNER, ADMIN, MEMBER, VIEWER]; `@@unique([orgId, userId])` | P03-S03 |
 | `Invitation` | `id`, `orgId`, `email`, `role`, `tokenHash`, `invitedById`, `expiresAt`, `acceptedAt?`, `revokedAt?` | P03-S04 |
-| `Project` | `id`, `orgId`, `name`, `slug`, `description?`, `defaultBranch`, `runCounter`, settings: `slaDays` (14), `retentionDays`, `flakyWindow` (10), `flakyThreshold` (3), `trackedBranches[]`; `@@unique([orgId, slug])` | P03-S03 |
+| `Project` | `id`, `orgId`, `name`, `slug`, `description?`, `defaultBranch`, `runCounter`, settings: `slaDays` (14), `retentionDays` (30), `flakyWindow` (10), `flakyThreshold` (3), `trackedBranches[]` ([`main`]), `deletedAt?` (soft delete; purged asynchronously); `@@unique([orgId, slug])` | P03-S03 |
 | `ApiKey` | `id`, `orgId`, `projectId`, `name`, `prefix`, `keyHash` (unique), `createdById`, `lastUsedAt?`, `expiresAt?`, `revokedAt?` | P03-S05 |
 | `AuditEvent` | `id`, `orgId`, `projectId?`, `actorUserId?`, `actorApiKeyId?`, `action`, `targetType`, `targetId`, `metadata` | P03-S06 |
 
