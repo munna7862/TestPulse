@@ -1,102 +1,89 @@
 # TestPulse
 
 [![CI Quality Gate](https://github.com/munna7862/TestPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/munna7862/TestPulse/actions/workflows/ci.yml)
-[![Deploy Staging](https://github.com/munna7862/TestPulse/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/munna7862/TestPulse/actions/workflows/deploy-staging.yml)
-![Node.js](https://img.shields.io/badge/node-24%20LTS-brightgreen.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-> **Real-time test execution monitoring, collaborative flaky test triage, and automated quarantine lifecycle management.**
+TestPulse is a multi-tenant SaaS for watching test runs live and triaging flaky tests: a CI reporter streams results to a dashboard, tests get a flakiness score, and flaky tests move through a quarantine lifecycle.
 
----
+## Status
 
-## 🧭 Overview & Topology
+**In development, Phase 03 of 11 (Authentication and multi-tenancy).** There is no release and no public deployment yet.
 
-TestPulse is a multi-tenant SaaS platform built for engineering teams who demand complete visibility into their test suites. It pairs deep test-runner integration with live streaming updates, automated flakiness scoring, and quarantine lifecycle rules.
+| Phase | State |
+| --- | --- |
+| 01 Product and architecture foundation | Done (PRD, UX, ADRs, security model, testing strategy) |
+| 02 Project bootstrap and DevOps | Done (monorepo, tooling, CI quality gate, design system) |
+| 03 Authentication and multi-tenancy | In progress |
+| 04-11 Ingestion, real-time dashboard, flaky detection, notifications, analytics, polish, release, launch | Planned |
 
-```text
-testpulse/
-├── apps/
-│   ├── web/               # Next.js 16 (App Router, React 19, Tailwind v4, Radix UI)
-│   └── api/               # Fastify 5 (REST + Socket.IO server & BullMQ workers)
-├── packages/
-│   ├── shared/            # Isomorphic: Zod schemas, event contracts, domain models, pure utils
-│   ├── db/                # Prisma schema, migrations, tenant-scoped client (createTenantDb)
-│   ├── ui/                # Shared design system primitive components
-│   └── reporter/          # Published CI reporter npm package (Playwright + Vitest)
-├── .github/workflows/     # CI quality gates, staging deployment, and keep-alive workflows
-├── docs/                  # Architecture, PRD, API, Database, Testing, Security, Ops docs
-└── scripts/               # Quality gates (traceability check) and dev utilities
-```
+What works today (API + web):
 
----
+- Email registration with verification, password login, password reset, session cookies with refresh-token rotation.
+- Google and GitHub OAuth sign-in with safe account linking.
+- Auth rate limiting, timing parity on login, single-use tokens.
+- Organizations with tenant context, and projects with plan limits and project-scoped tenancy.
+- Web app shell, auth pages and a design-system component catalog.
 
-## 🚀 Quick Start
+Not built yet: invitations and RBAC, API keys, the test-run ingestion API, the CI reporter (`packages/reporter` is a placeholder), the real-time Socket.IO dashboard, flakiness scoring and quarantine. `planning/NOW.md` tracks the current slice.
 
-### Prerequisites
-* **Node.js**: `24 LTS` (see `.nvmrc`)
-* **npm**: `v10+`
-* **PostgreSQL**: `16+` (or Neon serverless branch)
-* **Redis**: `7+` (optional for unit tests; required for `test:contract` and background workers)
+## Tech stack
 
-### Installation
+- **Web**: Next.js 16 (App Router), React 19, Tailwind CSS v4
+- **API**: Fastify 5, Zod 4, `@fastify/jwt`, argon2, Arctic (OAuth), BullMQ on Redis (ioredis), Pino
+- **Data**: PostgreSQL 16 via Prisma 7; `embedded-postgres` for Docker-free local development
+- **Tooling**: TypeScript 6, npm workspaces + Turborepo, ESLint 10, Prettier, Husky, lint-staged, commitlint
+- **Tests**: Vitest (unit, integration, real-Redis contract tests), Playwright + axe-core (E2E smoke and accessibility)
+- **Runtime**: Node.js 24 LTS (`.nvmrc`)
+
+## Quick start
+
+Prerequisites: Node.js 24, npm 10+, Redis 7 (needed for workers and `test:contract`). PostgreSQL is optional locally because `npm run db:start` runs an embedded PostgreSQL 16.
+
 ```bash
-# Clone the repository
 git clone https://github.com/munna7862/TestPulse.git
 cd TestPulse
-
-# Install dependencies across all workspaces
 npm install
-
-# Copy environment template
 cp .env.example .env
+
+npm run db:start      # embedded PostgreSQL on port 5433, keep this terminal open
+npm run db:migrate    # in a second terminal
+npm run dev           # web on http://localhost:3000, API on http://localhost:4000
 ```
 
-### Local Development
+The API serves auth under `/api/v1/auth`. See `docs/database/local-setup.md` and `docs/ops/environment.md` for every variable.
+
+## Project structure
+
+```
+apps/
+  web/                Next.js app: auth pages, app shell, runs and settings pages, Playwright E2E tests
+  api/                Fastify API: auth, OAuth, orgs, projects, tenant-context plugin, BullMQ worker
+packages/
+  db/                 Prisma schema, migrations, seed, tenant-scoped client, embedded Postgres script
+  shared/             Zod schemas, API contracts, env parsing, shared utilities
+  ui/                 Shared React components
+  reporter/           Placeholder for the CI reporter (not implemented)
+docs/                 PRD, ADRs, API, database, security, testing and UX docs
+planning/             Master plan, 11 phase blueprints, sprints, slices, NOW.md
+scripts/              Quality gates: traceability, PR size, audit, skills sync
+```
+
+## Tests and CI
+
 ```bash
-# Start local development database (Docker-free / portable)
-npm run db:start
-
-# Run migrations and generate Prisma client
-npm run db:migrate
-
-# Start all workspaces concurrently in development mode
-npm run dev
+npm run lint                 # ESLint with architecture boundary rules
+npm run typecheck
+npm run format:check
+npm run test                 # Vitest unit and integration tests with coverage
+npm run test:contract        # BullMQ and Redis contract tests against a real Redis
+npm run test:e2e             # Playwright smoke, auth, OAuth and accessibility tests
+npm run check:traceability   # every automated scenario in docs/testing/scenario-catalog.md exists
+npm run build
 ```
 
-The web application runs at `http://localhost:3000` and the API runs at `http://localhost:4000`.
+`.github/workflows/ci.yml` (CI Quality Gate) runs on pushes and pull requests: PR size budget, lint, typecheck, format, skills sync, traceability, unit and contract tests, production build, dependency audit, Gitleaks secret scan, then a Playwright E2E job against a migrated database.
 
----
+Two more workflows exist but are not active yet: `deploy-staging.yml` waits for staging secrets to be configured, and `keep-alive.yml` skips until a staging URL is set.
 
-## 🚦 Quality Gates
+## Deployment target
 
-TestPulse enforces strict zero-regression quality gates verified in both local pre-commit hooks and GitHub Actions CI:
-
-```bash
-npm run check:traceability   # Verify 100% of automated scenarios in scenario-catalog.md exist
-npm run lint                 # ESLint 10 with architecture boundary enforcement
-npm run typecheck            # Strict TypeScript compilation across all workspaces
-npm run format:check         # Prettier code formatting verification
-npm run test                 # Vitest unit and integration test suites
-npm run test:contract        # Real-Redis contract and BullMQ job processing tests
-npm run test:e2e             # Playwright end-to-end smoke & accessibility test suite
-npm run build                # Turborepo production build of all packages and apps
-```
-
----
-
-## ☁️ Deployment Profile
-
-TestPulse is architected for dual-target deployment (Free-Tier profile until feature-complete, Paid-Tier profile for scale):
-
-* **Web**: Vercel Hobby (`apps/web` Next.js 16 App Router) with same-origin `/api` rewrites preserving first-party cookies.
-* **API & Workers**: Render Free Web Service (`apps/api` Fastify 5 + Socket.IO + BullMQ with `RUN_WORKERS_IN_PROCESS=true`).
-* **Database**: Neon Serverless PostgreSQL 16 (pooled connection for runtime, direct URL for migrations).
-* **Redis**: Render Key Value / Upstash Redis for distributed cache and BullMQ job scheduling.
-
-Refer to [docs/ops/environment.md](docs/ops/environment.md) for full configuration variables.
-
----
-
-## 📄 License
-
-MIT © [TestPulse Team](https://github.com/munna7862/TestPulse)
+The free-tier profile (until feature complete) is Vercel for the web app, Render for the API and workers, Neon for PostgreSQL and Upstash or Render Key Value for Redis. Details are in `docs/ops/free-tier-deployment.md` and ADR-003.
