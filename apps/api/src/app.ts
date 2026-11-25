@@ -15,6 +15,7 @@ import { orgRoutes } from "./modules/orgs";
 import { projectRoutes } from "./modules/projects";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { createTenantContextHook, registerTenantRouteGuard } from "./plugins/tenant-context";
+import type { QueueClient } from "./queues/registry";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
 export interface BuildAppOptions {
@@ -26,6 +27,8 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** Auth rate-limit counters. server.ts passes a Redis store; defaults to per-process memory. */
   rateLimitStore?: RateLimitStore;
+  /** Producer queue client for async background jobs (e.g. soft-delete purge). */
+  queueClient?: QueueClient;
 }
 
 export async function buildApp({
@@ -35,6 +38,7 @@ export async function buildApp({
   mailer: injectedMailer,
   logger = true,
   rateLimitStore,
+  queueClient,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger
@@ -139,8 +143,9 @@ export async function buildApp({
       prefix: "/api/v1/auth",
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
-    await app.register(orgRoutes({ db: activeDb, env }));
-    await app.register(projectRoutes({ db: activeDb }));
+    const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue purge job");
+    await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
+    await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
   }
 
   return app;

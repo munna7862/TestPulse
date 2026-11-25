@@ -2,16 +2,35 @@
  * Standalone worker process entry (paid deployment profile: `npm run start:worker`).
  * Kept separate from worker.ts so bundling the library into server.js never starts a second set of workers.
  */
+import { existsSync } from "node:fs";
+import { createPrismaClient } from "@testpulse/db";
 import { pino } from "pino";
+import { loadApiEnv } from "./env";
 import { LOG_REDACT_PATHS } from "./log-redaction";
 import { startWorkers } from "./worker";
 
-const log = pino({ level: process.env.LOG_LEVEL ?? "info", redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" } });
-const handle = await startWorkers({ log, redisUrl: process.env.REDIS_URL });
-
-async function shutdown(): Promise<void> {
-  await handle.close();
-  process.exit(0);
+if (process.env.NODE_ENV !== "production" && existsSync(".env")) {
+  process.loadEnvFile(".env");
 }
-process.once("SIGTERM", () => void shutdown());
-process.once("SIGINT", () => void shutdown());
+
+const env = loadApiEnv();
+const db = env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
+const log = pino({ level: env.LOG_LEVEL, redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" } });
+const handle = await startWorkers({ log, redisUrl: env.REDIS_URL, ...(db ? { db } : {}) });
+
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log.info({ signal }, "worker shutting down");
+  try {
+    await handle.close();
+    await db?.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    log.error({ err: error }, "error during worker shutdown");
+    process.exit(1);
+  }
+}
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));

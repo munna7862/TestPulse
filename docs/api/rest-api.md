@@ -52,7 +52,7 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `GET /orgs` | A | My orgs (`?slug=` resolves a slug) | P03-S03 |
 | `GET /orgs/:orgId` | V | Org details | P03-S03 |
 | `PATCH /orgs/:orgId` | Ad | Update org | P03-S03 |
-| `DELETE /orgs/:orgId` | O | Soft-delete (S-001); async purge job (S-002) | P03-S03 |
+| `DELETE /orgs/:orgId` | O | Soft-delete (S-001); async purge job (S-003) | P03-S03 |
 | `POST /orgs/:orgId/transfer-ownership` | O | Transfer to an existing Admin | P03-S03 |
 | `GET /orgs/:orgId/members` | V | List members | P03-S03 |
 | `PATCH /orgs/:orgId/members/:userId` | Ad | Change role (not Owner) | P03-S04 |
@@ -78,7 +78,7 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 - `POST /orgs` takes `{ name, slug? }`. Without `slug`, it is derived from `name` (lowercase letters, digits, single hyphens, at most 48 characters). A taken slug returns `409 CONFLICT`, including slugs of soft-deleted orgs.
 - Org responses are `{ id, name, slug, planTier, role, createdAt }`, where `role` is the caller's role. `GET /orgs?slug=` returns at most one org, and only from the caller's memberships.
 - `GET /orgs/:orgId/members` returns `{ userId, name, email, role, joinedAt }` per member and nothing else about users.
-- `DELETE /orgs/:orgId` returns 204 and soft-deletes; every route under the org returns 404 from then on.
+- `DELETE /orgs/:orgId` returns 204, soft-deletes, and enqueues `tenant.purge-org` (backed by a 15-minute `system.purge-sweep` catch-up job); every route under the org returns 404 from then on, and the slug is freed once purged.
 - `POST /orgs/:orgId/transfer-ownership` takes `{ userId }` and returns the org with the caller's new role (`ADMIN`). The target must be an Admin of the org: a Member, Viewer or the caller returns 400, a non-member 404.
 - Every route under `/orgs/:orgId` must be listed in `ORG_ROUTE_POLICY` (`apps/api/src/plugins/tenant-context.ts`) with its minimum role; an unlisted route, or an org route whose parameter is not named exactly `:orgId`, fails at startup. A route serving several methods enforces each method's own minimum role. The tenant check runs before body validation, so non-members get 404 whatever they send; a malformed org id also gets 404 without a query (ids longer than the router's 100-character parameter limit get 414 from Fastify before any check). Writes to the org row re-check the caller's role, so a role lost mid-request returns 403.
 
@@ -88,7 +88,7 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 | :--- | :--- | :--- | :--- |
 | `GET /projects/:projectId` | V | Project + settings | P03-S03 |
 | `PATCH /projects/:projectId` | Ad | Update name and settings (SLA, retention, flaky, branches) | P03-S03, P06 |
-| `DELETE /projects/:projectId` | Ad | Soft-delete (S-002); async purge job (S-003) | P03-S03 |
+| `DELETE /projects/:projectId` | Ad | Soft-delete (S-002); async purge job (S-003); slug freed after purge | P03-S03 |
 | `GET/POST /projects/:projectId/api-keys` · `DELETE …/api-keys/:keyId` | Ad | API keys | P03-S05 |
 | `GET /projects/:projectId/runs` | V | Run list (filters) | P04-S04 |
 | `GET /projects/:projectId/runs/:runId` | V | Run summary (also `?runNumber=`) | P04-S04 |

@@ -10,6 +10,7 @@ import {
 } from "@testpulse/shared";
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import { projectIdOf, type TenantRequestContext } from "../../plugins/tenant-context";
+import type { QueueClient } from "../../queues/registry";
 
 const NOT_FOUND = "Project not found.";
 const FORBIDDEN = "Your role does not allow this action.";
@@ -50,7 +51,11 @@ function toProject(row: ProjectRow, role: OrgRole): Project {
 }
 
 export class ProjectService {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly queueClient?: QueueClient,
+    private readonly onEnqueueError?: (error: unknown) => void,
+  ) {}
 
   async listForOrg(ctx: TenantRequestContext, slug?: string): Promise<Project[]> {
     const rows = await createTenantDb(this.db, ctx).project.findMany({
@@ -127,11 +132,24 @@ export class ProjectService {
 
   /** Soft delete: the project is 404 and stops counting toward the plan limit; S-003 purges its data. */
   async softDelete(ctx: TenantRequestContext): Promise<void> {
+    const projectId = projectIdOf(ctx);
     const { count } = await createTenantDb(this.db, ctx).project.updateMany({
       where: this.stillAllowed(ctx),
       data: { deletedAt: new Date() },
     });
     if (count !== 1) throw await this.refusal(ctx);
+    if (this.queueClient) {
+      try {
+        await this.queueClient.enqueue(
+          "tenant.purge-project",
+          { orgId: ctx.orgId, projectId },
+          { jobId: `purge-project_${projectId}` },
+        );
+      } catch (error) {
+        // Sweep job catches up if Redis is temporarily unreachable (master plan §4.4).
+        this.onEnqueueError?.(error);
+      }
+    }
   }
 
   /** Writes are conditional on the project being live and the caller still holding the route's minimum role. */

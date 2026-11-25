@@ -2,6 +2,7 @@ import { createTenantDb, type PrismaClient } from "@testpulse/db";
 import { type CreateOrgBody, type Org, type OrgMember, type OrgRole, rolesAtLeast, slugify } from "@testpulse/shared";
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
+import type { QueueClient } from "../../queues/registry";
 
 /** Org domain error; the shared error handler maps its status to the envelope code. */
 export class OrgError extends ApiError {
@@ -31,7 +32,11 @@ function toOrg(org: OrgRow, role: OrgRole): Org {
 }
 
 export class OrgService {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly queueClient?: QueueClient,
+    private readonly onEnqueueError?: (error: unknown) => void,
+  ) {}
 
   /**
    * Creates the org and its single OWNER membership in one statement. The tenant does not exist yet, so this is
@@ -104,6 +109,14 @@ export class OrgService {
       data: { deletedAt: new Date() },
     });
     if (count !== 1) throw await this.refusal(ctx);
+    if (this.queueClient) {
+      try {
+        await this.queueClient.enqueue("tenant.purge-org", { orgId: ctx.orgId }, { jobId: `purge-org_${ctx.orgId}` });
+      } catch (error) {
+        // Sweep job catches up if Redis is temporarily unreachable (master plan §4.4).
+        this.onEnqueueError?.(error);
+      }
+    }
   }
 
   async listMembers(ctx: TenantRequestContext): Promise<OrgMember[]> {

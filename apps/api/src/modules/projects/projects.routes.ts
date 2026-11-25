@@ -10,19 +10,22 @@ import {
 } from "@testpulse/shared";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { tenantContextOf } from "../../plugins/tenant-context";
+import type { QueueClient } from "../../queues/registry";
 import { ProjectService } from "./projects.service";
 
 export interface ProjectRoutesOptions {
   db: PrismaClient;
+  queueClient?: QueueClient;
+  onEnqueueError?: (error: unknown) => void;
 }
 
 /**
  * Project routes (docs/api/rest-api.md §2). Authentication, CSRF and tenant resolution come from the tenant-context
  * hook that registerTenantRouteGuard attaches from ORG_ROUTE_POLICY and PROJECT_ROUTE_POLICY.
  */
-export function projectRoutes({ db }: ProjectRoutesOptions): FastifyPluginAsyncZod {
+export function projectRoutes({ db, queueClient, onEnqueueError }: ProjectRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
-    const service = new ProjectService(db);
+    const service = new ProjectService(db, queueClient, onEnqueueError);
 
     app.get(
       "/api/v1/orgs/:orgId/projects",

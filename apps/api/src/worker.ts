@@ -1,8 +1,17 @@
+import type { PrismaClient } from "@testpulse/db";
 import { Worker } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { createRedis, type Redis } from "./lib/redis";
 import { processors as defaultProcessors, type ProcessorDeps, type ProcessorMap } from "./queues/processors";
-import { createQueueClient, HEARTBEAT_SCHEDULER_ID, JOBS, type JobName, QUEUES } from "./queues/registry";
+import {
+  createQueueClient,
+  HEARTBEAT_SCHEDULER_ID,
+  JOBS,
+  type JobName,
+  PURGE_SWEEP_INTERVAL_MS,
+  PURGE_SWEEP_SCHEDULER_ID,
+  QUEUES,
+} from "./queues/registry";
 
 export interface WorkerHandle {
   close: () => Promise<void>;
@@ -11,6 +20,7 @@ export interface WorkerHandle {
 export interface StartWorkersOptions {
   log: Pick<FastifyBaseLogger, "info" | "warn" | "error">;
   redisUrl?: string | undefined;
+  db?: PrismaClient;
   processors?: ProcessorMap;
   /** Key prefix for BullMQ (tests use a unique prefix). */
   prefix?: string;
@@ -30,6 +40,7 @@ function isJobName(name: string): name is JobName {
 export async function startWorkers({
   log,
   redisUrl,
+  db,
   processors = defaultProcessors,
   prefix = "tp",
   now = () => new Date(),
@@ -40,8 +51,10 @@ export async function startWorkers({
   }
 
   const connection: Redis = createRedis(redisUrl, { forWorker: true });
-  const deps: ProcessorDeps = { redis: connection, now };
-  const client = createQueueClient(connection, prefix);
+  const deps: ProcessorDeps = { redis: connection, now, ...(db ? { db } : {}) };
+  const client = createQueueClient(connection, prefix, {
+    onError: (error) => log.error({ err: error }, "queue error"),
+  });
 
   const workers = QUEUES.map(
     (queueName) =>
@@ -62,11 +75,30 @@ export async function startWorkers({
     worker.on("failed", (job, error) => {
       log.error({ err: error, job: job?.name, jobId: job?.id }, "job failed");
     });
+    worker.on("error", (error) => {
+      log.error({ err: error }, "worker error");
+    });
   }
 
-  await client
-    .queue("system")
-    .upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} });
+  const systemQueue = client.queue("system");
+  systemQueue.on("error", (error) => {
+    log.error({ err: error }, "queue error");
+  });
+
+  try {
+    await Promise.all([
+      systemQueue.upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} }),
+      systemQueue.upsertJobScheduler(
+        PURGE_SWEEP_SCHEDULER_ID,
+        { every: PURGE_SWEEP_INTERVAL_MS },
+        { name: "system.purge-sweep", data: {} },
+      ),
+    ]);
+  } catch (error) {
+    await Promise.allSettled([...workers.map((worker) => worker.close()), client.close()]);
+    connection.disconnect();
+    throw error;
+  }
 
   log.info({ queues: QUEUES }, "workers started");
 
