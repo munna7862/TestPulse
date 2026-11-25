@@ -4,6 +4,7 @@ import { buildApp } from "./app";
 import { loadApiEnv } from "./env";
 import { checkRedis, createRedis } from "./lib/redis";
 import { RedisRateLimitStore } from "./modules/auth/rate-limiter";
+import { createQueueClient } from "./queues/registry";
 import { startWorkers, type WorkerHandle } from "./worker";
 
 // Local development convenience: load apps/api/.env if present (never in production).
@@ -14,6 +15,8 @@ if (process.env.NODE_ENV !== "production" && existsSync(".env")) {
 const env = loadApiEnv();
 const db = env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
 const redis = env.REDIS_URL ? createRedis(env.REDIS_URL) : undefined;
+const queueRedis = env.REDIS_URL ? createRedis(env.REDIS_URL) : undefined;
+const queueClient = queueRedis ? createQueueClient(queueRedis) : undefined;
 // Separate fail-fast client for auth rate limits; with no offline queue it must be connected explicitly.
 const limiterRedis = env.REDIS_URL ? createRedis(env.REDIS_URL, { failFast: true }) : undefined;
 limiterRedis?.connect().catch((error: unknown) => {
@@ -22,6 +25,8 @@ limiterRedis?.connect().catch((error: unknown) => {
 
 const app = await buildApp({
   env,
+  ...(db ? { db } : {}),
+  ...(queueClient ? { queueClient } : {}),
   ...(limiterRedis ? { rateLimitStore: new RedisRateLimitStore(limiterRedis) } : {}),
   health: {
     ...(db ? { database: () => checkDatabase(db) } : {}),
@@ -31,7 +36,7 @@ const app = await buildApp({
 
 let workers: WorkerHandle | undefined;
 if (env.RUN_WORKERS_IN_PROCESS) {
-  workers = await startWorkers({ log: app.log, redisUrl: env.REDIS_URL });
+  workers = await startWorkers({ log: app.log, redisUrl: env.REDIS_URL, ...(db ? { db } : {}) });
 }
 
 let shuttingDown = false;
@@ -42,7 +47,9 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await app.close();
     await workers?.close();
+    await queueClient?.close();
     await db?.$disconnect();
+    queueRedis?.disconnect();
     redis?.disconnect();
     limiterRedis?.disconnect();
     process.exit(0);
