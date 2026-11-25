@@ -5,6 +5,7 @@
  * isolated without transaction-rollback tricks (docs/testing/testing-strategy.md §2.1). Requires the
  * globalSetup from `test/global-setup.ts` in the consuming workspace's Vitest config.
  */
+import crypto from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,13 @@ import { createPrismaClient, type PrismaClient } from "../src/client";
 import "./provided-context";
 
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../prisma/migrations");
+const TEST_DB_NAME_PATTERN = /^tp_test_[a-z0-9_]+$/;
+
+function assertSafeTestDatabaseName(database: string): void {
+  if (!TEST_DB_NAME_PATTERN.test(database)) {
+    throw new Error(`Refusing to operate on non-test database: "${database}"`);
+  }
+}
 
 function withDatabase(url: string, database: string): string {
   const parsed = new URL(url);
@@ -37,10 +45,12 @@ async function applyMigrations(databaseUrl: string): Promise<void> {
   }
 }
 
-/** Drops and recreates this worker's database, applies migrations, and returns its URL. */
+/** Drops and recreates a process-unique database, applies migrations, and returns its URL. */
 export async function createFreshTestDatabase(): Promise<string> {
   const adminUrl = inject("pgAdminUrl");
-  const database = `tp_test_w${process.env.VITEST_POOL_ID ?? "0"}`;
+  const suffix = `${process.pid}_${process.env.VITEST_POOL_ID ?? "0"}_${crypto.randomBytes(3).toString("hex")}`;
+  const database = `tp_test_${suffix}`;
+  assertSafeTestDatabaseName(database);
   const admin = new pg.Client({ connectionString: adminUrl });
   await admin.connect();
   try {
@@ -52,6 +62,19 @@ export async function createFreshTestDatabase(): Promise<string> {
   const url = withDatabase(adminUrl, database);
   await applyMigrations(url);
   return url;
+}
+
+/** Drops a temporary test database created by `createFreshTestDatabase`. */
+export async function dropTestDatabase(databaseUrl: string): Promise<void> {
+  const database = new URL(databaseUrl).pathname.replace(/^\/+/, "");
+  assertSafeTestDatabaseName(database);
+  const admin = new pg.Client({ connectionString: inject("pgAdminUrl") });
+  await admin.connect();
+  try {
+    await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
+  } finally {
+    await admin.end();
+  }
 }
 
 /** Removes all rows from every application table (keeps the schema). */
@@ -83,7 +106,11 @@ export function useTestDatabase(): TestDatabase {
   });
 
   afterAll(async () => {
-    await db?.$disconnect();
+    try {
+      await db?.$disconnect();
+    } finally {
+      if (url) await dropTestDatabase(url);
+    }
   });
 
   return {

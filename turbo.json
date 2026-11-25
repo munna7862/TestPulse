@@ -6,7 +6,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "src/generated/**"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**", "src/generated/**"],
       "env": ["API_INTERNAL_URL", "NEXT_PUBLIC_*"]
     },
     "dev": {
@@ -17,11 +17,22 @@
     "lint": {
       "dependsOn": ["^build"]
     },
+    "@testpulse/db#lint": {
+      "dependsOn": ["^build", "build"]
+    },
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "@testpulse/db#typecheck": {
+      "dependsOn": ["^build", "build"]
+    },
     "test": {
       "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL_TEST", "CI"]
+    },
+    "@testpulse/db#test": {
+      "dependsOn": ["^build", "build"],
       "outputs": ["coverage/**"],
       "env": ["DATABASE_URL_TEST", "CI"]
     },
