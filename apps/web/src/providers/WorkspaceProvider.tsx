@@ -116,6 +116,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [oState.activeId, pState.tick]);
 
   const selectOrg = (id: string) => {
+    if (id === oState.activeId) return;
     writeStoredId(STORAGE_ORG_KEY, id);
     writeStoredId(STORAGE_PROJECT_KEY, null);
     setOState((s) => ({ ...s, activeId: id }));

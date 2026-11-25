@@ -225,6 +225,11 @@ test.describe("Workspace switcher, creation dialogs & sidebar quota", () => {
     await page.reload();
     await expect(switcher).toContainText("Beta Pro");
     await expect(switcher).toContainText("Beta Mobile");
+
+    // Clicking the already-active organization leaves projects intact (never wedges in loading)
+    await switcher.click();
+    await page.getByRole("menuitem", { name: /Beta Pro/ }).click();
+    await expect(switcher).toContainText("Beta Mobile");
   });
 
   test("[SC-ORG-001] [SC-ORG-008] shows client validation, Cancel reset, server 403/409 dialog errors, plan limits, and role gating", async ({
@@ -262,10 +267,11 @@ test.describe("Workspace switcher, creation dialogs & sidebar quota", () => {
     const switcher = page.getByRole("button", { name: "Switch organization or project" });
     await expect(switcher).toContainText("Acme QA");
 
-    // Client validation alert + Cancel reset on reopen
+    // Client validation alert + input & error reset after Cancel on reopen
     await switcher.click();
     await page.getByRole("menuitem", { name: "New organization" }).click();
     const orgDialog = page.getByRole("dialog");
+    await orgDialog.getByLabel("Slug").fill("temp-slug");
     await orgDialog.getByRole("button", { name: "Create organization" }).click();
     await expect(orgDialog.getByRole("alert")).toContainText("Name is required");
     await orgDialog.getByRole("button", { name: "Cancel" }).click();
@@ -275,6 +281,7 @@ test.describe("Workspace switcher, creation dialogs & sidebar quota", () => {
     await switcher.click();
     await page.getByRole("menuitem", { name: "New organization" }).click();
     await expect(orgDialog.getByRole("alert")).toHaveCount(0);
+    await expect(orgDialog.getByLabel("Slug")).toHaveValue("");
     await orgDialog.getByLabel("Organization name").fill("Acme QA");
     await orgDialog.getByRole("button", { name: "Create organization" }).click();
     await expect(orgDialog.getByRole("alert")).toContainText("already exists");
@@ -312,6 +319,7 @@ test.describe("Workspace switcher, creation dialogs & sidebar quota", () => {
     await page.route("**/api/v1/orgs", (route) => route.fulfill({ json: ok([buildOrg({ role: "MEMBER" })]) }));
     await page.reload();
     await switcher.click();
+    await expect(page.getByRole("menuitem", { name: "New organization" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "New project" })).toHaveCount(0);
   });
 
