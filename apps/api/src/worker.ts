@@ -73,17 +73,30 @@ export async function startWorkers({
     worker.on("failed", (job, error) => {
       log.error({ err: error, job: job?.name, jobId: job?.id }, "job failed");
     });
+    worker.on("error", (error) => {
+      log.error({ err: error }, "worker error");
+    });
   }
 
   const systemQueue = client.queue("system");
-  await Promise.all([
-    systemQueue.upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} }),
-    systemQueue.upsertJobScheduler(
-      PURGE_SWEEP_SCHEDULER_ID,
-      { every: PURGE_SWEEP_INTERVAL_MS },
-      { name: "system.purge-sweep", data: {} },
-    ),
-  ]);
+  systemQueue.on("error", (error) => {
+    log.error({ err: error }, "queue error");
+  });
+
+  try {
+    await Promise.all([
+      systemQueue.upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} }),
+      systemQueue.upsertJobScheduler(
+        PURGE_SWEEP_SCHEDULER_ID,
+        { every: PURGE_SWEEP_INTERVAL_MS },
+        { name: "system.purge-sweep", data: {} },
+      ),
+    ]);
+  } catch (error) {
+    await Promise.allSettled([...workers.map((worker) => worker.close()), client.close()]);
+    connection.disconnect();
+    throw error;
+  }
 
   log.info({ queues: QUEUES }, "workers started");
 

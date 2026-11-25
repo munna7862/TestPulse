@@ -18,10 +18,19 @@ const db = env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
 const log = pino({ level: env.LOG_LEVEL, redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" } });
 const handle = await startWorkers({ log, redisUrl: env.REDIS_URL, ...(db ? { db } : {}) });
 
-async function shutdown(): Promise<void> {
-  await handle.close();
-  await db?.$disconnect();
-  process.exit(0);
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log.info({ signal }, "worker shutting down");
+  try {
+    await handle.close();
+    await db?.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    log.error({ err: error }, "error during worker shutdown");
+    process.exit(1);
+  }
 }
-process.once("SIGTERM", () => void shutdown());
-process.once("SIGINT", () => void shutdown());
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));
