@@ -18,6 +18,11 @@ export function rolesAtLeast(required: OrgRole): OrgRole[] {
   return OrgRoleSchema.options.filter((role) => hasOrgRole(role, required));
 }
 
+/** True when switching from `previous` to `next` reduces privilege. */
+export function isRoleDowngrade(previous: OrgRole, next: OrgRole): boolean {
+  return ROLE_RANK[next] < ROLE_RANK[previous];
+}
+
 /** True when `text` has no ASCII control characters (Postgres rejects NUL; the rest never belong in a name). */
 export function hasNoControlChars(text: string): boolean {
   return [...text].every((char) => char.charCodeAt(0) > 0x1f && char.charCodeAt(0) !== 0x7f);
@@ -94,6 +99,16 @@ export const OrgMemberSchema = z.object({
 });
 export type OrgMember = z.infer<typeof OrgMemberSchema>;
 
+export const AssignableOrgRoleSchema = z.enum(["ADMIN", "MEMBER", "VIEWER"]);
+export type AssignableOrgRole = z.infer<typeof AssignableOrgRoleSchema>;
+
+export const UpdateMemberRoleBodySchema = z.object({ role: AssignableOrgRoleSchema });
+export type UpdateMemberRoleBody = z.infer<typeof UpdateMemberRoleBodySchema>;
+
+export const MemberParamsSchema = z.object({ orgId: z.string(), userId: z.string() });
+export type MemberParams = z.infer<typeof MemberParamsSchema>;
+
 export const OrgResponseSchema = apiSuccess(OrgSchema);
 export const OrgListResponseSchema = apiSuccess(z.array(OrgSchema));
+export const OrgMemberResponseSchema = apiSuccess(OrgMemberSchema);
 export const OrgMemberListResponseSchema = apiSuccess(z.array(OrgMemberSchema));
