@@ -262,25 +262,31 @@ describe("Auth: Register and Verify Integration", () => {
     expect(body.error.code).toBe("EMAIL_NOT_VERIFIED");
   });
 
-  it("does not mount /api/v1/auth/restricted-action when NODE_ENV is production", async () => {
-    const prodApp = await buildApp({
-      env: loadApiEnv({
-        NODE_ENV: "production",
-        JWT_ACCESS_SECRET: "a".repeat(32),
-        JWT_REFRESH_SECRET: "b".repeat(32),
-        APP_URL: "https://testpulse.example.com",
-        WEB_ORIGIN: "https://testpulse.example.com",
-      }),
-      db: testDb.db,
-      mailer: testMailer,
-      logger: false,
-    });
-    await prodApp.ready();
-    try {
-      const res = await prodApp.inject({ method: "POST", url: "/api/v1/auth/restricted-action" });
-      expect(res.statusCode).toBe(404);
-    } finally {
-      await prodApp.close();
-    }
-  });
+  it.each(["production", "development"] as const)(
+    "does not mount /api/v1/auth/restricted-action when NODE_ENV is %s",
+    async (nodeEnv) => {
+      const nonTestApp = await buildApp({
+        env: loadApiEnv({
+          NODE_ENV: nodeEnv,
+          JWT_ACCESS_SECRET: "a".repeat(32),
+          JWT_REFRESH_SECRET: "b".repeat(32),
+          APP_URL: "https://testpulse.example.com",
+          WEB_ORIGIN: "https://testpulse.example.com",
+        }),
+        db: testDb.db,
+        mailer: testMailer,
+        logger: false,
+      });
+      await nonTestApp.ready();
+      try {
+        const restricted = await nonTestApp.inject({ method: "POST", url: "/api/v1/auth/restricted-action" });
+        expect(restricted.statusCode).toBe(404);
+        // Sibling auth routes are mounted, confirming only the test-only route was omitted.
+        const login = await nonTestApp.inject({ method: "POST", url: "/api/v1/auth/login", payload: {} });
+        expect(login.statusCode).toBe(400);
+      } finally {
+        await nonTestApp.close();
+      }
+    },
+  );
 });

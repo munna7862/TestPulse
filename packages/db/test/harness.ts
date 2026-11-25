@@ -1,9 +1,9 @@
 /**
  * Integration-test database harness (exported as `@testpulse/db/testing`).
  *
- * Each test FILE gets a fresh database (`tp_test_w<pool id>`) with all migrations applied, so files are
- * isolated without transaction-rollback tricks (docs/testing/testing-strategy.md §2.1). Requires the
- * globalSetup from `test/global-setup.ts` in the consuming workspace's Vitest config.
+ * Each test FILE gets a fresh process-unique database (`tp_test_<pid>_<pool>_<hex>`) with all migrations
+ * applied, so files and concurrent workspace runs are isolated without transaction-rollback tricks
+ * (docs/testing/testing-strategy.md §2.1). Requires `globalSetup` from `test/global-setup.ts`.
  */
 import crypto from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
@@ -60,7 +60,12 @@ export async function createFreshTestDatabase(): Promise<string> {
     await admin.end();
   }
   const url = withDatabase(adminUrl, database);
-  await applyMigrations(url);
+  try {
+    await applyMigrations(url);
+  } catch (error) {
+    await dropTestDatabase(url).catch(() => undefined);
+    throw error;
+  }
   return url;
 }
 

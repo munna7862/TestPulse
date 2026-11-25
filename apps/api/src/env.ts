@@ -14,6 +14,26 @@ const optionalSecret = z
 const DEV_JWT_ACCESS_SECRET = "dev-jwt-access-secret-32-chars-long-min!!";
 const DEV_JWT_REFRESH_SECRET = "dev-jwt-refresh-secret-32-chars-long-min!!";
 
+const nonBlank = (value: string | undefined): string | undefined =>
+  value === undefined || value.trim() === "" ? undefined : value.trim();
+
+const httpUrl = z
+  .string()
+  .trim()
+  .transform((value, ctx): string => {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        ctx.addIssue({ code: "custom", message: "URL must use http:// or https://." });
+        return z.NEVER;
+      }
+      return value.replace(/\/+$/, "");
+    } catch {
+      ctx.addIssue({ code: "custom", message: "Must be a valid http:// or https:// URL." });
+      return z.NEVER;
+    }
+  });
+
 export const ApiEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -22,10 +42,10 @@ export const ApiEnvSchema = z
     PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
     RUN_WORKERS_IN_PROCESS: booleanString.default(true),
-    WEB_ORIGIN: z.string().default("http://localhost:3000"),
-    APP_URL: z.string().default("http://localhost:3000"),
-    JWT_ACCESS_SECRET: z.string().min(16).default(DEV_JWT_ACCESS_SECRET),
-    JWT_REFRESH_SECRET: z.string().min(16).default(DEV_JWT_REFRESH_SECRET),
+    WEB_ORIGIN: httpUrl.default("http://localhost:3000"),
+    APP_URL: httpUrl.default("http://localhost:3000"),
+    JWT_ACCESS_SECRET: z.string().trim().min(16).default(DEV_JWT_ACCESS_SECRET),
+    JWT_REFRESH_SECRET: z.string().trim().min(16).default(DEV_JWT_REFRESH_SECRET),
     /**
      * Which proxies may set X-Forwarded-For (security model §5): `false`, a hop count (`1` = trust only the proxy
      * that connects to us, e.g. Render's load balancer), or a comma-separated list of trusted proxy IPs/CIDRs.
@@ -104,14 +124,24 @@ export const ApiEnvSchema = z
         message: "JWT_REFRESH_SECRET must be at least 32 characters and not the dev default in production.",
       });
     }
+    if (data.JWT_ACCESS_SECRET === data.JWT_REFRESH_SECRET) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["JWT_REFRESH_SECRET"],
+        message: "JWT_REFRESH_SECRET must differ from JWT_ACCESS_SECRET in production.",
+      });
+    }
   });
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 
 export function loadApiEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
+  const webOrigin = nonBlank(source.WEB_ORIGIN);
+  const appUrl = nonBlank(source.APP_URL) ?? webOrigin;
   // Render exposes the deployed commit as RENDER_GIT_COMMIT; the staging smoke check compares it via /health.
   return parseEnv(ApiEnvSchema, {
     ...source,
-    APP_URL: source.APP_URL ?? source.WEB_ORIGIN,
+    WEB_ORIGIN: webOrigin,
+    APP_URL: appUrl,
     GIT_COMMIT_SHA: source.GIT_COMMIT_SHA ?? source.RENDER_GIT_COMMIT,
     // Keep unit and integration suites fast; tests that check the floor set it explicitly.
     AUTH_GENERIC_RESPONSE_MIN_MS: source.AUTH_GENERIC_RESPONSE_MIN_MS ?? (source.NODE_ENV === "test" ? "0" : undefined),
