@@ -179,7 +179,13 @@ function ProjectSettingsForm({
 
     setSaving(true);
     try {
-      onUpdated(await workspaceClient.updateProject(project.id, validated.data));
+      const updated = await workspaceClient.updateProject(project.id, validated.data);
+      setName(updated.name);
+      setDescription(updated.description ?? "");
+      setDefaultBranch(updated.defaultBranch);
+      setSlaDays(String(updated.slaDays));
+      setRetentionDays(String(updated.retentionDays));
+      onUpdated(updated);
       setSaved(true);
     } catch (err) {
       setError(formatWorkspaceError(err, "We couldn't update project settings."));

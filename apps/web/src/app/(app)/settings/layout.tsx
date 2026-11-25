@@ -16,7 +16,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <div className="space-y-6">
       <nav aria-label="Settings navigation" className="flex gap-2 border-b border-border pb-3">
         {settingsLinks.map((item) => {
-          const active = pathname === item.href;
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

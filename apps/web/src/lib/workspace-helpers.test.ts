@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "./api-client";
 import {
   createWorkspaceClient,
+  formatEffectiveRetentionHint,
   formatMemberRole,
   formatWorkspaceError,
   getPlanQuotaSummary,
@@ -9,6 +10,7 @@ import {
   STORAGE_ORG_KEY,
   validateCreateOrgInput,
   validateCreateProjectInput,
+  validateUpdateProjectInput,
   writeStoredId,
 } from "./workspace";
 
@@ -125,5 +127,103 @@ describe("[SC-ORG-001] [SC-ORG-002] workspace UI helpers", () => {
     expect(
       formatWorkspaceError(new ApiClientError(400, { code: "VALIDATION_ERROR", message: "Bad" }), "Retry."),
     ).toContain("Check the form fields");
+  });
+
+  it("[SC-ORG-007] validates project settings bounds and forwards PATCH/DELETE requests cleanly", async () => {
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " ",
+        defaultBranch: "",
+        slaDays: "14",
+        retentionDays: "30",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " ",
+        defaultBranch: "main",
+        slaDays: "14",
+        retentionDays: "0",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " ",
+        defaultBranch: "main",
+        slaDays: "14",
+        retentionDays: "366",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " ",
+        defaultBranch: "main",
+        slaDays: "14",
+        retentionDays: "14.5",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " QA ",
+        defaultBranch: " main ",
+        slaDays: "30",
+        retentionDays: "90",
+      }),
+    ).toEqual({
+      ok: true,
+      data: { name: "App", description: "QA", defaultBranch: "main", slaDays: 30, retentionDays: 90 },
+    });
+
+    expect(formatEffectiveRetentionHint("abc", 14, "FREE")).toBe(
+      "Effective retention on Free tier: 7 days (plan max 7 days).",
+    );
+
+    const projectPayload = {
+      id: "01950000-0000-7000-8000-000000000101",
+      orgId: "01950000-0000-7000-8000-000000000001",
+      name: "App",
+      slug: "app",
+      description: null,
+      defaultBranch: "main",
+      slaDays: 30,
+      retentionDays: 90,
+      flakyWindow: 10,
+      flakyThreshold: 3,
+      trackedBranches: ["main"],
+      role: "ADMIN",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-01T00:00:00.000Z",
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: projectPayload }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = createWorkspaceClient({ fetch: fetchMock });
+
+    const updated = await client.updateProject("proj/1", { name: "App" });
+    await expect(client.deleteProject("proj/1")).resolves.toBeUndefined();
+
+    expect(updated.id).toBe(projectPayload.id);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/projects/proj%2F1",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/projects/proj%2F1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 });
