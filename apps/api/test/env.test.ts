@@ -21,6 +21,84 @@ describe("API environment", () => {
   });
 
   it("fails fast with a readable error on invalid values", () => {
-    expect(() => loadApiEnv({ PORT: "99999", WEB_ORIGIN: "not a url" })).toThrow(EnvValidationError);
+    expect(() => loadApiEnv({ PORT: "99999" })).toThrow(EnvValidationError);
+    expect(() => loadApiEnv({ WEB_ORIGIN: "not a url" })).toThrow(EnvValidationError);
+    expect(() => loadApiEnv({ APP_URL: "javascript:alert(1)" })).toThrow(EnvValidationError);
+  });
+
+  it("rejects missing, short, whitespace, identical or dev-default JWT secrets in production", () => {
+    expect(() => loadApiEnv({ NODE_ENV: "production" })).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "short-secret-16ch",
+        JWT_REFRESH_SECRET: "b".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "a".repeat(32),
+        JWT_REFRESH_SECRET: "short-secret-16ch",
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "dev-jwt-access-secret-32-chars-long-min!!",
+        JWT_REFRESH_SECRET: "b".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "a".repeat(32),
+        JWT_REFRESH_SECRET: "dev-jwt-refresh-secret-32-chars-long-min!!",
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: " ".repeat(32),
+        JWT_REFRESH_SECRET: " ".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: " dev-jwt-access-secret-32-chars-long-min!! ",
+        JWT_REFRESH_SECRET: "b".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "a".repeat(32),
+        JWT_REFRESH_SECRET: "a".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+  });
+
+  it("defaults APP_URL to WEB_ORIGIN when unset or blank, strips trailing slashes and honors explicit APP_URL", () => {
+    const validSecrets = {
+      NODE_ENV: "production",
+      JWT_ACCESS_SECRET: "a".repeat(32),
+      JWT_REFRESH_SECRET: "b".repeat(32),
+    };
+    expect(loadApiEnv({ ...validSecrets, WEB_ORIGIN: "https://staging.example.com/" }).APP_URL).toBe(
+      "https://staging.example.com",
+    );
+    expect(loadApiEnv({ ...validSecrets, WEB_ORIGIN: "https://staging.example.com", APP_URL: "   " }).APP_URL).toBe(
+      "https://staging.example.com",
+    );
+    expect(
+      loadApiEnv({ ...validSecrets, WEB_ORIGIN: "https://staging.example.com", APP_URL: "https://app.example.com/" })
+        .APP_URL,
+    ).toBe("https://app.example.com");
+  });
+
+  it("disables the auth timing floor by default in test mode only", () => {
+    expect(loadApiEnv({ NODE_ENV: "test" }).AUTH_GENERIC_RESPONSE_MIN_MS).toBe(0);
+    expect(loadApiEnv({ NODE_ENV: "development" }).AUTH_GENERIC_RESPONSE_MIN_MS).toBe(250);
   });
 });

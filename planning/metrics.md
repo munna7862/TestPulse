@@ -12,6 +12,7 @@ merges. Numbers are measured, not estimated, unless marked ≈.
 | Step 2 context diet | #11 | 0 | pass | 460 | 0 (process change) | — | — | 0 so far | 45 min |
 | H1b auth hardening | #12 | 0 so far | pass | 549 | 3 (claims, security, test) | — | 6 | 0 so far | 35 min |
 | S-001 orgs + tenant context | #13 | 0 so far | pass | 539 | 3 (claims, security, test) | ≈8.5k tokens | 4 security, 2 test gaps, 1 wrong SC ID, 4 doc gaps | 0 so far | 4 h 21 min (incl. a usage-limit pause) |
+| S-002 projects | #15 | 0 so far | pass | 594 | 3 (claims, security, test) | ≈8.5k tokens | 1 security + 3 notes, 6 test mutations, 2 doc rows | 0 so far | 43 min |
 
 Targets (§8): items marked done that are not = 0 at merge · first-push CI pass ≥ 9 in 10 · PR ≤ 800 product
 lines · at least one independent review plus your merge · ≈7k process tokens · escaped defects tracked, each one
@@ -63,6 +64,16 @@ that later routes would have copied:
 
 It also found two tests that survived mutation (CSRF, check order), a wrong SC ID and four doc claims without
 proof.
+
+**S-002.** Review before merge found no cross-tenant access, existence leak or quota bypass. It found one low
+defect and three guard/spec hardening gaps:
+- NUL bytes in project/org names, descriptions and `?slug=` returned 500 instead of 400;
+- `:projectId` under an org route would have skipped project-level resolution (now blocked at startup);
+- the `"org"` slug fallback in project slugification (now `"project"`);
+- system-client project lookup outside ADR-006 (documented as ADR-006 amendment 1).
+
+It also caught six test mutations (concurrent delete-vs-write, strict PATCH validation, list role/order, `details.current`)
+and two stale traceability catalog rows.
 
 **Patterns, each turned into a gate.**
 

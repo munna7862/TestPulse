@@ -97,7 +97,7 @@ export class OrgService {
     return this.get(ctx);
   }
 
-  /** Soft delete: every org route returns 404 from now on; the purge job (S-002) removes the data. */
+  /** Soft delete: every org route returns 404 from now on; the purge job (S-003) removes the data. */
   async softDelete(ctx: TenantRequestContext): Promise<void> {
     const { count } = await createTenantDb(this.db, ctx).organization.updateMany({
       where: this.stillAllowed(ctx),
