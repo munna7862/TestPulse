@@ -1,6 +1,8 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
-import { PlayCircle, Terminal } from "lucide-react";
+import { PlayCircle, RefreshCw, Terminal } from "lucide-react";
 import {
   Button,
   Card,
@@ -9,17 +11,29 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  Skeleton,
   StatusBadge,
 } from "@testpulse/ui";
+import { OnboardingChecklist } from "../../../components/OnboardingChecklist";
+import { getOnboardingStep } from "../../../lib/workspace";
+import { useWorkspace } from "../../../providers/WorkspaceProvider";
 
 export default function RunsPage() {
+  const { orgsStatus, orgsError, orgs, activeOrg, projectsStatus, projects, activeProject, refreshOrgs } =
+    useWorkspace();
+  const showOnboarding =
+    orgsStatus === "ready" &&
+    (orgs.length === 0 || (projectsStatus === "ready" && getOnboardingStep(orgs, projects) === "create-project"));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Test Runs</h1>
           <p className="text-sm text-muted-foreground">
-            Monitor test execution in real time across CI runners, branches, and shards.
+            {activeOrg && activeProject
+              ? `Monitoring runs for ${activeOrg.name} / ${activeProject.name}.`
+              : "Monitor test execution in real time across CI runners, branches, and shards."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -35,6 +49,31 @@ export default function RunsPage() {
           </Button>
         </div>
       </div>
+
+      {orgsStatus === "loading" && (
+        <div data-testid="runs-workspace-loading">
+          <Skeleton className="h-28 w-full" />
+        </div>
+      )}
+
+      {orgsStatus === "error" && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2" className="text-base font-semibold">
+              Workspace unavailable
+            </CardTitle>
+            <CardDescription>{orgsError ?? "We couldn't load your organizations right now."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" onClick={() => refreshOrgs()}>
+              <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {showOnboarding && <OnboardingChecklist />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
