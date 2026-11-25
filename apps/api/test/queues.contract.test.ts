@@ -29,12 +29,14 @@ describe("BullMQ contract (real Redis)", () => {
     const prefix = `${basePrefix}-hb`;
     await redis.del(HEARTBEAT_KEY);
     const workers = await startWorkers({ log, redisUrl, prefix });
-    const client = createQueueClient(createRedis(redisUrl, { forWorker: true }), prefix);
+    const clientRedis = createRedis(redisUrl, { forWorker: true });
+    const client = createQueueClient(clientRedis, prefix);
     try {
       await client.enqueue("system.heartbeat", {});
       await expect.poll(() => redis.get(HEARTBEAT_KEY), { timeout: 10_000 }).not.toBeNull();
     } finally {
       await client.close();
+      clientRedis.disconnect();
       await workers.close();
     }
   });
@@ -45,7 +47,8 @@ describe("BullMQ contract (real Redis)", () => {
       const workers = await startWorkers({ log, redisUrl, prefix });
       await workers.close();
     }
-    const client = createQueueClient(createRedis(redisUrl), prefix);
+    const clientRedis = createRedis(redisUrl);
+    const client = createQueueClient(clientRedis, prefix);
     try {
       const schedulers = await client.queue("system").getJobSchedulers();
       expect(
@@ -59,6 +62,7 @@ describe("BullMQ contract (real Redis)", () => {
       expect(purgeSchedulers[0]?.name).toBe("system.purge-sweep");
     } finally {
       await client.close();
+      clientRedis.disconnect();
     }
   });
 
@@ -79,24 +83,39 @@ describe("BullMQ contract (real Redis)", () => {
       },
     };
     const workers = await startWorkers({ log, redisUrl, prefix, db: sentinelDb, processors: customProcessors });
-    const client = createQueueClient(createRedis(redisUrl, { forWorker: true }), prefix);
+    const clientRedis = createRedis(redisUrl, { forWorker: true });
+    const client = createQueueClient(clientRedis, prefix);
     const orgId = "01950000-0000-7000-8000-000000000010";
     const projectId = "01950000-0000-7000-8000-000000000020";
     try {
       await expect(client.enqueue("tenant.purge-org", { orgId: "not-a-uuid" })).rejects.toThrow();
 
       // Duplicate jobId for the same orgId is deduplicated by BullMQ while retained.
-      await client.enqueue("tenant.purge-org", { orgId }, { jobId: `purge-org_${orgId}` });
-      await client.enqueue("tenant.purge-org", { orgId }, { jobId: `purge-org_${orgId}` });
+      const firstId = await client.enqueue("tenant.purge-org", { orgId }, { jobId: `purge-org_${orgId}` });
+      const secondId = await client.enqueue("tenant.purge-org", { orgId }, { jobId: `purge-org_${orgId}` });
+      expect(secondId).toBe(firstId);
       await client.enqueue("tenant.purge-project", { orgId, projectId }, { jobId: `purge-project_${projectId}` });
       await client.enqueue("system.purge-sweep", { batchSize: 25 });
 
       await expect
         .poll(
-          () => {
-            const names = new Set(dispatched.map((d) => d.name));
+          async () => {
+            const hasOrg = dispatched.some((d) => d.name === "tenant.purge-org");
+            const hasProject = dispatched.some((d) => d.name === "tenant.purge-project");
+            const hasSweep25 = dispatched.some(
+              (d) =>
+                d.name === "system.purge-sweep" &&
+                typeof d.data === "object" &&
+                d.data !== null &&
+                (d.data as { batchSize?: unknown }).batchSize === 25,
+            );
+            const systemCounts = await client.queue("system").getJobCounts("waiting", "active");
             return (
-              names.has("tenant.purge-org") && names.has("tenant.purge-project") && names.has("system.purge-sweep")
+              hasOrg &&
+              hasProject &&
+              hasSweep25 &&
+              (systemCounts.waiting ?? 0) === 0 &&
+              (systemCounts.active ?? 0) === 0
             );
           },
           { timeout: 10_000 },
@@ -114,6 +133,7 @@ describe("BullMQ contract (real Redis)", () => {
       );
     } finally {
       await client.close();
+      clientRedis.disconnect();
       await workers.close();
     }
   });

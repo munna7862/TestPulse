@@ -52,7 +52,9 @@ export async function startWorkers({
 
   const connection: Redis = createRedis(redisUrl, { forWorker: true });
   const deps: ProcessorDeps = { redis: connection, now, ...(db ? { db } : {}) };
-  const client = createQueueClient(connection, prefix);
+  const client = createQueueClient(connection, prefix, {
+    onError: (error) => log.error({ err: error }, "queue error"),
+  });
 
   const workers = QUEUES.map(
     (queueName) =>

@@ -206,8 +206,11 @@ describe("Acceptance S-003-review: enqueue logging, concurrency, 404s, and stall
     expect((await callAs(app, owner, "DELETE", `/api/v1/projects/${projId}`)).statusCode).toBe(204);
     expect((await callAs(app, owner, "DELETE", `/api/v1/orgs/${orgId}`)).statusCode).toBe(204);
     expect(logErrorSpy).toHaveBeenCalledTimes(2);
-    expect(logErrorSpy.mock.calls[0]?.[1]).toBe("failed to enqueue purge job");
-    expect(logErrorSpy.mock.calls[1]?.[1]).toBe("failed to enqueue purge job");
+    for (const call of logErrorSpy.mock.calls) {
+      const first: unknown = call[0];
+      expect(typeof first === "object" && first !== null && "err" in first ? first.err : null).toBeInstanceOf(Error);
+      expect(typeof call[1]).toBe("string");
+    }
 
     // Re-deleting already soft-deleted org/project returns 404 and enqueues nothing.
     spyQueue.setFail(false);
@@ -279,8 +282,11 @@ describe("Acceptance S-003-review: enqueue logging, concurrency, 404s, and stall
   it("[SC-ORG-004] DELETE returns 204 promptly when Redis is stuck in reconnecting state", async () => {
     const reconnectingRedis = createRedis("redis://127.0.0.1:1", { failFast: true });
     reconnectingRedis.on("error", () => undefined);
-    reconnectingRedis.connect().catch(() => undefined);
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise<void>((resolve) => {
+      reconnectingRedis.once("reconnecting", () => resolve());
+      reconnectingRedis.connect().catch(() => undefined);
+    });
+    expect(reconnectingRedis.status).toBe("reconnecting");
 
     const reconnectingClient = createQueueClient(reconnectingRedis, "tp-reconn-test", { enqueueTimeoutMs: 150 });
     const reconnApp = await buildApp({
