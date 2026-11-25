@@ -15,6 +15,7 @@ import { orgRoutes } from "./modules/orgs";
 import { projectRoutes } from "./modules/projects";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { createTenantContextHook, registerTenantRouteGuard } from "./plugins/tenant-context";
+import type { QueueClient } from "./queues/registry";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
 export interface BuildAppOptions {
@@ -26,6 +27,8 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** Auth rate-limit counters. server.ts passes a Redis store; defaults to per-process memory. */
   rateLimitStore?: RateLimitStore;
+  /** Producer queue client for async background jobs (e.g. soft-delete purge). */
+  queueClient?: QueueClient;
 }
 
 export async function buildApp({
