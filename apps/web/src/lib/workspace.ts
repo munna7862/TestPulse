@@ -1,9 +1,9 @@
 import {
+  can,
   type CreateOrgBody,
   CreateOrgBodySchema,
   type CreateProjectBody,
   CreateProjectBodySchema,
-  hasOrgRole,
   type Org,
   type OrgRole,
   OrgSchema,
@@ -44,7 +44,7 @@ export const getOnboardingStep = (orgs: readonly Org[], projects: readonly Proje
   orgs.length === 0 ? "create-org" : projects.length === 0 ? "create-project" : "ready";
 
 /** True when the caller can create, edit, or delete projects. */
-export const canManageProjects = (role: OrgRole): boolean => hasOrgRole(role, "ADMIN");
+export const canManageProjects = (role: OrgRole): boolean => can(role, "project.create");
 
 /** Effective retention days capped by the organization plan limit. */
 export const effectiveRetentionDays = (requestedDays: number, planTier: PlanTier): number =>

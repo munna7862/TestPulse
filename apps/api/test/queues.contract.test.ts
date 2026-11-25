@@ -81,12 +81,16 @@ describe("BullMQ contract (real Redis)", () => {
       "system.purge-sweep": async (data, deps) => {
         dispatched.push({ name: "system.purge-sweep", data, hasDb: deps.db === sentinelDb });
       },
+      "member.access_changed": async (data, deps) => {
+        dispatched.push({ name: "member.access_changed", data, hasDb: deps.db === sentinelDb });
+      },
     };
     const workers = await startWorkers({ log, redisUrl, prefix, db: sentinelDb, processors: customProcessors });
     const clientRedis = createRedis(redisUrl, { forWorker: true });
     const client = createQueueClient(clientRedis, prefix);
     const orgId = "01950000-0000-7000-8000-000000000010";
     const projectId = "01950000-0000-7000-8000-000000000020";
+    const userId = "01950000-0000-7000-8000-000000000030";
     try {
       await expect(client.enqueue("tenant.purge-org", { orgId: "not-a-uuid" })).rejects.toThrow();
 
@@ -96,6 +100,13 @@ describe("BullMQ contract (real Redis)", () => {
       expect(secondId).toBe(firstId);
       await client.enqueue("tenant.purge-project", { orgId, projectId }, { jobId: `purge-project_${projectId}` });
       await client.enqueue("system.purge-sweep", { batchSize: 25 });
+      await client.enqueue("member.access_changed", {
+        orgId,
+        userId,
+        reason: "removed",
+        previousRole: "MEMBER",
+        newRole: null,
+      });
 
       await expect
         .poll(
@@ -109,13 +120,18 @@ describe("BullMQ contract (real Redis)", () => {
                 d.data !== null &&
                 (d.data as { batchSize?: unknown }).batchSize === 25,
             );
+            const hasAccessChanged = dispatched.some((d) => d.name === "member.access_changed");
             const systemCounts = await client.queue("system").getJobCounts("waiting", "active");
+            const domainCounts = await client.queue("domain-events").getJobCounts("waiting", "active");
             return (
               hasOrg &&
               hasProject &&
               hasSweep25 &&
+              hasAccessChanged &&
               (systemCounts.waiting ?? 0) === 0 &&
-              (systemCounts.active ?? 0) === 0
+              (systemCounts.active ?? 0) === 0 &&
+              (domainCounts.waiting ?? 0) === 0 &&
+              (domainCounts.active ?? 0) === 0
             );
           },
           { timeout: 10_000 },
@@ -129,6 +145,11 @@ describe("BullMQ contract (real Redis)", () => {
         expect.arrayContaining([
           { name: "tenant.purge-project", data: { orgId, projectId }, hasDb: true },
           { name: "system.purge-sweep", data: { batchSize: 25 }, hasDb: true },
+          {
+            name: "member.access_changed",
+            data: { orgId, userId, reason: "removed", previousRole: "MEMBER", newRole: null },
+            hasDb: true,
+          },
         ]),
       );
     } finally {
