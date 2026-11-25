@@ -1,11 +1,18 @@
-import type { Mailer, SendPasswordResetEmailOptions, SendVerificationEmailOptions } from "./types";
+import type {
+  Mailer,
+  SendInvitationEmailOptions,
+  SendPasswordResetEmailOptions,
+  SendVerificationEmailOptions,
+} from "./types";
 
 export interface SentEmail {
-  type: "verification" | "password_reset";
+  type: "verification" | "password_reset" | "invitation";
   to: string;
   name: string;
   token: string;
   url: string;
+  orgName?: string;
+  role?: string;
   sentAt: Date;
 }
 
@@ -30,6 +37,19 @@ export class TestMailer implements Mailer {
       name: options.name,
       token: options.token,
       url: options.resetUrl,
+      sentAt: new Date(),
+    });
+  }
+
+  async sendInvitationEmail(options: SendInvitationEmailOptions): Promise<void> {
+    this.sent.push({
+      type: "invitation",
+      to: options.to,
+      name: options.inviterName,
+      token: options.token,
+      url: options.acceptUrl,
+      orgName: options.orgName,
+      role: options.role,
       sentAt: new Date(),
     });
   }
