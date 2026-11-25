@@ -38,6 +38,7 @@ export async function buildApp({
   mailer: injectedMailer,
   logger = true,
   rateLimitStore,
+  queueClient,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger
@@ -142,8 +143,9 @@ export async function buildApp({
       prefix: "/api/v1/auth",
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
-    await app.register(orgRoutes({ db: activeDb, env }));
-    await app.register(projectRoutes({ db: activeDb }));
+    const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue purge job");
+    await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
+    await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
   }
 
   return app;

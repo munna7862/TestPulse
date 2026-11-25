@@ -1,6 +1,12 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createRedis } from "../src/lib/redis";
-import { createQueueClient, HEARTBEAT_KEY, HEARTBEAT_SCHEDULER_ID } from "../src/queues/registry";
+import { processors, type ProcessorMap } from "../src/queues/processors";
+import {
+  createQueueClient,
+  HEARTBEAT_KEY,
+  HEARTBEAT_SCHEDULER_ID,
+  PURGE_SWEEP_SCHEDULER_ID,
+} from "../src/queues/registry";
 import { startWorkers } from "../src/worker";
 
 const redisUrl = process.env.REDIS_URL ?? "";
@@ -41,8 +47,47 @@ describe("BullMQ contract (real Redis)", () => {
       expect(
         schedulers.filter((s) => s.key === HEARTBEAT_SCHEDULER_ID || s.id === HEARTBEAT_SCHEDULER_ID),
       ).toHaveLength(1);
+      expect(
+        schedulers.filter((s) => s.key === PURGE_SWEEP_SCHEDULER_ID || s.id === PURGE_SWEEP_SCHEDULER_ID),
+      ).toHaveLength(1);
     } finally {
       await client.close();
+    }
+  });
+
+  it("[SC-ORG-004] enqueued tenant purge and sweep jobs dispatch through BullMQ with validated payloads", async () => {
+    const dispatched: Array<{ name: string; data: unknown }> = [];
+    const customProcessors: ProcessorMap = {
+      ...processors,
+      "tenant.purge-org": async (data) => {
+        dispatched.push({ name: "tenant.purge-org", data });
+      },
+      "tenant.purge-project": async (data) => {
+        dispatched.push({ name: "tenant.purge-project", data });
+      },
+      "system.purge-sweep": async (data) => {
+        dispatched.push({ name: "system.purge-sweep", data });
+      },
+    };
+    const workers = await startWorkers({ log, redisUrl, prefix, processors: customProcessors });
+    const client = createQueueClient(createRedis(redisUrl, { forWorker: true }), prefix);
+    const orgId = "01950000-0000-7000-8000-000000000010";
+    const projectId = "01950000-0000-7000-8000-000000000020";
+    try {
+      await client.enqueue("tenant.purge-org", { orgId }, { jobId: `purge-org_${orgId}` });
+      await client.enqueue("tenant.purge-project", { orgId, projectId }, { jobId: `purge-project_${projectId}` });
+      await client.enqueue("system.purge-sweep", { batchSize: 25 });
+      await expect.poll(() => dispatched.length, { timeout: 10_000 }).toBeGreaterThanOrEqual(3);
+      expect(dispatched).toEqual(
+        expect.arrayContaining([
+          { name: "tenant.purge-org", data: { orgId } },
+          { name: "tenant.purge-project", data: { orgId, projectId } },
+          { name: "system.purge-sweep", data: { batchSize: 25 } },
+        ]),
+      );
+    } finally {
+      await client.close();
+      await workers.close();
     }
   });
 });
