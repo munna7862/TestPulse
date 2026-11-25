@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { hasOrgRole, type OrgRole } from "./api/orgs";
+import type { OrgRole } from "./api/orgs";
 
 /** Action IDs from docs/security/rbac-matrix.md and master plan §7.1. */
 export const PermissionActionSchema = z.enum([
@@ -82,7 +82,5 @@ const ROLE_ASCENDING: readonly OrgRole[] = ["VIEWER", "MEMBER", "ADMIN", "OWNER"
 /** Returns the lowest-ranked role present in `PERMISSIONS[action]`. */
 export function minRoleFor(action: PermissionAction): OrgRole {
   const allowed = PERMISSIONS[action];
-  const min = ROLE_ASCENDING.find((role) => allowed.includes(role) && hasOrgRole(role, role));
-  if (!min) throw new Error(`Action "${action}" grants no roles.`);
-  return min;
+  return ROLE_ASCENDING.filter((role) => allowed.includes(role))[0] as OrgRole;
 }

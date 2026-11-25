@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { CreateOrgBodySchema, hasOrgRole, OrgIdSchema, OrgSlugSchema, rolesAtLeast, slugify } from "./orgs";
+import {
+  AssignableOrgRoleSchema,
+  CreateOrgBodySchema,
+  hasOrgRole,
+  isRoleDowngrade,
+  OrgIdSchema,
+  OrgSlugSchema,
+  rolesAtLeast,
+  slugify,
+  UpdateMemberRoleBodySchema,
+} from "./orgs";
 
 describe("slugify", () => {
   it("[SC-ORG-001] lowercases, strips accents and collapses separators", () => {
@@ -63,5 +73,19 @@ describe("OrgIdSchema", () => {
     for (const id of ["", "not-an-id", "a\u0000b", "3b241101-e2bb-4255-8caf-4136c566a96"]) {
       expect(OrgIdSchema.safeParse(id).success).toBe(false);
     }
+  });
+});
+
+describe("isRoleDowngrade and member role schemas", () => {
+  it("[SC-ORG-014] detects downgrades strictly and excludes OWNER from assignable roles", () => {
+    expect(isRoleDowngrade("ADMIN", "MEMBER")).toBe(true);
+    expect(isRoleDowngrade("ADMIN", "VIEWER")).toBe(true);
+    expect(isRoleDowngrade("MEMBER", "VIEWER")).toBe(true);
+    expect(isRoleDowngrade("ADMIN", "ADMIN")).toBe(false);
+    expect(isRoleDowngrade("VIEWER", "MEMBER")).toBe(false);
+
+    expect(AssignableOrgRoleSchema.options).toEqual(["ADMIN", "MEMBER", "VIEWER"]);
+    expect(UpdateMemberRoleBodySchema.safeParse({ role: "VIEWER" }).success).toBe(true);
+    expect(UpdateMemberRoleBodySchema.safeParse({ role: "OWNER" }).success).toBe(false);
   });
 });

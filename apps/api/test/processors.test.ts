@@ -24,6 +24,43 @@ describe("job processors (unit, ioredis-mock)", () => {
         newRole: null,
       }),
     ).toThrow();
+    expect(() =>
+      JOBS["member.access_changed"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        userId: "not-a-uuid",
+        reason: "removed",
+        previousRole: "MEMBER",
+        newRole: null,
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.access_changed"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        userId: "01950000-0000-7000-8000-000000000002",
+        reason: "demoted",
+        previousRole: "ADMIN",
+        newRole: "MEMBER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.access_changed"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        userId: "01950000-0000-7000-8000-000000000002",
+        reason: "removed",
+        previousRole: "SUPERADMIN",
+        newRole: "OTHER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.access_changed"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        userId: "01950000-0000-7000-8000-000000000002",
+        reason: "removed",
+        previousRole: "MEMBER",
+        newRole: null,
+        extra: true,
+      }),
+    ).toThrow();
     expect(
       JOBS["member.access_changed"].schema.parse({
         orgId: "01950000-0000-7000-8000-000000000001",
