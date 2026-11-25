@@ -1,5 +1,17 @@
 import { createTenantDb, type PrismaClient } from "@testpulse/db";
-import { type CreateOrgBody, type Org, type OrgMember, type OrgRole, rolesAtLeast, slugify } from "@testpulse/shared";
+import {
+  type AssignableOrgRole,
+  type CreateOrgBody,
+  isRoleDowngrade,
+  type Org,
+  OrgIdSchema,
+  type OrgMember,
+  type OrgRole,
+  type PermissionAction,
+  rolesAtLeast,
+  rolesWithPermission,
+  slugify,
+} from "@testpulse/shared";
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
@@ -163,7 +175,116 @@ export class OrgService {
     return this.get({ ...ctx, role: "ADMIN" });
   }
 
-  async changeMemberRole(_ctx: TenantRequestContext, _targetUserId: string, _role: OrgRole): Promise<OrgMember> {
-    throw new Error("Not implemented: S-005");
+  private async requireLiveOrgAndRole(
+    tx: Pick<ReturnType<typeof createTenantDb>, "organization" | "orgMember">,
+    ctx: TenantRequestContext,
+    action?: PermissionAction,
+  ): Promise<void> {
+    const liveOrg = await tx.organization.findFirst({ where: { deletedAt: null }, select: { id: true } });
+    if (!liveOrg) throw new OrgError(404, "Organization not found.");
+    if (!action) return;
+    const allowed = await tx.orgMember.count({
+      where: { userId: ctx.userId, role: { in: [...rolesWithPermission(action)] } },
+    });
+    if (allowed !== 1) throw new OrgError(403, "Your role does not allow this action.");
+  }
+
+  private async enqueueAccessChanged(
+    orgId: string,
+    userId: string,
+    reason: "removed" | "left" | "role_changed",
+    previousRole: OrgRole,
+    newRole: OrgRole | null,
+  ): Promise<void> {
+    if (!this.queueClient) return;
+    try {
+      await this.queueClient.enqueue("member.access_changed", { orgId, userId, reason, previousRole, newRole });
+    } catch (error) {
+      this.onEnqueueError?.(error);
+    }
+  }
+
+  /**
+   * Changes a non-Owner member's role among ADMIN | MEMBER | VIEWER. Re-checks caller permissions inside the
+   * transaction and emits `member.access_changed` after commit on privilege downgrades.
+   */
+  async changeMemberRole(
+    ctx: TenantRequestContext,
+    targetUserId: string,
+    newRole: AssignableOrgRole,
+  ): Promise<OrgMember> {
+    if (targetUserId === ctx.userId) {
+      throw new OrgError(400, "You cannot change your own role.");
+    }
+    if (!OrgIdSchema.safeParse(targetUserId).success) {
+      throw new OrgError(404, "Member not found.");
+    }
+
+    const result = await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      await this.requireLiveOrgAndRole(tx, ctx, "member.changeRole");
+      const target = await tx.orgMember.findFirst({
+        where: { userId: targetUserId },
+        include: { user: { select: { name: true, email: true } } },
+      });
+      if (!target) throw new OrgError(404, "Member not found.");
+      if (target.role === "OWNER") {
+        throw new OrgError(403, "The Owner's role can only be changed by transferring ownership.");
+      }
+
+      const updated = await tx.orgMember.updateMany({
+        where: { userId: targetUserId, role: { not: "OWNER" } },
+        data: { role: newRole },
+      });
+      if (updated.count !== 1) throw new OrgError(409, "The member's role changed; try again.");
+
+      return {
+        previousRole: target.role,
+        member: {
+          userId: target.userId,
+          name: target.user.name,
+          email: target.user.email,
+          role: newRole,
+          joinedAt: target.createdAt.toISOString(),
+        },
+      };
+    });
+
+    if (isRoleDowngrade(result.previousRole, newRole)) {
+      await this.enqueueAccessChanged(ctx.orgId, targetUserId, "role_changed", result.previousRole, newRole);
+    }
+    return result.member;
+  }
+
+  /**
+   * Removes another non-Owner member or allows a non-Owner member to leave the organization (self-leave).
+   * Enqueues `member.access_changed` after commit so real-time rooms can evict the user (P05-S01).
+   */
+  async removeMember(ctx: TenantRequestContext, targetUserId: string): Promise<void> {
+    if (!OrgIdSchema.safeParse(targetUserId).success) {
+      throw new OrgError(404, "Member not found.");
+    }
+    const isSelf = targetUserId === ctx.userId;
+
+    const previousRole = await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      await this.requireLiveOrgAndRole(tx, ctx, isSelf ? undefined : "member.remove");
+      const target = await tx.orgMember.findFirst({ where: { userId: targetUserId }, select: { role: true } });
+      if (!target) throw new OrgError(404, "Member not found.");
+      if (target.role === "OWNER") {
+        throw new OrgError(
+          403,
+          isSelf
+            ? "Transfer ownership before leaving the organization."
+            : "The Owner cannot be removed from the organization.",
+        );
+      }
+
+      const deleted = await tx.orgMember.deleteMany({
+        where: { userId: targetUserId, role: { not: "OWNER" } },
+      });
+      if (deleted.count !== 1) throw new OrgError(409, "The member's role changed; try again.");
+      return target.role;
+    });
+
+    await this.enqueueAccessChanged(ctx.orgId, targetUserId, isSelf ? "left" : "removed", previousRole, null);
   }
 }

@@ -1,9 +1,9 @@
-import { OrgIdSchema, ProjectIdSchema } from "@testpulse/shared";
+import { OrgIdSchema, OrgRoleSchema, ProjectIdSchema } from "@testpulse/shared";
 import { Queue, type ConnectionOptions } from "bullmq";
 import { z } from "zod";
 
-/** Queue names. Later sprints add: "ingest", "domain-events", "notifications", "webhooks", ... */
-export const QUEUES = ["system"] as const;
+/** Queue names. Later sprints add: "ingest", "notifications", "webhooks", ... */
+export const QUEUES = ["system", "domain-events"] as const;
 export type QueueName = (typeof QUEUES)[number];
 
 /**
@@ -26,6 +26,18 @@ export const JOBS = {
   "system.purge-sweep": {
     queue: "system",
     schema: z.object({ batchSize: z.number().int().min(1).max(200).default(50) }).strict(),
+  },
+  "member.access_changed": {
+    queue: "domain-events",
+    schema: z
+      .object({
+        orgId: OrgIdSchema,
+        userId: z.uuid(),
+        reason: z.enum(["removed", "left", "role_changed"]),
+        previousRole: OrgRoleSchema,
+        newRole: OrgRoleSchema.nullable(),
+      })
+      .strict(),
   },
 } as const satisfies Record<string, { queue: QueueName; schema: z.ZodType }>;
 

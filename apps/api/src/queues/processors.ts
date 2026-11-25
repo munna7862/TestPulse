@@ -37,4 +37,6 @@ export const processors: ProcessorMap = {
   "system.purge-sweep": async (data, deps) => {
     await sweepSoftDeletedTenants(requireDb(deps), data.batchSize);
   },
+  /** Socket room eviction on membership removal/downgrade attaches in P05-S01. */
+  "member.access_changed": async () => undefined,
 };
