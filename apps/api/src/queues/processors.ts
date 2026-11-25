@@ -39,4 +39,6 @@ export const processors: ProcessorMap = {
   },
   /** Socket room eviction on membership removal/downgrade attaches in P05-S01. */
   "member.access_changed": async () => undefined,
+  /** Notification router subscription on new org invitation attaches in P07. */
+  "member.invited": async () => undefined,
 };

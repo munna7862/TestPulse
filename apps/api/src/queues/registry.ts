@@ -1,4 +1,4 @@
-import { OrgIdSchema, OrgRoleSchema, ProjectIdSchema } from "@testpulse/shared";
+import { AssignableOrgRoleSchema, OrgIdSchema, OrgRoleSchema, ProjectIdSchema } from "@testpulse/shared";
 import { Queue, type ConnectionOptions } from "bullmq";
 import { z } from "zod";
 
@@ -36,6 +36,17 @@ export const JOBS = {
         reason: z.enum(["removed", "left", "role_changed"]),
         previousRole: OrgRoleSchema,
         newRole: OrgRoleSchema.nullable(),
+      })
+      .strict(),
+  },
+  "member.invited": {
+    queue: "domain-events",
+    schema: z
+      .object({
+        orgId: OrgIdSchema,
+        invitationId: OrgIdSchema,
+        invitedById: z.uuid(),
+        role: AssignableOrgRoleSchema,
       })
       .strict(),
   },

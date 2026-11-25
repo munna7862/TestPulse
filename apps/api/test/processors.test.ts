@@ -72,7 +72,7 @@ describe("job processors (unit, ioredis-mock)", () => {
     ).toMatchObject({ reason: "role_changed", previousRole: "ADMIN", newRole: "MEMBER" });
   });
 
-  it("[SC-ORG-015] accepts member.access_changed domain events without throwing", async () => {
+  it("[SC-ORG-015] accepts member.access_changed and member.invited domain events without throwing", async () => {
     const redis = new RedisMock();
     await expect(
       processors["member.access_changed"](
@@ -82,6 +82,17 @@ describe("job processors (unit, ioredis-mock)", () => {
           reason: "removed",
           previousRole: "MEMBER",
           newRole: null,
+        },
+        { redis, now: () => new Date("2026-10-02T12:00:00.000Z") },
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      processors["member.invited"](
+        {
+          orgId: "01950000-0000-7000-8000-000000000001",
+          invitationId: "01950000-0000-7000-8000-000000000003",
+          invitedById: "01950000-0000-7000-8000-000000000002",
+          role: "MEMBER",
         },
         { redis, now: () => new Date("2026-10-02T12:00:00.000Z") },
       ),
