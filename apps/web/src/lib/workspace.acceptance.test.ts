@@ -1,4 +1,4 @@
-import { type Org, type Project } from "@testpulse/shared";
+import { type ApiError, type Org, type Project } from "@testpulse/shared";
 import { describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "./api-client";
 import {
@@ -129,7 +129,7 @@ describe("[SC-ORG-001] [SC-ORG-007] [SC-ORG-008] workspace API client & error fo
   });
 
   it("maps API error codes into friendly human messages without raw error codes", () => {
-    const cases: Array<[string, string]> = [
+    const cases: Array<[ApiError["code"], string]> = [
       ["CONFLICT", "Slug taken"],
       ["PLAN_LIMIT_REACHED", "Limit hit"],
       ["FORBIDDEN", "Nope"],

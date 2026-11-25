@@ -52,6 +52,15 @@ export function createApiClient({ baseUrl = "", fetch: fetchImpl = fetch }: ApiC
       ...(signal ? { signal } : {}),
     });
 
+    if (response.status === 204) {
+      const empty = schema.safeParse(undefined);
+      if (empty.success) return empty.data;
+      throw new ApiClientError(response.status, {
+        code: "INTERNAL",
+        message: `Unexpected empty response from ${method} ${path} (HTTP 204)`,
+      });
+    }
+
     const json: unknown = await response.json().catch(() => undefined);
 
     const failure = ApiFailureSchema.safeParse(json);
