@@ -93,6 +93,26 @@ export function validateCreateProjectInput(
     : { ok: false, error: parsed.error.issues[0]?.message ?? "Check your project details." };
 }
 
+/** Validates editable project settings inputs against `@testpulse/shared`. */
+export function validateUpdateProjectInput(_fields: {
+  name: string;
+  description: string;
+  defaultBranch: string;
+  slaDays: string;
+  retentionDays: string;
+}): ValidationResult<UpdateProjectBody> {
+  throw new Error("Not implemented: S-004b");
+}
+
+/** Formats plan-capped effective retention helper text for project settings. */
+export function formatEffectiveRetentionHint(
+  _retentionInput: string,
+  _fallbackDays: number,
+  _planTier: PlanTier,
+): string {
+  throw new Error("Not implemented: S-004b");
+}
+
 const ERROR_COPY: Readonly<Record<string, string>> = {
   CONFLICT: "That slug already exists. Choose a different slug or name.",
   PLAN_LIMIT_REACHED: "You have reached your plan limit. Delete an unused item or upgrade your plan.",
