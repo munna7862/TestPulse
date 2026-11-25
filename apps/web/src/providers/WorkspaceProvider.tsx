@@ -38,6 +38,8 @@ export interface WorkspaceContextValue {
   refreshProjects: () => void;
   onOrgCreated: (org: Org) => void;
   onProjectCreated: (project: Project) => void;
+  onProjectUpdated: (project: Project) => void;
+  onProjectDeleted: (projectId: string) => void;
   createOrgOpen: boolean;
   setCreateOrgOpen: (open: boolean) => void;
   createProjectOpen: boolean;
@@ -147,6 +149,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     onProjectCreated: (project) => {
       writeStoredId(STORAGE_PROJECT_KEY, project.id);
       setPState((s) => ({ ...s, status: "ready", error: null, items: [...s.items, project], activeId: project.id }));
+    },
+    onProjectUpdated: (updated) => {
+      setPState((s) => ({ ...s, items: s.items.map((item) => (item.id === updated.id ? updated : item)) }));
+    },
+    onProjectDeleted: (projectId) => {
+      setPState((s) => {
+        const items = s.items.filter((item) => item.id !== projectId);
+        const fallback = resolveActiveProject(items, null);
+        writeStoredId(STORAGE_PROJECT_KEY, fallback?.id ?? null);
+        return { ...s, items, activeId: fallback?.id ?? null };
+      });
     },
     createOrgOpen,
     setCreateOrgOpen,
