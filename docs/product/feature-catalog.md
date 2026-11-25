@@ -32,9 +32,9 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-ORG-01 | Create organization (creator becomes Owner) | P03-S03 | SC-ORG-001 | In progress |
-| FR-ORG-02 | List/switch my organizations; view org details and members | P03-S03 | SC-ORG-002 | In progress |
-| FR-ORG-03 | Update org settings (Admin+); delete org (Owner, async purge) | P03-S03 | SC-ORG-003, SC-ORG-004 | In progress |
+| FR-ORG-01 | Create organization (creator becomes Owner) | P03-S03 | SC-ORG-001 | Done |
+| FR-ORG-02 | List/switch my organizations; view org details and members | P03-S03 | SC-ORG-002 | Done |
+| FR-ORG-03 | Update org settings (Admin+); delete org (Owner, async purge) | P03-S03 | SC-ORG-003, SC-ORG-004 | Done |
 | FR-ORG-04 | Ownership transfer (exactly one Owner) | P03-S03 | SC-ORG-005, SC-ORG-006 | In progress |
 | FR-ORG-05 | Project CRUD with settings (SLA, retention, flaky thresholds, tracked branches) | P03-S03, P06-S01, P06-S05 | SC-ORG-007, SC-ORG-008, SC-ORG-018 | In progress |
 | FR-ORG-06 | Onboarding to first org + project (golden-path checklist) | P03-S03, P01-S02 | SC-ORG-009, SC-E2E-001 | Planned |

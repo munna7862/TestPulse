@@ -1,9 +1,8 @@
 "use client";
 
-import * as React from "react";
-import { Bell, Building2, ChevronDown, Layers, Menu, User } from "lucide-react";
+import Link from "next/link";
+import { Bell, Menu, User } from "lucide-react";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,6 +15,7 @@ import {
 import { useTheme } from "../providers/ThemeProvider";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { ConnectionStatusPill } from "./ConnectionStatusPill";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 interface AppHeaderProps {
   onMobileMenuToggle?: () => void;
@@ -39,32 +39,7 @@ export function AppHeader({ onMobileMenuToggle }: AppHeaderProps) {
           </IconButton>
         )}
 
-        {/* Org & Project Switcher Placeholder */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 font-normal text-xs h-8 border-border bg-background/50 hover:bg-muted"
-            >
-              <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="font-semibold text-foreground">Acme Corp</span>
-              <span className="text-muted-foreground">/</span>
-              <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-foreground">Core Engine</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel>Organizations</DropdownMenuLabel>
-            <DropdownMenuItem className="font-medium">Acme Corp (Owner)</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Projects</DropdownMenuLabel>
-            <DropdownMenuItem className="font-medium text-primary">✓ Core Engine</DropdownMenuItem>
-            <DropdownMenuItem>Web Client</DropdownMenuItem>
-            <DropdownMenuItem>Backend API</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <WorkspaceSwitcher />
 
         <div className="hidden lg:block h-4 w-px bg-border mx-1" aria-hidden="true" />
         <div className="hidden lg:block">
@@ -96,18 +71,11 @@ export function AppHeader({ onMobileMenuToggle }: AppHeaderProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">Alex Rivers</span>
-                <span className="text-xs text-muted-foreground">alex@testpulse.dev</span>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile & Account</DropdownMenuItem>
-            <DropdownMenuItem>Organization Settings</DropdownMenuItem>
-            <DropdownMenuItem>API Keys</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive font-medium">Log Out</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings/profile">Profile settings</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

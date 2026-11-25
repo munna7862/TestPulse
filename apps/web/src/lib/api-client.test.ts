@@ -35,4 +35,19 @@ describe("api client", () => {
     await expect(promise).rejects.toBeInstanceOf(ApiClientError);
     await expect(promise).rejects.toMatchObject({ status: 502, error: { code: "INTERNAL" } });
   });
+
+  it("returns undefined for 204 No Content when schema permits undefined", async () => {
+    const request = createApiClient({ fetch: async () => new Response(null, { status: 204 }) });
+    await expect(
+      request({ path: "/api/v1/projects/p1", method: "DELETE", schema: z.undefined() }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws INTERNAL when a 204 No Content response violates a non-empty schema", async () => {
+    const request = createApiClient({ fetch: async () => new Response(null, { status: 204 }) });
+    await expect(request({ path: "/api/v1/projects/p1", schema: z.object({ id: z.string() }) })).rejects.toMatchObject({
+      status: 204,
+      error: { code: "INTERNAL" },
+    });
+  });
 });

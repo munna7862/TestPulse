@@ -4,7 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, AlertTriangle, BarChart3, Component, PlayCircle, Settings, ShieldAlert, X } from "lucide-react";
+import { type PlanTier } from "@testpulse/shared";
 import { cn, IconButton } from "@testpulse/ui";
+import { getPlanQuotaSummary } from "../lib/workspace";
+import { useWorkspace } from "../providers/WorkspaceProvider";
 
 interface NavItem {
   title: string;
@@ -58,6 +61,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProps) {
   const pathname = usePathname();
+  const { activeOrg, projects } = useWorkspace();
+  const tier: PlanTier = activeOrg?.planTier ?? "FREE";
+  const { tierLabel, projectSummary, usagePct, retentionDays } = getPlanQuotaSummary(tier, projects.length);
 
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between p-4">
@@ -91,7 +97,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                 className={cn(
                   "group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary-link font-semibold"
+                    ? "bg-muted text-foreground font-semibold"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -99,7 +105,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
-                      isActive ? "text-primary-link" : "text-muted-foreground group-hover:text-foreground",
+                      isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
                     )}
                   />
                   <span>{item.title}</span>
@@ -137,11 +143,11 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary/10 text-primary-link font-semibold"
+                      ? "bg-muted text-foreground font-semibold"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary-link" : "text-muted-foreground")} />
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-foreground" : "text-muted-foreground")} />
                   <span>{item.title}</span>
                 </Link>
               );
@@ -153,13 +159,13 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
       {/* Plan quota summary footer */}
       <div className="rounded-lg border border-border bg-card p-3 shadow-2xs">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-          <span className="font-semibold text-foreground">Free Tier</span>
-          <span>1 / 3 projects</span>
+          <span className="font-semibold text-foreground">{tierLabel}</span>
+          <span>{projectSummary}</span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div className="h-full bg-primary rounded-full" style={{ width: "33%" }} />
+          <div className="h-full bg-primary rounded-full" style={{ width: `${usagePct}%` }} />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-2">7 days data retention</p>
+        <p className="text-[11px] text-muted-foreground mt-2">{retentionDays} days data retention</p>
       </div>
     </div>
   );
