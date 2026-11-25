@@ -162,4 +162,8 @@ export class OrgService {
     });
     return this.get({ ...ctx, role: "ADMIN" });
   }
+
+  async changeMemberRole(_ctx: TenantRequestContext, _targetUserId: string, _role: OrgRole): Promise<OrgMember> {
+    throw new Error("Not implemented: S-005");
+  }
 }

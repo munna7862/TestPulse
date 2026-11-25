@@ -5,4 +5,5 @@ export * from "./api/oauth";
 export * from "./api/orgs";
 export * from "./api/projects";
 export * from "./env/parse-env";
+export * from "./permissions";
 export * from "./plans";
