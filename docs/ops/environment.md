@@ -24,6 +24,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | Variable | Used by | Example | Notes |
 | :--- | :--- | :--- | :--- |
 | `WEB_ORIGIN` | A | `https://testpulse-staging.vercel.app` | CORS and CSRF allow-list; OAuth redirects |
+| `APP_URL` | A | `https://testpulse-staging.vercel.app` | Base URL for verification and password-reset email links; defaults to `WEB_ORIGIN` |
 | `API_PUBLIC_URL` | A | `https://testpulse-api.onrender.com` | Used in dashboard links for the reporter and GitHub summaries |
 | `API_INTERNAL_URL` | W | `https://testpulse-api.onrender.com` | Target of the `/api/:path*` rewrite |
 | `NEXT_PUBLIC_SOCKET_URL` | W | `https://testpulse-api.onrender.com` | Direct WebSocket endpoint (ticket auth) |

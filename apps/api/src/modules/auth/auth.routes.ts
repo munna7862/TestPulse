@@ -343,23 +343,25 @@ export function authRoutes({
       },
     );
 
-    // 11. Protected action requiring verified email (for SC-AUTH-019 test guard)
-    app.post(
-      "/restricted-action",
-      {
-        preHandler: [middleware.validateCsrf, middleware.authenticateUser, middleware.requireVerifiedEmail],
-        schema: {
-          response: {
-            200: apiSuccess(z.object({ allowed: z.boolean() })),
+    // 11. Protected action requiring verified email (test-only guard for SC-AUTH-019)
+    if (env.NODE_ENV === "test") {
+      app.post(
+        "/restricted-action",
+        {
+          preHandler: [middleware.validateCsrf, middleware.authenticateUser, middleware.requireVerifiedEmail],
+          schema: {
+            response: {
+              200: apiSuccess(z.object({ allowed: z.boolean() })),
+            },
           },
         },
-      },
-      async (_request, reply) => {
-        return reply.code(200).send({
-          success: true,
-          data: { allowed: true },
-        });
-      },
-    );
+        async (_request, reply) => {
+          return reply.code(200).send({
+            success: true,
+            data: { allowed: true },
+          });
+        },
+      );
+    }
   };
 }

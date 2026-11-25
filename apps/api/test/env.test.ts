@@ -23,4 +23,37 @@ describe("API environment", () => {
   it("fails fast with a readable error on invalid values", () => {
     expect(() => loadApiEnv({ PORT: "99999", WEB_ORIGIN: "not a url" })).toThrow(EnvValidationError);
   });
+
+  it("rejects missing, short or dev-default JWT secrets in production", () => {
+    expect(() => loadApiEnv({ NODE_ENV: "production" })).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "short-secret-16ch",
+        JWT_REFRESH_SECRET: "b".repeat(32),
+      }),
+    ).toThrow(EnvValidationError);
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: "production",
+        JWT_ACCESS_SECRET: "a".repeat(32),
+        JWT_REFRESH_SECRET: "dev-jwt-refresh-secret-32-chars-long-min!!",
+      }),
+    ).toThrow(EnvValidationError);
+  });
+
+  it("defaults APP_URL to WEB_ORIGIN when unset and honors explicit APP_URL", () => {
+    const validSecrets = {
+      NODE_ENV: "production",
+      JWT_ACCESS_SECRET: "a".repeat(32),
+      JWT_REFRESH_SECRET: "b".repeat(32),
+    };
+    expect(loadApiEnv({ ...validSecrets, WEB_ORIGIN: "https://staging.example.com" }).APP_URL).toBe(
+      "https://staging.example.com",
+    );
+    expect(
+      loadApiEnv({ ...validSecrets, WEB_ORIGIN: "https://staging.example.com", APP_URL: "https://app.example.com" })
+        .APP_URL,
+    ).toBe("https://app.example.com");
+  });
 });
