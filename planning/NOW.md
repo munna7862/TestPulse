@@ -3,10 +3,10 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- S-004 Web: org switcher, dialogs, project settings & onboarding (`planning/slices/S-004-web-org-project-onboarding.md`), branch `feat/s-004-web-org-project-onboarding`.
+- S-004a Web: org switcher, creation dialogs & sidebar quota (`planning/slices/S-004-web-org-project-onboarding.md`), branch `feat/s-004-web-org-project-onboarding`.
 
 ## Next
-- P03-S04 Invitations, member role management & shared RBAC permission map.
+- S-004b Web: onboarding checklist on `/runs` & `/settings/project` page, then P03-S04 Invitations, member role management & shared RBAC permission map.
 
 ## Later
 - Re-plan the remaining work by outcome at the end of Phase 03 (playbook Step 4), starting with

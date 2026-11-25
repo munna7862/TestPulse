@@ -1,16 +1,26 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+async function waitForTransitions(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 async function expectNoAxeViolations(page: Page): Promise<void> {
+  await waitForTransitions(page);
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
 
   await page.evaluate(() => document.documentElement.classList.add("dark"));
   await expect(page.locator("html")).toHaveClass(/dark/);
+  await waitForTransitions(page);
   const dark = await new AxeBuilder({ page }).analyze();
   expect(dark.violations).toEqual([]);
+
   await page.evaluate(() => document.documentElement.classList.remove("dark"));
   await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await waitForTransitions(page);
 }
 
 const ok = (data: unknown) => ({ success: true, data });
@@ -78,17 +88,13 @@ function buildProject(overrides: Partial<MockProject> = {}): MockProject {
   };
 }
 
-test.describe("Workspace switcher, dialogs, onboarding & project settings", () => {
-  test("[SC-ORG-009] guides a brand-new user through creating their first organization and project", async ({
-    page,
-  }) => {
+test.describe("Workspace switcher, creation dialogs & sidebar quota", () => {
+  test("[SC-ORG-001] [SC-ORG-002] creates an organization and project from the header switcher", async ({ page }) => {
     const orgs: MockOrg[] = [];
     const projectsByOrg = new Map<string, MockProject[]>();
 
     await page.route("**/api/v1/orgs", async (route) => {
-      if (route.request().method() === "GET") {
-        return route.fulfill({ json: ok(orgs) });
-      }
+      if (route.request().method() === "GET") return route.fulfill({ json: ok(orgs) });
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON() as { name: string; slug?: string };
         const created = buildOrg({ id: ORG_1, name: body.name, slug: body.slug ?? "acme-qa" });
@@ -101,9 +107,7 @@ test.describe("Workspace switcher, dialogs, onboarding & project settings", () =
 
     await page.route("**/api/v1/orgs/*/projects", async (route) => {
       const orgId = route.request().url().split("/orgs/")[1]?.split("/projects")[0] ?? "";
-      if (route.request().method() === "GET") {
-        return route.fulfill({ json: ok(projectsByOrg.get(orgId) ?? []) });
-      }
+      if (route.request().method() === "GET") return route.fulfill({ json: ok(projectsByOrg.get(orgId) ?? []) });
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON() as { name: string; slug?: string; description?: string };
         const created = buildProject({
@@ -121,12 +125,12 @@ test.describe("Workspace switcher, dialogs, onboarding & project settings", () =
 
     await page.goto("/runs");
 
-    await expect(page.getByRole("heading", { level: 2, name: "Get started with TestPulse" })).toBeVisible();
-    const createOrgBtn = page.getByRole("button", { name: "Create organization" });
-    await expect(createOrgBtn).toBeVisible();
+    const switcher = page.getByRole("button", { name: "Switch organization or project" });
+    await expect(switcher).toContainText("Create organization");
     await expectNoAxeViolations(page);
 
-    await createOrgBtn.click();
+    await switcher.click();
+    await page.getByRole("menuitem", { name: "New organization" }).click();
     const orgDialog = page.getByRole("dialog");
     await expect(orgDialog.getByRole("heading", { name: "Create organization" })).toBeVisible();
     await orgDialog.getByLabel("Organization name").fill("Acme QA");
@@ -134,34 +138,20 @@ test.describe("Workspace switcher, dialogs, onboarding & project settings", () =
     await orgDialog.getByRole("button", { name: "Create organization" }).click();
 
     await expect(orgDialog).toBeHidden();
-    await expect(page.getByRole("button", { name: "Create project" })).toBeVisible();
+    await expect(switcher).toContainText("Acme QA");
+    await expect(switcher).toContainText("No project");
 
-    await page.getByRole("button", { name: "Create project" }).click();
+    await switcher.click();
+    await page.getByRole("menuitem", { name: "New project" }).click();
     const projectDialog = page.getByRole("dialog");
     await expect(projectDialog.getByRole("heading", { name: "Create project" })).toBeVisible();
     await projectDialog.getByLabel("Project name").fill("Checkout Web");
+    await expectNoAxeViolations(page);
     await projectDialog.getByRole("button", { name: "Create project" }).click();
 
     await expect(projectDialog).toBeHidden();
-    await expect(page.getByRole("heading", { level: 2, name: "Get started with TestPulse" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Acme QA");
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Checkout Web");
+    await expect(switcher).toContainText("Checkout Web");
     await expect(page.getByText("1 / 2 projects")).toBeVisible();
-  });
-
-  test("[SC-ORG-009] skips onboarding when an invited user already belongs to an organization with a project", async ({
-    page,
-  }) => {
-    const org = buildOrg({ name: "Invited Corp", role: "MEMBER" });
-    const project = buildProject({ name: "Core Engine", role: "MEMBER" });
-
-    await page.route("**/api/v1/orgs", (route) => route.fulfill({ json: ok([org]) }));
-    await page.route(`**/api/v1/orgs/${ORG_1}/projects`, (route) => route.fulfill({ json: ok([project]) }));
-
-    await page.goto("/runs");
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Invited Corp");
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Core Engine");
-    await expect(page.getByRole("heading", { level: 2, name: "Get started with TestPulse" })).toBeHidden();
   });
 
   test("[SC-ORG-002] switches between organizations and projects and persists selection across reloads", async ({
@@ -194,7 +184,7 @@ test.describe("Workspace switcher, dialogs, onboarding & project settings", () =
     await expect(switcher).toContainText("Beta API");
   });
 
-  test("[SC-ORG-001] [SC-ORG-008] shows friendly conflict and plan limit errors in creation dialogs", async ({
+  test("[SC-ORG-001] [SC-ORG-008] enforces role gating and shows conflict and plan limit errors in creation dialogs", async ({
     page,
   }) => {
     const org = buildOrg({ planTier: "FREE", role: "OWNER" });
@@ -224,108 +214,54 @@ test.describe("Workspace switcher, dialogs, onboarding & project settings", () =
     await orgDialog.getByLabel("Organization name").fill("Acme QA");
     await orgDialog.getByRole("button", { name: "Create organization" }).click();
     await expect(orgDialog.getByRole("alert")).toContainText("already exists");
+    await expectNoAxeViolations(page);
     await orgDialog.getByRole("button", { name: "Close" }).click();
 
-    // Free plan limit (2 / 2 projects) disables creation notice cleanly
+    // Free plan limit (2 / 2 projects) disables creation cleanly
     await switcher.click();
     await page.getByRole("menuitem", { name: "New project" }).click();
     const projDialog = page.getByRole("dialog");
     await expect(projDialog.getByText(/Plan limit reached/i)).toBeVisible();
     await expect(projDialog.getByRole("button", { name: "Create project" })).toBeDisabled();
+    await expectNoAxeViolations(page);
+    await projDialog.getByRole("button", { name: "Close" }).click();
+
+    // Member cannot see New project menu item
+    const memberOrg = buildOrg({ role: "MEMBER" });
+    await page.route("**/api/v1/orgs", (route) => route.fulfill({ json: ok([memberOrg]) }));
+    await page.reload();
+    await switcher.click();
+    await expect(page.getByRole("menuitem", { name: "New project" })).toHaveCount(0);
   });
 
-  test("[SC-ORG-007] /settings/project handles loading, error retry, admin update/delete, member read-only and XSS", async ({
+  test("[SC-ORG-002] handles switcher retry on error and renders hostile workspace names safely as text", async ({
     page,
   }) => {
     const hostileName = "<img src=x onerror=alert(1)>";
-    const adminOrg = buildOrg({ id: ORG_1, name: hostileName, planTier: "FREE", role: "ADMIN" });
-    let adminProjects: MockProject[] = [
-      buildProject({ name: hostileName, role: "ADMIN", slaDays: 14, retentionDays: 30 }),
-    ];
+    const org = buildOrg({ name: hostileName });
+    const project = buildProject({ name: hostileName });
+    let orgCalls = 0;
 
-    let listAttempts = 0;
-    let patchedBody: unknown;
-    let deletedCalled = false;
-
-    await page.route("**/api/v1/orgs", (route) => route.fulfill({ json: ok([adminOrg]) }));
-    await page.route(`**/api/v1/orgs/${ORG_1}/projects`, async (route) => {
-      listAttempts += 1;
-      if (listAttempts === 1) {
-        return route.fulfill({
-          status: 500,
-          json: { success: false, error: { code: "INTERNAL", message: "Server down" } },
-        });
+    await page.route("**/api/v1/orgs", (route) => {
+      orgCalls += 1;
+      if (orgCalls === 1) {
+        return route.fulfill({ status: 500, json: { success: false, error: { code: "INTERNAL", message: "Down" } } });
       }
-      return route.fulfill({ json: ok(adminProjects) });
+      return route.fulfill({ json: ok([org]) });
     });
-    await page.route(`**/api/v1/projects/${PROJ_1}`, async (route) => {
-      if (route.request().method() === "PATCH") {
-        patchedBody = route.request().postDataJSON();
-        const updated = buildProject({
-          ...adminProjects[0],
-          ...(patchedBody as Partial<MockProject>),
-        });
-        adminProjects = [updated];
-        return route.fulfill({ json: ok(updated) });
-      }
-      if (route.request().method() === "DELETE") {
-        deletedCalled = true;
-        adminProjects = [];
-        return route.fulfill({ status: 204 });
-      }
-      return route.fallback();
-    });
+    await page.route(`**/api/v1/orgs/${ORG_1}/projects`, (route) => route.fulfill({ json: ok([project]) }));
 
-    await page.goto("/settings/project");
-
-    // Error state & retry
-    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+    await page.goto("/runs");
+    const unavailableBtn = page.getByRole("button", { name: "Workspace unavailable" });
+    await expect(unavailableBtn).toBeVisible();
     await expectNoAxeViolations(page);
-    await page.getByRole("button", { name: "Try again" }).click();
 
-    // Populated state + XSS text-only check
-    const nameInput = page.getByLabel("Project name");
-    await expect(nameInput).toHaveValue(hostileName);
+    await unavailableBtn.click();
+    await page.getByRole("menuitem", { name: "Retry" }).click();
+
+    const switcher = page.getByRole("button", { name: "Switch organization or project" });
+    await expect(switcher).toContainText(hostileName);
     await expect(page.locator("img")).toHaveCount(0);
-    await expect(page.getByText(/Effective retention on Free tier: 7 days/i)).toBeVisible();
-    await expectNoAxeViolations(page);
-
-    // Admin updates fields
-    await nameInput.fill("Hardened Suite");
-    await page.getByLabel("Default branch").fill("develop");
-    await page.getByLabel("Data retention (days)").fill("14");
-    await page.getByRole("button", { name: "Save changes" }).click();
-
-    await expect(page.getByRole("status").filter({ hasText: "Project settings saved." })).toBeVisible();
-    expect(patchedBody).toEqual({
-      name: "Hardened Suite",
-      description: "Primary browser tests",
-      defaultBranch: "develop",
-      slaDays: 14,
-      retentionDays: 14,
-    });
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Hardened Suite");
-
-    // Admin deletes project via confirmation dialog
-    await page.getByRole("button", { name: "Delete project" }).click();
-    const confirmDialog = page.getByRole("dialog");
-    await expect(confirmDialog.getByRole("heading", { name: "Delete project" })).toBeVisible();
-    await confirmDialog.getByRole("button", { name: "Confirm delete" }).click();
-
-    expect(deletedCalled).toBe(true);
-    await expect(page.getByText("No projects in this organization")).toBeVisible();
-    await expectNoAxeViolations(page);
-
-    // Member/Viewer read-only check in a fresh route override
-    const viewerOrg = buildOrg({ id: ORG_1, name: "Viewer Org", role: "VIEWER" });
-    const viewerProject = buildProject({ id: PROJ_1, name: "Read Only App", role: "VIEWER" });
-    await page.route("**/api/v1/orgs", (route) => route.fulfill({ json: ok([viewerOrg]) }));
-    await page.route(`**/api/v1/orgs/${ORG_1}/projects`, (route) => route.fulfill({ json: ok([viewerProject]) }));
-    await page.goto("/settings/project");
-
-    await expect(page.getByLabel("Project name")).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Delete project" })).toHaveCount(0);
     await expectNoAxeViolations(page);
   });
 });

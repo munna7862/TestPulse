@@ -49,7 +49,7 @@
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | SC-ORG-001 | A verified user creates an organization | User is OWNER; `planTier = FREE` | I | FR-ORG-01 | apps/api/test/orgs/orgs.acceptance.test.ts |
-| SC-ORG-002 | A user who belongs to two orgs lists organizations | Only their memberships are returned; switching changes the active org in the UI | I | FR-ORG-02 | apps/api/test/orgs/orgs.acceptance.test.ts (API; org switching in the UI lands in S-004) |
+| SC-ORG-002 | A user who belongs to two orgs lists organizations | Only their memberships are returned; switching changes the active org in the UI | I, E | FR-ORG-02 | apps/api/test/orgs/orgs.acceptance.test.ts, apps/web/src/lib/workspace.acceptance.test.ts, apps/web/e2e/workspace.spec.ts |
 | SC-ORG-003 | An Admin updates the org name; a Member attempts the same | Admin succeeds; Member gets 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts |
 | SC-ORG-004 | The Owner deletes the org; an Admin attempts to delete | Owner: org becomes inaccessible immediately (404) and the purge job removes its data; Admin: 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts, apps/api/test/purge/purge.acceptance.test.ts, apps/api/test/purge/s003-review.acceptance.test.ts, apps/api/test/queues.contract.test.ts |
 | SC-ORG-005 | The Owner transfers ownership to an Admin | New Owner set; previous Owner becomes Admin; exactly one Owner exists | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts |
