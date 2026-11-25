@@ -12,6 +12,7 @@ import {
   type Project,
   ProjectSchema,
   type UpdateProjectBody,
+  UpdateProjectBodySchema,
 } from "@testpulse/shared";
 import { z } from "zod";
 import { ApiClientError, type ApiClientOptions, createApiClient } from "./api-client";
@@ -91,6 +92,35 @@ export function validateCreateProjectInput(
   return parsed.success
     ? { ok: true, data: parsed.data }
     : { ok: false, error: parsed.error.issues[0]?.message ?? "Check your project details." };
+}
+
+/** Validates editable project settings inputs against `@testpulse/shared`. */
+export function validateUpdateProjectInput(fields: {
+  name: string;
+  description: string;
+  defaultBranch: string;
+  slaDays: string;
+  retentionDays: string;
+}): ValidationResult<UpdateProjectBody> {
+  const d = fields.description.trim();
+  const r = fields.retentionDays.trim();
+  const parsed = UpdateProjectBodySchema.safeParse({
+    name: fields.name,
+    description: d ? d : null,
+    defaultBranch: fields.defaultBranch.trim(),
+    slaDays: Number(fields.slaDays),
+    retentionDays: r && Number.isFinite(Number(r)) ? Number(r) : -1,
+  });
+  return parsed.success
+    ? { ok: true, data: parsed.data }
+    : { ok: false, error: parsed.error.issues[0]?.message ?? "Check your project settings." };
+}
+
+/** Formats plan-capped effective retention helper text for project settings. */
+export function formatEffectiveRetentionHint(retentionInput: string, fallbackDays: number, planTier: PlanTier): string {
+  const parsed = Number.parseInt(retentionInput, 10);
+  const effective = effectiveRetentionDays(Number.isFinite(parsed) ? Math.max(1, parsed) : fallbackDays, planTier);
+  return `Effective retention on ${PLAN_LABELS[planTier]} tier: ${effective} days (plan max ${PLAN_LIMITS[planTier].retentionDays} days).`;
 }
 
 const ERROR_COPY: Readonly<Record<string, string>> = {

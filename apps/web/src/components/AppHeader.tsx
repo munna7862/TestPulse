@@ -76,6 +76,9 @@ export function AppHeader({ onMobileMenuToggle }: AppHeaderProps) {
             <DropdownMenuItem asChild>
               <Link href="/settings/profile">Profile settings</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings/project">Project settings</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
