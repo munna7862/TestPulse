@@ -7,15 +7,26 @@ import { expect, test, type Page } from "@playwright/test";
  * `apps/api/test/auth/oauth.int.test.ts` (MSW-mocked providers against a real database).
  */
 
+async function waitForTransitions(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 async function expectNoAxeViolations(page: Page): Promise<void> {
+  await waitForTransitions(page);
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
 
   await page.evaluate(() => document.documentElement.classList.add("dark"));
-  await page.waitForTimeout(250);
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await waitForTransitions(page);
   const dark = await new AxeBuilder({ page }).analyze();
   expect(dark.violations).toEqual([]);
+
   await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await waitForTransitions(page);
 }
 
 const ok = (data: unknown) => ({ success: true, data });

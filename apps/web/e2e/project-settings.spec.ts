@@ -359,14 +359,15 @@ test.describe("Project settings page (/settings/project)", () => {
     await expect(alertBanner).toContainText("couldn't update project settings");
     await expect(alertBanner).not.toContainText("Unexpected stack trace");
 
-    // Admin updates name, clears description -> null (resynced to ""), branch -> develop, SLA -> 30, retention -> 14 with Saving... guard
+    // Admin updates trimmed name/branch, clears description -> null (all resynced from server), SLA -> 30, retention -> 14 with Saving... guard
     patchFailureMode = null;
     holdPatch = true;
     patchGate = new Promise<void>((resolve) => {
       releasePatch = resolve;
     });
+    await nameInput.fill("  Hardened Suite  ");
     await page.getByLabel("Description").fill("   ");
-    await page.getByLabel("Default branch").fill("develop");
+    await page.getByLabel("Default branch").fill("  develop  ");
     await page.getByRole("combobox", { name: "Quarantine SLA" }).click();
     await page.getByRole("option", { name: "30 days" }).click();
     await page.getByLabel("Data retention (days)").fill("14");
@@ -379,7 +380,9 @@ test.describe("Project settings page (/settings/project)", () => {
 
     const savedStatus = page.getByRole("status").filter({ hasText: "Project settings saved." });
     await expect(savedStatus).toBeVisible();
+    await expect(nameInput).toHaveValue("Hardened Suite");
     await expect(page.getByLabel("Description")).toHaveValue("");
+    await expect(page.getByLabel("Default branch")).toHaveValue("develop");
     expect(patchedBody).toEqual({
       name: "Hardened Suite",
       description: null,

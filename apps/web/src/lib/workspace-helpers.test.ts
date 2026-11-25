@@ -168,6 +168,36 @@ describe("[SC-ORG-001] [SC-ORG-002] workspace UI helpers", () => {
     ).toMatchObject({ ok: false });
     expect(
       validateUpdateProjectInput({
+        name: "A".repeat(101),
+        description: " ",
+        defaultBranch: "main",
+        slaDays: "14",
+        retentionDays: "30",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: "D".repeat(501),
+        defaultBranch: "main",
+        slaDays: "14",
+        retentionDays: "30",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateUpdateProjectInput({
+        name: " App ",
+        description: " ",
+        defaultBranch: "main",
+        slaDays: "7",
+        retentionDays: "1",
+      }),
+    ).toEqual({
+      ok: true,
+      data: { name: "App", description: null, defaultBranch: "main", slaDays: 7, retentionDays: 1 },
+    });
+    expect(
+      validateUpdateProjectInput({
         name: " App ",
         description: " QA ",
         defaultBranch: " main ",
