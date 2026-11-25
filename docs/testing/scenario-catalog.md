@@ -53,7 +53,7 @@
 | SC-ORG-003 | An Admin updates the org name; a Member attempts the same | Admin succeeds; Member gets 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts |
 | SC-ORG-004 | The Owner deletes the org; an Admin attempts to delete | Owner: org becomes inaccessible immediately (404) and the purge job removes its data; Admin: 403 | I | FR-ORG-03 | apps/api/test/orgs/orgs.acceptance.test.ts, apps/api/test/purge/purge.acceptance.test.ts, apps/api/test/purge/s003-review.acceptance.test.ts, apps/api/test/queues.contract.test.ts |
 | SC-ORG-005 | The Owner transfers ownership to an Admin | New Owner set; previous Owner becomes Admin; exactly one Owner exists | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts |
-| SC-ORG-006 | Anyone tries to remove the Owner or change the Owner's role directly | Rejected (403/400); Owner unchanged | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts (transfer guards; member role and removal routes land in P03-S04) |
+| SC-ORG-006 | Anyone tries to remove the Owner or change the Owner's role directly | Rejected (403/400); Owner unchanged | I | FR-ORG-04 | apps/api/test/orgs/orgs.acceptance.test.ts, apps/api/test/orgs/members.acceptance.test.ts |
 | SC-ORG-007 | An Admin creates a project; a Member attempts the same | Admin: project with default settings (SLA 14, flaky window 10, threshold 3); Member: 403 | I, E | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts, apps/web/src/lib/project-settings.acceptance.test.ts, apps/web/e2e/project-settings.spec.ts |
 | SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts |
 | SC-ORG-009 | A user verifies their email without an invitation; another arrives via invitation | First user is guided to create an org and project; invited user lands in the inviting org | CT, E | FR-ORG-06 | apps/web/src/lib/workspace.acceptance.test.ts, apps/web/e2e/project-settings.spec.ts |
@@ -61,9 +61,9 @@
 | SC-ORG-011 | The invitee (same verified email) accepts | Joins with the invited role; the token can't be reused | I | FR-ORG-07 | — |
 | SC-ORG-012 | A different or unverified user tries to accept the invitation | 403; the invitation stays valid for the right user | I | FR-ORG-07 | — |
 | SC-ORG-013 | An expired or revoked invitation is accepted | Rejected with a clear code | I | FR-ORG-07 | — |
-| SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | — |
-| SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | — |
-| SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | — |
+| SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts |
+| SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts |
+| SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | packages/shared/src/permissions.acceptance.test.ts |
 | SC-ORG-017 | The shared plan limits are read and `checkLimit` is called below, at and above each limit | `PLAN_LIMITS` matches master plan §8 (`null` = unlimited); usage below the limit is allowed, at the limit blocked, unlimited quotas always allowed | U | FR-PLAN-01 | packages/shared/src/plans.acceptance.test.ts |
 | SC-ORG-018 | An Admin's project update or delete passes the tenant check, then the project or its org is deleted (or the Admin is demoted) before the write | 404 once deleted, 403 once demoted; the row is unchanged | I | FR-ORG-05 | apps/api/test/projects/s002-review.acceptance.test.ts (deleted); apps/api/test/projects/projects.acceptance.test.ts (demoted, tagged SC-ORG-007) |
 

@@ -143,7 +143,7 @@ export async function buildApp({
       prefix: "/api/v1/auth",
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
-    const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue purge job");
+    const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue background job");
     await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
     await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
   }

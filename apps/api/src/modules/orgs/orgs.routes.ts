@@ -2,11 +2,14 @@ import type { PrismaClient, User } from "@testpulse/db";
 import {
   CreateOrgBodySchema,
   ListOrgsQuerySchema,
+  MemberParamsSchema,
   OrgListResponseSchema,
   OrgMemberListResponseSchema,
+  OrgMemberResponseSchema,
   OrgParamsSchema,
   OrgResponseSchema,
   TransferOwnershipBodySchema,
+  UpdateMemberRoleBodySchema,
   UpdateOrgBodySchema,
 } from "@testpulse/shared";
 import type { FastifyRequest } from "fastify";
@@ -86,6 +89,30 @@ export function orgRoutes({ db, env, queueClient, onEnqueueError }: OrgRoutesOpt
       "/api/v1/orgs/:orgId/members",
       { schema: { params: OrgParamsSchema, response: { 200: OrgMemberListResponseSchema } } },
       async (request) => ({ success: true as const, data: await service.listMembers(tenantContextOf(request)) }),
+    );
+
+    app.patch(
+      "/api/v1/orgs/:orgId/members/:userId",
+      {
+        schema: {
+          params: MemberParamsSchema,
+          body: UpdateMemberRoleBodySchema,
+          response: { 200: OrgMemberResponseSchema },
+        },
+      },
+      async (request) => ({
+        success: true as const,
+        data: await service.changeMemberRole(tenantContextOf(request), request.params.userId, request.body.role),
+      }),
+    );
+
+    app.delete(
+      "/api/v1/orgs/:orgId/members/:userId",
+      { schema: { params: MemberParamsSchema } },
+      async (request, reply) => {
+        await service.removeMember(tenantContextOf(request), request.params.userId);
+        return reply.code(204).send();
+      },
     );
 
     app.post(

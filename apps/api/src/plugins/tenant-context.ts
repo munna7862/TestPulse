@@ -1,9 +1,11 @@
 import { createTenantDb, type PrismaClient } from "@testpulse/db";
 import {
-  hasOrgRole,
+  can,
+  minRoleFor,
   OrgIdSchema,
   OrgParamsSchema,
   type OrgRole,
+  type PermissionAction,
   ProjectIdSchema,
   ProjectParamsSchema,
 } from "@testpulse/shared";
@@ -19,27 +21,48 @@ export const PROJECT_ROUTE_PREFIX = "/api/v1/projects/:projectId";
 export interface OrgRoutePolicy {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   url: string;
+  action: PermissionAction;
+  /** Minimum role derived from `@testpulse/shared` `PERMISSIONS[action]` via `minRoleFor(action)`. */
   minRole: OrgRole;
+  /** Param holding a userId when targeting oneself uses `member.leave` instead of `action`. */
+  allowSelfParam?: string;
+}
+
+function policyEntry(
+  method: OrgRoutePolicy["method"],
+  url: string,
+  action: PermissionAction,
+  allowSelfParam?: string,
+): OrgRoutePolicy {
+  return {
+    method,
+    url,
+    action,
+    minRole: minRoleFor(action),
+    ...(allowSelfParam ? { allowSelfParam } : {}),
+  };
 }
 
 /**
  * Isolation tables (master plan §7.2, docs/security/rbac-matrix.md). The tenant-context preValidation hook reads
- * the minimum role from here, and registering a tenant route without an entry fails at startup.
+ * permissions from `@testpulse/shared`, and registering a tenant route without an entry fails at startup.
  */
 export const ORG_ROUTE_POLICY: readonly OrgRoutePolicy[] = [
-  { method: "GET", url: "/api/v1/orgs/:orgId", minRole: "VIEWER" },
-  { method: "PATCH", url: "/api/v1/orgs/:orgId", minRole: "ADMIN" },
-  { method: "DELETE", url: "/api/v1/orgs/:orgId", minRole: "OWNER" },
-  { method: "GET", url: "/api/v1/orgs/:orgId/members", minRole: "VIEWER" },
-  { method: "POST", url: "/api/v1/orgs/:orgId/transfer-ownership", minRole: "OWNER" },
-  { method: "GET", url: "/api/v1/orgs/:orgId/projects", minRole: "VIEWER" },
-  { method: "POST", url: "/api/v1/orgs/:orgId/projects", minRole: "ADMIN" },
+  policyEntry("GET", "/api/v1/orgs/:orgId", "org.read"),
+  policyEntry("PATCH", "/api/v1/orgs/:orgId", "org.update"),
+  policyEntry("DELETE", "/api/v1/orgs/:orgId", "org.delete"),
+  policyEntry("GET", "/api/v1/orgs/:orgId/members", "org.read"),
+  policyEntry("PATCH", "/api/v1/orgs/:orgId/members/:userId", "member.changeRole"),
+  policyEntry("DELETE", "/api/v1/orgs/:orgId/members/:userId", "member.remove", "userId"),
+  policyEntry("POST", "/api/v1/orgs/:orgId/transfer-ownership", "org.transferOwnership"),
+  policyEntry("GET", "/api/v1/orgs/:orgId/projects", "project.read"),
+  policyEntry("POST", "/api/v1/orgs/:orgId/projects", "project.create"),
 ];
 
 export const PROJECT_ROUTE_POLICY: readonly OrgRoutePolicy[] = [
-  { method: "GET", url: "/api/v1/projects/:projectId", minRole: "VIEWER" },
-  { method: "PATCH", url: "/api/v1/projects/:projectId", minRole: "ADMIN" },
-  { method: "DELETE", url: "/api/v1/projects/:projectId", minRole: "ADMIN" },
+  policyEntry("GET", "/api/v1/projects/:projectId", "project.read"),
+  policyEntry("PATCH", "/api/v1/projects/:projectId", "project.update"),
+  policyEntry("DELETE", "/api/v1/projects/:projectId", "project.delete"),
 ];
 
 interface TenantScope {
@@ -199,11 +222,20 @@ export function createTenantContextHook(db: PrismaClient, env: ApiEnv): TenantHo
         ? await resolveProject(db, request.params, user.id)
         : await resolveOrg(db, request.params, user.id);
       if (!membership) throw request.server.httpErrors.notFound(notFound);
-      if (!hasOrgRole(membership.role, policy.minRole)) {
-        throw request.server.httpErrors.forbidden("Your role does not allow this action.");
+
+      const targetParam = policy.allowSelfParam
+        ? (request.params as Record<string, unknown> | undefined)?.[policy.allowSelfParam]
+        : undefined;
+      const isSelf = typeof targetParam === "string" && targetParam === user.id;
+      const requiredAction = isSelf ? "member.leave" : policy.action;
+      if (!can(membership.role, requiredAction)) {
+        const message = isSelf
+          ? "Transfer ownership before leaving the organization."
+          : "Your role does not allow this action.";
+        throw request.server.httpErrors.forbidden(message);
       }
 
-      request.tenantContext = { ...membership, userId: user.id, minRole: policy.minRole };
+      request.tenantContext = { ...membership, userId: user.id, minRole: minRoleFor(requiredAction) };
       return undefined;
     };
   };
