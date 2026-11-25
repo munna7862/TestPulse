@@ -78,7 +78,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           ...s,
           status: resolved ? "loading" : "idle",
           error: null,
-          ...(resolved ? {} : { items: [], activeId: null }),
+          ...(resolved ? { tick: s.tick + 1 } : { items: [], activeId: null }),
         }));
       },
       (err: unknown) => {

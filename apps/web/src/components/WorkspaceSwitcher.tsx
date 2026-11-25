@@ -126,7 +126,7 @@ export function WorkspaceSwitcher() {
             {w.projectsStatus === "error" && (
               <DropdownMenuItem onSelect={() => w.refreshProjects()} className="gap-2">
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{w.projectsError ?? "Retry loading projects"}</span>
+                <span>{w.projectsError ? `${w.projectsError} Retry` : "Retry loading projects"}</span>
               </DropdownMenuItem>
             )}
             {w.projectsStatus === "ready" && w.projects.length === 0 && (

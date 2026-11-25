@@ -51,12 +51,10 @@ function ResourceDialog<TBody, TResult>(props: ResourceDialogProps<TBody, TResul
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setValues({});
-      setError(null);
-    }
-    onOpenChange(next);
+  const closeDialog = () => {
+    setValues({});
+    setError(null);
+    onOpenChange(false);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,7 +66,7 @@ function ResourceDialog<TBody, TResult>(props: ResourceDialogProps<TBody, TResul
     setSubmitting(true);
     try {
       props.onSuccess(await props.request(v.data));
-      handleOpenChange(false);
+      closeDialog();
     } catch (err) {
       setError(formatWorkspaceError(err, props.fallbackError));
     } finally {
@@ -77,7 +75,7 @@ function ResourceDialog<TBody, TResult>(props: ResourceDialogProps<TBody, TResul
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : !submitting && closeDialog())}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -111,7 +109,7 @@ function ResourceDialog<TBody, TResult>(props: ResourceDialogProps<TBody, TResul
             />
           ))}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={closeDialog} disabled={submitting}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || disabled}>

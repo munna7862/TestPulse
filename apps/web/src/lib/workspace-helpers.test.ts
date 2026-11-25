@@ -119,5 +119,11 @@ describe("[SC-ORG-001] [SC-ORG-002] workspace UI helpers", () => {
     expect(
       formatWorkspaceError(new ApiClientError(429, { code: "RATE_LIMITED", message: "Slow down" }), "Retry later."),
     ).toBe("Retry later.");
+    expect(
+      formatWorkspaceError(new ApiClientError(401, { code: "UNAUTHENTICATED", message: "Auth" }), "Retry."),
+    ).toContain("session has expired");
+    expect(
+      formatWorkspaceError(new ApiClientError(400, { code: "VALIDATION_ERROR", message: "Bad" }), "Retry."),
+    ).toContain("Check the form fields");
   });
 });
