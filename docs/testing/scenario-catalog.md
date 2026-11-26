@@ -57,13 +57,13 @@
 | SC-ORG-007 | An Admin creates a project; a Member attempts the same | Admin: project with default settings (SLA 14, flaky window 10, threshold 3); Member: 403 | I, E | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts, apps/web/src/lib/project-settings.acceptance.test.ts, apps/web/e2e/project-settings.spec.ts |
 | SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts |
 | SC-ORG-009 | A user verifies their email without an invitation; another arrives via invitation | First user is guided to create an org and project; invited user lands in the inviting org | CT, E | FR-ORG-06 | apps/web/src/lib/workspace.acceptance.test.ts, apps/web/e2e/project-settings.spec.ts |
-| SC-ORG-010 | An Admin invites an email address | Invitation stored with a hashed token; email sent; the pending invite counts toward the member limit | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
+| SC-ORG-010 | An Admin invites an email address | Invitation stored with a hashed token; email sent; the pending invite counts toward the member limit | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
 | SC-ORG-011 | The invitee (same verified email) accepts | Joins with the invited role; the token can't be reused | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
 | SC-ORG-012 | A different or unverified user tries to accept the invitation | 403; the invitation stays valid for the right user | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
 | SC-ORG-013 | An expired or revoked invitation is accepted | Rejected with a clear code | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
-| SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts |
-| SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts |
-| SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | packages/shared/src/permissions.acceptance.test.ts |
+| SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
+| SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
+| SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | packages/shared/src/permissions.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts |
 | SC-ORG-017 | The shared plan limits are read and `checkLimit` is called below, at and above each limit | `PLAN_LIMITS` matches master plan §8 (`null` = unlimited); usage below the limit is allowed, at the limit blocked, unlimited quotas always allowed | U | FR-PLAN-01 | packages/shared/src/plans.acceptance.test.ts |
 | SC-ORG-018 | An Admin's project update or delete passes the tenant check, then the project or its org is deleted (or the Admin is demoted) before the write | 404 once deleted, 403 once demoted; the row is unchanged | I | FR-ORG-05 | apps/api/test/projects/s002-review.acceptance.test.ts (deleted); apps/api/test/projects/projects.acceptance.test.ts (demoted, tagged SC-ORG-007) |
 
@@ -243,7 +243,7 @@
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | SC-PLAN-001 | A Free org creates its 3rd project | 403 `PLAN_LIMIT_REACHED`; the UI shows the upgrade (contact/waitlist) modal | I | FR-PLAN-01 | apps/api/test/projects/projects.acceptance.test.ts (API 403; the upgrade modal lands in S-004) |
-| SC-PLAN-002 | A Free org with 2 members and 1 pending invite sends another invite | 403 `PLAN_LIMIT_REACHED` | I | FR-PLAN-01 | apps/api/test/invitations/s006-review.acceptance.test.ts |
+| SC-PLAN-002 | A Free org with 2 members and 1 pending invite sends another invite | 403 `PLAN_LIMIT_REACHED` | I | FR-PLAN-01 | apps/api/test/invitations/s006-review.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
 | SC-PLAN-003 | The usage endpoint is called before and after the quota is exceeded | Correct used/limit values; the over-quota banner shows | I | FR-PLAN-02, FR-ING-07 | — |
 | SC-PLAN-004 | A Free project has `retentionDays = 30` | Effective retention is 7 days; only older raw data is deleted, in chunks; daily aggregates are kept | I | FR-PLAN-03 | — |
 
@@ -270,8 +270,8 @@
 | SC-UX-001 | The component catalog is rendered in both themes | Every primitive appears; no axe critical/serious violations; visual snapshots match | E | FR-UX-01 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-002 | The page loads with a dark system preference | The first paint uses dark tokens (no flash) | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-003 | The user picks a theme, reloads, then logs in on another device | Choice persists locally and (from P09-S02) across devices | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
-| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts |
-| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts |
+| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts, apps/web/e2e/members-settings.spec.ts |
+| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts, apps/web/e2e/members-settings.spec.ts |
 | SC-UX-006 | The quarantine workflow and live run view are used keyboard-only and with a screen reader | Completable; focus visible; live-region announcements are throttled and meaningful | M | FR-UX-04 | — |
 | SC-UX-007 | `prefers-reduced-motion: reduce` is set | Non-essential animations are disabled | E | FR-UX-05 | — |
 
