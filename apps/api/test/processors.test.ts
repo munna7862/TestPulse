@@ -70,6 +70,47 @@ describe("job processors (unit, ioredis-mock)", () => {
         newRole: "MEMBER",
       }),
     ).toMatchObject({ reason: "role_changed", previousRole: "ADMIN", newRole: "MEMBER" });
+    expect(() =>
+      JOBS["member.invited"].schema.parse({
+        orgId: "not-a-uuid",
+        invitationId: "01950000-0000-7000-8000-000000000003",
+        invitedById: "01950000-0000-7000-8000-000000000002",
+        role: "MEMBER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.invited"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        invitationId: "not-a-uuid",
+        invitedById: "01950000-0000-7000-8000-000000000002",
+        role: "MEMBER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.invited"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        invitationId: "01950000-0000-7000-8000-000000000003",
+        invitedById: "not-a-uuid",
+        role: "MEMBER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.invited"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        invitationId: "01950000-0000-7000-8000-000000000003",
+        invitedById: "01950000-0000-7000-8000-000000000002",
+        role: "OWNER",
+      }),
+    ).toThrow();
+    expect(() =>
+      JOBS["member.invited"].schema.parse({
+        orgId: "01950000-0000-7000-8000-000000000001",
+        invitationId: "01950000-0000-7000-8000-000000000003",
+        invitedById: "01950000-0000-7000-8000-000000000002",
+        role: "ADMIN",
+        extra: true,
+      }),
+    ).toThrow();
   });
 
   it("[SC-ORG-015] accepts member.access_changed and member.invited domain events without throwing", async () => {
