@@ -84,6 +84,9 @@ describe("BullMQ contract (real Redis)", () => {
       "member.access_changed": async (data, deps) => {
         dispatched.push({ name: "member.access_changed", data, hasDb: deps.db === sentinelDb });
       },
+      "member.invited": async (data, deps) => {
+        dispatched.push({ name: "member.invited", data, hasDb: deps.db === sentinelDb });
+      },
     };
     const workers = await startWorkers({ log, redisUrl, prefix, db: sentinelDb, processors: customProcessors });
     const clientRedis = createRedis(redisUrl, { forWorker: true });
@@ -91,6 +94,7 @@ describe("BullMQ contract (real Redis)", () => {
     const orgId = "01950000-0000-7000-8000-000000000010";
     const projectId = "01950000-0000-7000-8000-000000000020";
     const userId = "01950000-0000-7000-8000-000000000030";
+    const invitationId = "01950000-0000-7000-8000-000000000040";
     try {
       await expect(client.enqueue("tenant.purge-org", { orgId: "not-a-uuid" })).rejects.toThrow();
 
@@ -107,6 +111,12 @@ describe("BullMQ contract (real Redis)", () => {
         previousRole: "MEMBER",
         newRole: null,
       });
+      await client.enqueue("member.invited", {
+        orgId,
+        invitationId,
+        invitedById: userId,
+        role: "MEMBER",
+      });
 
       await expect
         .poll(
@@ -121,6 +131,7 @@ describe("BullMQ contract (real Redis)", () => {
                 (d.data as { batchSize?: unknown }).batchSize === 25,
             );
             const hasAccessChanged = dispatched.some((d) => d.name === "member.access_changed");
+            const hasInvited = dispatched.some((d) => d.name === "member.invited");
             const systemCounts = await client.queue("system").getJobCounts("waiting", "active");
             const domainCounts = await client.queue("domain-events").getJobCounts("waiting", "active");
             return (
@@ -128,6 +139,7 @@ describe("BullMQ contract (real Redis)", () => {
               hasProject &&
               hasSweep25 &&
               hasAccessChanged &&
+              hasInvited &&
               (systemCounts.waiting ?? 0) === 0 &&
               (systemCounts.active ?? 0) === 0 &&
               (domainCounts.waiting ?? 0) === 0 &&
@@ -148,6 +160,11 @@ describe("BullMQ contract (real Redis)", () => {
           {
             name: "member.access_changed",
             data: { orgId, userId, reason: "removed", previousRole: "MEMBER", newRole: null },
+            hasDb: true,
+          },
+          {
+            name: "member.invited",
+            data: { orgId, invitationId, invitedById: userId, role: "MEMBER" },
             hasDb: true,
           },
         ]),

@@ -3,15 +3,15 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- S-005 Shared RBAC permission map, member role/removal/self-leave API & `member.access_changed` event (`planning/slices/S-005-rbac-member-management.md`), branch `feat/s-005-rbac-member-management`.
+- S-006 Invitations schema, API endpoints & Mailer (`planning/slices/S-006-invitations-api.md`), branch `feat/s-006-invitations-api`.
 
 ## Next
-- S-006 Invitations schema, API endpoints & Mailer (`P03-S04` part 2/3), then S-007 Web members & invitations UI (`P03-S04` part 3/3).
+- S-007 Web members, invitations settings & accept-invitation page (`P03-S04` part 3/3).
 
 ## Later
 - Re-plan the remaining work by outcome at the end of Phase 03 (playbook Step 4), starting with
   M1 "first live run": sign up → project → API key → reporter → live run on staging.
-  (S-001 orgs PR #13; S-002 projects PR #15; CI/audit PR #17; S-003 purge PR #18; S-004a switcher/dialogs PR #19; S-004b onboarding/project settings PR #20.)
+  (S-001 orgs PR #13; S-002 projects PR #15; CI/audit PR #17; S-003 purge PR #18; S-004a/b PRs #19/#20; S-005 RBAC/members PR #21.)
 
 ## Owner actions outstanding
 - Add repo secrets `STAGING_DIRECT_URL`, `RENDER_DEPLOY_HOOK_URL` and repo variable `STAGING_API_URL`

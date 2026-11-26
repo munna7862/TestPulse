@@ -15,7 +15,7 @@
 | Pagination | Cursor-based: `?limit=1..100&cursor=<opaque>`; response `meta: { cursor: string \| null, limit }`; stable ordering with an `id` tiebreaker |
 | Filtering | Query params named after fields (`status`, `branch`, `from`, `to`, `q`); comma-separated multi-values |
 | Timestamps | ISO-8601 UTC strings |
-| Errors | `VALIDATION_ERROR` 400 · `UNAUTHENTICATED` 401 · `FORBIDDEN` 403 · `NOT_FOUND` 404 · `CONFLICT` 409 · `PLAN_LIMIT_REACHED` 403 · `RATE_LIMITED` 429 · `QUOTA_EXCEEDED` 429 · `INTERNAL` 500 |
+| Errors | `VALIDATION_ERROR` 400 · `INVALID_TOKEN` 400 · `INVITATION_EXPIRED` 400 · `INVITATION_REVOKED` 400 · `UNAUTHENTICATED` 401 · `FORBIDDEN` 403 · `EMAIL_NOT_VERIFIED` 403 · `PLAN_LIMIT_REACHED` 403 · `NOT_FOUND` 404 · `CONFLICT` 409 · `RATE_LIMITED` 429 · `QUOTA_EXCEEDED` 429 · `INTERNAL` 500 |
 | Request ID | Every response carries `x-request-id`; errors include it so users can quote it |
 | Versioning | Breaking changes → `/api/v2`. Additive changes are allowed in v1 |
 
@@ -82,6 +82,8 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 - `POST /orgs/:orgId/transfer-ownership` takes `{ userId }` and returns the org with the caller's new role (`ADMIN`). The target must be an Admin of the org: a Member, Viewer or the caller returns 400, a non-member 404.
 - `PATCH /orgs/:orgId/members/:userId` takes `{ role }` in `["ADMIN", "MEMBER", "VIEWER"]` (Admin+ only, non-Owner targets, never self) and returns `OrgMember`; downgrading a member enqueues `member.access_changed` (`reason: "role_changed"`) on `"domain-events"` after commit.
 - `DELETE /orgs/:orgId/members/:userId` lets Admin+ remove any non-Owner member (`reason: "removed"`) or lets any non-Owner member leave (`reason: "left"`), returning `204`, failing Owner removal/self-leave with `403`, and enqueuing `member.access_changed` after commit.
+- `POST /orgs/:orgId/invitations` (Admin+) stores a single-use 7-day invitation (`tokenHash` only; normalized lowercase `email`; `role` in `ADMIN | MEMBER | VIEWER`) under an `Organization` row lock against `membersPerOrg` (live members + active pending invites), sends mail, and enqueues `member.invited` after commit. `GET /orgs/:orgId/invitations` lists active pending invites without `tokenHash`; `POST …/resend` rotates the token; `DELETE …/:id` revokes (`204`).
+- `POST /invitations/accept` (verified user, CSRF, rate-limited) validates the email match and atomically joins the org, returning `400 INVALID_TOKEN` / `INVITATION_EXPIRED` / `INVITATION_REVOKED`, `403 FORBIDDEN` / `EMAIL_NOT_VERIFIED`, or `409 CONFLICT` on reuse.
 - Every route under `/orgs/:orgId` must be listed in `ORG_ROUTE_POLICY` (`apps/api/src/plugins/tenant-context.ts`) with its permission action (`@testpulse/shared` `PERMISSIONS`); an unlisted route, or an org route whose parameter is not named exactly `:orgId`, fails at startup. A route serving several methods enforces each method's own minimum role. The tenant check runs before body validation, so non-members get 404 whatever they send; a malformed org id also gets 404 without a query (ids longer than the router's 100-character parameter limit get 414 from Fastify before any check). Writes to the org row re-check the caller's role, so a role lost mid-request returns 403.
 
 ### Projects

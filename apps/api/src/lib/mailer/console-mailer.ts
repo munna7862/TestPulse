@@ -1,4 +1,9 @@
-import type { Mailer, SendPasswordResetEmailOptions, SendVerificationEmailOptions } from "./types";
+import type {
+  Mailer,
+  SendInvitationEmailOptions,
+  SendPasswordResetEmailOptions,
+  SendVerificationEmailOptions,
+} from "./types";
 
 export interface ConsoleMailerOptions {
   /**
@@ -32,5 +37,16 @@ Reset URL: ${options.resetUrl}
 Token: ${options.token}`
       : " (link withheld: no mail transport is configured in this environment)";
     console.info(`[Mailer:PasswordReset] To: ${options.to} (${options.name})${detail}`);
+  }
+
+  async sendInvitationEmail(options: SendInvitationEmailOptions): Promise<void> {
+    const detail = this.revealSecrets
+      ? `
+Accept URL: ${options.acceptUrl}
+Token: ${options.token}`
+      : " (link withheld: no mail transport is configured in this environment)";
+    console.info(
+      `[Mailer:Invitation] To: ${options.to} Org: ${options.orgName} Role: ${options.role} InvitedBy: ${options.inviterName}${detail}`,
+    );
   }
 }

@@ -11,6 +11,7 @@ import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
 import type { RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
+import { invitationRoutes } from "./modules/invitations";
 import { orgRoutes } from "./modules/orgs";
 import { projectRoutes } from "./modules/projects";
 import { registerErrorHandling } from "./plugins/error-handler";
@@ -144,8 +145,19 @@ export async function buildApp({
     });
     await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
     const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue background job");
+    const onMailError = (error: unknown) => app.log.error({ err: error }, "background mail delivery failed");
     await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
     await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
+    await app.register(
+      invitationRoutes({
+        db: activeDb,
+        mailer,
+        env,
+        onMailError,
+        ...(rateLimitStore ? { rateLimitStore } : {}),
+        ...(queueClient ? { queueClient, onEnqueueError } : {}),
+      }),
+    );
   }
 
   return app;
