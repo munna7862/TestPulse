@@ -58,9 +58,9 @@
 | SC-ORG-008 | A project slug is reused within one org, and in a different org | Same org: 409; different org: allowed | I | FR-ORG-05 | apps/api/test/projects/projects.acceptance.test.ts |
 | SC-ORG-009 | A user verifies their email without an invitation; another arrives via invitation | First user is guided to create an org and project; invited user lands in the inviting org | CT, E | FR-ORG-06 | apps/web/src/lib/workspace.acceptance.test.ts, apps/web/e2e/project-settings.spec.ts |
 | SC-ORG-010 | An Admin invites an email address | Invitation stored with a hashed token; email sent; the pending invite counts toward the member limit | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
-| SC-ORG-011 | The invitee (same verified email) accepts | Joins with the invited role; the token can't be reused | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
-| SC-ORG-012 | A different or unverified user tries to accept the invitation | 403; the invitation stays valid for the right user | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
-| SC-ORG-013 | An expired or revoked invitation is accepted | Rejected with a clear code | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts |
+| SC-ORG-011 | The invitee (same verified email) accepts | Joins with the invited role; the token can't be reused | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts, apps/web/src/lib/invitation-accept.acceptance.test.ts, apps/web/e2e/invitation-accept.spec.ts |
+| SC-ORG-012 | A different or unverified user tries to accept the invitation | 403; the invitation stays valid for the right user | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts, apps/web/src/lib/invitation-accept.acceptance.test.ts, apps/web/e2e/invitation-accept.spec.ts |
+| SC-ORG-013 | An expired or revoked invitation is accepted | Rejected with a clear code | I | FR-ORG-07 | apps/api/test/invitations/invitations.acceptance.test.ts, apps/web/src/lib/invitation-accept.acceptance.test.ts, apps/web/e2e/invitation-accept.spec.ts |
 | SC-ORG-014 | An Admin changes a Member to Viewer; a Member tries to promote themself | Admin succeeds; self-promotion gets 403 | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
 | SC-ORG-015 | An Admin removes a member | The member immediately gets 404 on org resources and is evicted from sockets (see SC-RT-006) | I | FR-ORG-08 | apps/api/test/orgs/members.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts, apps/web/e2e/members-settings.spec.ts |
 | SC-ORG-016 | The permission map is evaluated for every (role, action) pair in master plan §7 | Results match the matrix exactly | U | FR-ORG-09 | packages/shared/src/permissions.acceptance.test.ts, apps/web/src/lib/members.acceptance.test.ts |
@@ -270,8 +270,8 @@
 | SC-UX-001 | The component catalog is rendered in both themes | Every primitive appears; no axe critical/serious violations; visual snapshots match | E | FR-UX-01 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-002 | The page loads with a dark system preference | The first paint uses dark tokens (no flash) | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-003 | The user picks a theme, reloads, then logs in on another device | Choice persists locally and (from P09-S02) across devices | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
-| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts, apps/web/e2e/members-settings.spec.ts |
-| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts, apps/web/e2e/members-settings.spec.ts |
+| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts |
+| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts |
 | SC-UX-006 | The quarantine workflow and live run view are used keyboard-only and with a screen reader | Completable; focus visible; live-region announcements are throttled and meaningful | M | FR-UX-04 | — |
 | SC-UX-007 | `prefers-reduced-motion: reduce` is set | Non-essential animations are disabled | E | FR-UX-05 | — |
 
@@ -305,7 +305,7 @@
 | SC-E2E-001 | **Golden path:** sign up → verify → create org and project → create API key → run the example Playwright suite with the reporter | Results appear live on the dashboard while the suite runs; the whole path takes ≤ 10 minutes for a new user | E | FR-ORG-06, FR-REP-01, FR-GTM-02 | — |
 | SC-E2E-002 | **Live collaboration:** two browsers (two members) watch the same run | Both show identical live state with no duplicate rows | E | FR-DASH-01, FR-RT-03 | — |
 | SC-E2E-003 | **Triage lifecycle:** test detected flaky → quarantined → assigned → commented (seen live by the other user) → SLA warning (fake clock) → resolved | Every step visible to both users; notification received; audit trail complete | E | FR-FLK-05, FR-QUA-01, FR-QUA-02, FR-ANN-05, FR-NOT-02 | — |
-| SC-E2E-004 | **Invitation:** an Admin invites → the invitee signs up and verifies → accepts | Invitee sees the org's projects with the invited role, and nothing more | E | FR-ORG-07 | — |
+| SC-E2E-004 | **Invitation:** an Admin invites → the invitee signs up and verifies → accepts | Invitee sees the org's projects with the invited role, and nothing more | E | FR-ORG-07 | apps/web/e2e/invitation-accept.spec.ts |
 | SC-E2E-005 | **Notification delivery:** @mention and SLA escalation | In-app notifications plus emails (test transport), according to preferences | E | FR-NOT-02, FR-NOT-03 | — |
 
 ## GTM — Public site & docs
