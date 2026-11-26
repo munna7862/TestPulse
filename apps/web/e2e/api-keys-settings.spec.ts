@@ -119,7 +119,7 @@ test.describe("API keys settings page (/settings/api-keys)", () => {
         createdById: USER_1,
         createdByName: hostileName,
         lastUsedAt: null,
-        expiresAt: "2026-01-01T00:00:00.000Z",
+        expiresAt: "2026-01-01T12:00:00.000Z",
         revokedAt: null,
         status: "EXPIRED" as const,
         createdAt: "2026-01-01T00:00:00.000Z",
@@ -376,13 +376,20 @@ test.describe("API keys settings page (/settings/api-keys)", () => {
       name: new RegExp(`CI ${hostileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
     });
     await expect(createdRow).toBeVisible();
-    await expect(page.getByText(hostileName, { exact: true })).toBeVisible();
-    await expect(page.getByText("tp_live_aaaaaaaa…")).toBeVisible();
-    await expect(page.getByText("Oct 5, 2026")).toBeVisible();
+    await expect(createdRow).toContainText("ACTIVE");
+    await expect(createdRow.getByText("tp_live_aaaaaaaa…")).toBeVisible();
     await expect(createdRow).toContainText("Never");
+
+    const expiredRow = page.getByRole("row", { name: /Nightly Expired/ });
+    await expect(expiredRow).toBeVisible();
+    await expect(expiredRow).toContainText("EXPIRED");
+    await expect(expiredRow.getByText(hostileName, { exact: true })).toBeVisible();
+    await expect(expiredRow.getByText("tp_live_cccccccc…")).toBeVisible();
+    await expect(expiredRow).toContainText("Jan 1, 2026");
 
     const preRevokedRow = page.getByRole("row", { name: /Old Compromised Key/ });
     await expect(preRevokedRow).toContainText("REVOKED");
+    await expect(preRevokedRow).toContainText("Oct 5, 2026");
     await expect(preRevokedRow.getByText("Revoked", { exact: true })).toBeVisible();
     await expect(preRevokedRow.getByRole("button")).toHaveCount(0);
 
@@ -403,7 +410,7 @@ test.describe("API keys settings page (/settings/api-keys)", () => {
     await page.getByRole("button", { name: "Switch organization or project" }).click();
     await page.getByRole("menuitem", { name: "Mobile App" }).click();
     await expect(page.getByText("Manage project-scoped CI ingestion keys for Mobile App.")).toBeVisible();
-    await expect(page.getByText("Mobile Release Key")).toBeVisible();
+    await expect(page.getByRole("row", { name: /Mobile Release Key/ })).toContainText("ACTIVE");
     await expect(page.getByText("Nightly Expired")).toHaveCount(0);
 
     // 5. Member & Viewer role gating
