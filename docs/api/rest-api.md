@@ -121,6 +121,13 @@ Organization behavior (S-001; schemas in `packages/shared/src/api/orgs.ts`):
 | `GET /projects/:projectId/analytics/{pass-rate,duration,runs,leaderboards,mttr,branches}` | V | Analytics (pre-computed) | P08 |
 | `GET /projects/:projectId/analytics/export?format=csv\|json&view=…` | V | Export (streamed, capped) | P08-S04 |
 
+API key behavior (S-008a; schemas in `packages/shared/src/api/api-keys.ts`):
+
+- `POST /projects/:projectId/api-keys` (Admin+) takes `{ name, expiresAt? }` (optional future ISO datetime), verifies live org/project state and write-time `apiKey.manage` role, generates `tp_live_` + 32 random bytes in base62, stores only the 8-char `prefix` and `keyHash = sha256(plaintextKey)`, and returns `201` with `plaintextKey` shown once (`CreatedApiKeySchema`).
+- `GET /projects/:projectId/api-keys` (Admin+) lists key metadata and computed `status` (`ACTIVE`, `EXPIRED`, `REVOKED`) newest first without ever returning `keyHash` or `plaintextKey`.
+- `DELETE /projects/:projectId/api-keys/:keyId` (Admin+) immediately sets `revokedAt` (`204`; missing/cross-project/already-revoked/malformed → `404`).
+- Ingestion routes (`/ingest/*`) ignore session cookies and authenticate exclusively via `Authorization: Bearer tp_live_<...>` (`createApiKeyAuthHook`), resolving `{ orgId, projectId, apiKeyId }`, returning `401 INVALID_API_KEY` on missing/unknown/revoked/expired/soft-deleted tenant keys, throttling `lastUsedAt` writes to at most once per minute per key, and applying fail-open per-key and per-project rate limits (`429 RATE_LIMITED` + `Retry-After`). All non-ingest routes return `401 UNAUTHENTICATED` when given an API key.
+
 ### Ingestion (API key)
 
 See [`ingestion.md`](ingestion.md): `POST /ingest/runs`, `POST /ingest/runs/:runId/results`, `POST /ingest/runs/:runId/complete`, `GET /ingest/quarantined-tests`, `GET /ingest/runs/:runId/summary`. Role **K** only; session cookies are ignored on these routes.

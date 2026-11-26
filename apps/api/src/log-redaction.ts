@@ -6,6 +6,7 @@ export const LOG_REDACT_PATHS = [
   "*.password",
   "*.token",
   "*.apiKey",
+  "*.plaintextKey",
   "*.secret",
 ];
 
