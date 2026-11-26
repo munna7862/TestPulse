@@ -61,7 +61,7 @@ Roles: **A** = any authenticated user · **V** Viewer+ · **M** Member+ · **Ad*
 | `POST /orgs/:orgId/invitations/:id/resend` · `DELETE /orgs/:orgId/invitations/:id` | Ad | Resend / revoke | P03-S04 |
 | `POST /invitations/accept` | A (verified, email must match) | Accept an invitation | P03-S04 |
 | `GET /orgs/:orgId/usage` | V | Plan, quotas, usage | P04-S06 |
-| `GET /orgs/:orgId/audit-events` | Ad | Audit log | P03-S06 |
+| `GET /orgs/:orgId/audit-events` | Ad | Audit log query endpoint (deferred post-Phase 03; `AuditEvent` recording lands in P03-S06) | Post-MVP |
 | `GET /orgs/:orgId/projects` · `POST /orgs/:orgId/projects` | V / Ad | List / create project (`?slug=`) | P03-S03 |
 
 Project behavior (S-002; schemas in `packages/shared/src/api/projects.ts`):

@@ -104,38 +104,51 @@ export const NON_TENANT_ROUTES: readonly NonTenantRouteEntry[] = [
   { method: "POST", url: "/api/v1/invitations/accept", category: "auth-user" },
 ];
 
-function normalizeRouteUrl(url: string): string {
-  return url.length > 1 ? url.replace(/\/+$/, "") : url;
-}
-
 /** Verifies every registered HTTP route belongs to ORG_ROUTE_POLICY, PROJECT_ROUTE_POLICY, or NON_TENANT_ROUTES with zero gaps or stale entries. */
 export function assertAllRoutesClassified(registered: readonly { method: string; url: string }[]): void {
   const classified = new Set<string>();
   const required = new Set<string>();
 
   for (const entry of ORG_ROUTE_POLICY) {
-    const key = `${entry.method} ${normalizeRouteUrl(entry.url)}`;
+    const key = `${entry.method} ${entry.url}`;
     classified.add(key);
     required.add(key);
   }
   for (const entry of PROJECT_ROUTE_POLICY) {
-    const key = `${entry.method} ${normalizeRouteUrl(entry.url)}`;
+    const key = `${entry.method} ${entry.url}`;
     classified.add(key);
     required.add(key);
   }
   for (const entry of NON_TENANT_ROUTES) {
-    const key = `${entry.method} ${normalizeRouteUrl(entry.url)}`;
+    const key = `${entry.method} ${entry.url}`;
     classified.add(key);
     if (!entry.optional) required.add(key);
   }
 
+  const getUrls = new Set(registered.filter((route) => route.method === "GET").map((route) => route.url));
   const actual = new Set<string>();
+  const duplicates: string[] = [];
   const unclassified: string[] = [];
+
   for (const route of registered) {
-    if (route.method === "HEAD") continue;
-    const key = `${route.method} ${normalizeRouteUrl(route.url)}`;
+    const key = `${route.method} ${route.url}`;
+    if (actual.has(key)) duplicates.push(key);
     actual.add(key);
+
+    if (route.method === "HEAD") {
+      // Fastify auto-adds a HEAD twin for every GET route; standalone HEAD routes must be classified explicitly.
+      const twinGet = `GET ${route.url}`;
+      if (!classified.has(key) && !(getUrls.has(route.url) && classified.has(twinGet))) {
+        unclassified.push(key);
+      }
+      continue;
+    }
+
     if (!classified.has(key)) unclassified.push(key);
+  }
+
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate route registration(s) detected: ${duplicates.join(", ")}`);
   }
   if (unclassified.length > 0) {
     throw new Error(`Unclassified route(s) missing from isolation/non-tenant registries: ${unclassified.join(", ")}`);

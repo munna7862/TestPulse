@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import sensible from "@fastify/sensible";
 import { getSystemDb, type PrismaClient } from "@testpulse/db";
-import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
+import Fastify, { LogController, type FastifyInstance, type FastifyRequest } from "fastify";
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from "fastify-type-provider-zod";
 import type { ApiEnv } from "./env";
 import { ConsoleMailer, type Mailer } from "./lib/mailer";
@@ -74,7 +74,7 @@ export async function buildApp({
         : env.TRUST_PROXY,
     bodyLimit: 1_048_576,
     requestIdHeader: "x-request-id",
-    requestIdLogLabel: "requestId",
+    logController: new LogController({ requestIdLogLabel: "requestId" }),
     genReqId: () => `req_${crypto.randomUUID()}`,
   }).withTypeProvider<ZodTypeProvider>();
 
@@ -82,7 +82,7 @@ export async function buildApp({
     app.addHook("onRoute", (route) => {
       const methods = Array.isArray(route.method) ? route.method : [route.method];
       for (const method of methods) {
-        if (method !== "HEAD") onRoute({ method, url: route.url });
+        onRoute({ method, url: route.url });
       }
     });
   }

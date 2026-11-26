@@ -27,27 +27,27 @@
 
 ### [SC-SEC-001] [SC-SEC-002] [SC-SEC-003] Full-App Route Classification & Cross-Tenant / Role Enforcement (S-009a)
 
-- **Given:** Full Fastify app booted via `buildApp` with real Postgres.
-- **When:** Collecting every registered route via `onRoute` and invoking `ORG_ROUTE_POLICY` + `PROJECT_ROUTE_POLICY` as outsiders, missing/deleted/malformed IDs, unauthenticated callers, and every lower role.
-- **Then:** Every registered route is classified in `ORG_ROUTE_POLICY`, `PROJECT_ROUTE_POLICY`, or `NON_TENANT_ROUTES` with zero gaps or stale entries; adding an unclassified route fails `assertAllRoutesClassified`; every tenant route returns `404 NOT_FOUND` to non-members and `403 FORBIDDEN` to lower roles (preserving `allowSelfParam` self-leave).
+- **Given:** Full Fastify app booted via `buildApp` with real Postgres (`tenant-isolation-audit.acceptance.test.ts` + `s009a-review.acceptance.test.ts`).
+- **When:** Collecting every registered route via `onRoute` and invoking `ORG_ROUTE_POLICY` + `PROJECT_ROUTE_POLICY` across outsiders, missing/deleted/malformed IDs, unauthenticated callers, every lower role, and `allowSelfParam` self-leave; plus feeding trailing-slash, duplicate, stale, `optional`, and standalone `HEAD` routes to `assertAllRoutesClassified`.
+- **Then:** Every registered route appears in `ORG_ROUTE_POLICY`, `PROJECT_ROUTE_POLICY`, or `NON_TENANT_ROUTES` with zero gaps, duplicates, trailing-slash collapses, or stale entries; unclassified or standalone `HEAD` routes throw; outsiders and missing/deleted/malformed IDs get `404 NOT_FOUND`; unauthenticated requests get `401`; lower roles get `403 FORBIDDEN` (preserving `allowSelfParam` self-leave).
 
-### [SC-SEC-004] Tenant DB Client & `systemDb` Allow-List Audit (S-009a)
+### [SC-SEC-004] Tenant DB Client, Raw SQL & `systemDb` Allow-List Audit (S-009a)
 
 - **Given:** Production source tree under `apps/api/src/**/*.ts` and real PostgreSQL `AuditEvent` table.
-- **When:** Scanning all `getSystemDb` and unscoped Prisma client usages against documented allow-listed modules, and calling `createTenantDb(db, { orgId })` on `auditEvent`.
-- **Then:** Zero undocumented `systemDb` / unscoped accesses exist outside allow-listed modules; `createTenantDb` stamps `orgId` on `auditEvent.create`, restricts `findMany`, rejects cross-tenant `orgId`, and forbids `findUnique`, `update`, and `delete`.
+- **When:** Scanning all `getSystemDb`, `createPrismaClient`, unscoped Prisma `$transaction` / model accesses, and `$queryRaw`/`$executeRaw` usages against documented ADR-006 modules (`s009a-review.acceptance.test.ts`), and running `createTenantDb` operations across two orgs.
+- **Then:** Zero undocumented `systemDb` accesses or `$queryRawUnsafe`/`$executeRawUnsafe` calls exist; every `$queryRaw` carries an explicit tenant ID predicate; `createTenantDb` stamps `orgId` on `auditEvent.create`, isolates `findMany` across orgs, blocks cross-tenant `create`/`createMany`, and forbids `findUnique`/`update`/`delete`.
 
 ### [SC-SEC-006] Secret-Free Structured Request Logging with Tenant Context (S-009a)
 
-- **Given:** `buildApp` booted with `logger: true` streaming JSON logs to an in-memory sink.
-- **When:** Executing `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, org route `GET /api/v1/orgs/:orgId`, project route `POST /api/v1/projects/:projectId/api-keys`, and an API-key-authenticated route protected by `createApiKeyAuthHook`.
-- **Then:** Every log entry includes `requestId`; tenant routes include `orgId` (and `projectId` / `apiKeyId` where applicable); passwords, cookies, JWTs, `plaintextKey`, and Bearer tokens never appear in log output.
+- **Given:** `buildApp` booted with `logger: true` streaming JSON logs, plus an API-key ingest probe configured with `buildApp` Pino redaction and `createApiKeyAuthHook` (since `/api/v1/ingest/*` lands in P04-S02), and unit checks in `apps/api/test/log-redaction.test.ts`.
+- **When:** Executing login, refresh, org route, project API key route, `GET /api/v1/auth/oauth/:provider/callback?code=...&state=...` on `buildApp`, and `createApiKeyAuthHook` Bearer request, plus logging top-level/1-level/2-level secret keys and error-nested headers.
+- **Then:** Every HTTP log entry carries `requestId`; tenant routes bind `orgId`, `projectId`, and `apiKeyId`; OAuth callback query parameters log as `?[REDACTED]`; passwords, cookies, `set-cookie`, JWTs, tokens, `plaintextKey`, `keyHash`, `codeVerifier`, and nested `headers.authorization`/`headers.cookie` never appear unredacted.
 
 ### [SC-SEC-007] Immutable `AuditEvent` Recording Across Security Mutations (S-009a)
 
 - **Given:** Verified org users and project fixtures in PostgreSQL.
-- **When:** Performing ownership transfer, org soft-delete, project create/soft-delete, member role change/remove/self-leave, invitation create/resend/revoke/accept, API key create/revoke, and rejected unauthorized attempts.
-- **Then:** Each committed mutation produces one matching `AuditEvent` row with actor, target, tenant IDs, and secret-free metadata; rejected mutations record zero events; org purge cascades `AuditEvent` rows while project purge retains org-level `project.deleted` audit history.
+- **When:** Performing all 13 security actions (with full `actorUserId`, `actorApiKeyId`, `projectId`, `targetType`, `targetId`, `metadata` checks), rejected `403` attempts, transactional soft-delete/membership refusal races (`403` demotion & `404` deleted org/project), rollback on write failure, and org/project purge (`audit-and-logging.acceptance.test.ts` + `s009a-review.acceptance.test.ts`).
+- **Then:** Committed mutations record matching `AuditEvent` rows atomically without secrets; refused/rolled-back mutations emit zero events; `purgeSoftDeletedProject` preserves `project.deleted` org history while `purgeSoftDeletedOrg` cascades all org `AuditEvent` rows.
 
 ### [SC-SEC-005] [SC-SEC-011] Headers, CORS, Nonce CSP & Rate Limiting + Dependency/Secret Scans (S-009b)
 

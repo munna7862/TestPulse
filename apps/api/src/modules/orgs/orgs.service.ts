@@ -159,14 +159,18 @@ export class OrgService {
   }
 
   /**
-   * Owner → Admin and Admin → Owner in one transaction. The conditional demotion locks the Owner's row, so a
-   * concurrent transfer waits, re-checks `role = OWNER`, matches nothing and is rejected: exactly one Owner remains.
+   * Owner → Admin and Admin → Owner in one transaction. Locks the live Organization row first so concurrent
+   * soft-deletes and concurrent transfers serialize cleanly (`deletedAt IS NULL`), then atomically swaps roles.
    */
   async transferOwnership(ctx: TenantRequestContext, targetUserId: string): Promise<Org> {
     if (targetUserId === ctx.userId) {
       throw new OrgError(400, "Ownership can only be transferred to another member who is an Admin.");
     }
     await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      const lockedOrg = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Organization" WHERE "id" = ${ctx.orgId} AND "deletedAt" IS NULL FOR UPDATE`;
+      if (lockedOrg.length !== 1) throw new OrgError(404, "Organization not found.");
+
       const demoted = await tx.orgMember.updateMany({
         where: { userId: ctx.userId, role: "OWNER" },
         data: { role: "ADMIN" },
@@ -204,12 +208,13 @@ export class OrgService {
   }
 
   private async requireLiveOrgAndRole(
-    tx: Pick<ReturnType<typeof createTenantDb>, "organization" | "orgMember">,
+    tx: Pick<ReturnType<typeof createTenantDb>, "$queryRaw" | "orgMember">,
     ctx: TenantRequestContext,
     action?: PermissionAction,
   ): Promise<void> {
-    const liveOrg = await tx.organization.findFirst({ where: { deletedAt: null }, select: { id: true } });
-    if (!liveOrg) throw new OrgError(404, "Organization not found.");
+    const lockedOrg = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Organization" WHERE "id" = ${ctx.orgId} AND "deletedAt" IS NULL FOR UPDATE`;
+    if (lockedOrg.length !== 1) throw new OrgError(404, "Organization not found.");
     if (!action) return;
     const allowed = await tx.orgMember.count({
       where: { userId: ctx.userId, role: { in: [...rolesWithPermission(action)] } },

@@ -51,3 +51,17 @@ Everything after resolution goes through `createTenantDb`.
 
 The org-row lock in project creation (`SELECT "planTier" … FOR UPDATE`, `ProjectService.create`) is raw SQL with
 an explicit `id = ctx.orgId` predicate. Its isolation test is `apps/api/test/projects/create-lock.int.test.ts`.
+
+## Amendment 2 (2026-11-26, P03-S06 / S-009a): complete `systemDb` & raw-lock registry
+
+All code in `apps/api/src/**/*.ts` outside `createTenantDb(db, ctx)` is audited statically in
+`apps/api/test/security/s009a-review.acceptance.test.ts` (`[SC-SEC-004]`) and restricted to:
+
+- **Entrypoints & global auth/identity:** `apps/api/src/server.ts`, `worker-main.ts`, `app.ts` (`getSystemDb()` bootstrap), `modules/auth/**` (`User`, `Session`, `VerificationToken`, `OAuthAccount`).
+- **Pre-tenant resolution & tenant bootstrap (explicitly bounded):**
+  - `plugins/tenant-context.ts` (`resolveProject` — `OrgMember` scoped by caller `userId` and active non-deleted org/project).
+  - `plugins/api-key-auth.ts` (`ApiKey` lookup by SHA-256 `keyHash` before `orgId`/`projectId` are known).
+  - `modules/orgs/orgs.service.ts` (`OrgService.create` — creates new tenant + `OWNER` row; `OrgService.listForUser` — scoped by caller `userId`; plus `Organization FOR UPDATE` row locks on `ctx.orgId` during `transferOwnership`, `changeMemberRole`, and `removeMember`).
+  - `modules/invitations/invitations.service.ts` (`InvitationService.accept` — verifies signed single-use token hash and email match before adding `OrgMember` under an `Organization FOR UPDATE` lock; `create`/`resend`/`revoke` use `Organization FOR UPDATE` on `ctx.orgId`).
+  - `modules/projects/projects.service.ts` & `modules/api-keys/api-keys.service.ts` (`Organization FOR UPDATE` row locks strictly predicated on `id = ctx.orgId`).
+  - `queues/purge.ts` (`sweepSoftDeletedTenants` — job discovery via `systemDb`, delegating every delete to `createTenantDb`).
