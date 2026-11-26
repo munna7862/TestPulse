@@ -11,6 +11,7 @@ import {
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import { projectIdOf, type TenantRequestContext } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
+import { recordAuditEvent } from "../audit";
 
 const NOT_FOUND = "Project not found.";
 const FORBIDDEN = "Your role does not allow this action.";
@@ -99,7 +100,7 @@ export class ProjectService {
             { limit: limit.limit, current: live },
           );
         }
-        return tx.project.create({
+        const created = await tx.project.create({
           data: {
             orgId: ctx.orgId,
             name: body.name,
@@ -107,6 +108,16 @@ export class ProjectService {
             ...(body.description === undefined ? {} : { description: body.description }),
           },
         });
+        await recordAuditEvent(tx, {
+          orgId: ctx.orgId,
+          projectId: created.id,
+          actorUserId: ctx.userId,
+          action: "project.created",
+          targetType: "project",
+          targetId: created.id,
+          metadata: { slug: created.slug },
+        });
+        return created;
       });
       return toProject(row, ctx.role);
     } catch (error) {
@@ -133,11 +144,21 @@ export class ProjectService {
   /** Soft delete: the project is 404 and stops counting toward the plan limit; S-003 purges its data. */
   async softDelete(ctx: TenantRequestContext): Promise<void> {
     const projectId = projectIdOf(ctx);
-    const { count } = await createTenantDb(this.db, ctx).project.updateMany({
-      where: this.stillAllowed(ctx),
-      data: { deletedAt: new Date() },
+    await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      const { count } = await tx.project.updateMany({
+        where: this.stillAllowed(ctx),
+        data: { deletedAt: new Date() },
+      });
+      if (count !== 1) throw await this.refusal(ctx, tx);
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        projectId,
+        actorUserId: ctx.userId,
+        action: "project.deleted",
+        targetType: "project",
+        targetId: projectId,
+      });
     });
-    if (count !== 1) throw await this.refusal(ctx);
     if (this.queueClient) {
       try {
         await this.queueClient.enqueue(
@@ -162,8 +183,11 @@ export class ProjectService {
   }
 
   /** 403 while the project is live (the caller's role changed), 404 once it or its org is gone. */
-  private async refusal(ctx: TenantRequestContext): Promise<ApiError> {
-    const live = await createTenantDb(this.db, ctx).project.count({
+  private async refusal(
+    ctx: TenantRequestContext,
+    reader: Pick<ReturnType<typeof createTenantDb>, "project"> = createTenantDb(this.db, ctx),
+  ): Promise<ApiError> {
+    const live = await reader.project.count({
       where: { id: projectIdOf(ctx), deletedAt: null, org: { deletedAt: null } },
     });
     return live === 1 ? new ApiError(403, FORBIDDEN) : new ApiError(404, NOT_FOUND);
