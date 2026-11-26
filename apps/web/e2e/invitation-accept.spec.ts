@@ -281,10 +281,20 @@ test.describe("Accept invitation flow (/invitations/accept)", () => {
 
     await page.getByRole("link", { name: "Open workspace" }).click();
     await expect(page).toHaveURL(/\/runs$/);
-    await expect(page.getByRole("button", { name: "Switch organization or project" })).toContainText("Joined API");
-    await expect(page.getByRole("button", { name: "Create project" })).toHaveCount(0);
+    const switcher = page.getByRole("button", { name: "Switch organization or project" });
+    await expect(switcher).toContainText("Joined API");
+    await switcher.click();
+    await expect(page.getByRole("menuitem", { name: /Viewer/ })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "New project" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
 
-    // 3. Unverified state (also triggered via EMAIL_NOT_VERIFIED API 403), resend error fallback -> resend 202 -> check verification succeeds
+    // 3. Client unverified guard (!emailVerifiedAt, zero /accept call) + API EMAIL_NOT_VERIFIED 403 fallback, resend error -> 202 -> check
+    const requestsBeforeUnverified = acceptRequests.length;
+    userState = "unverified";
+    await page.goto(`/invitations/accept?token=${token}`);
+    await expect(page.getByRole("heading", { name: "Verify your email first" })).toBeVisible();
+    expect(acceptRequests).toHaveLength(requestsBeforeUnverified);
+
     userState = "verified";
     acceptOutcome = "unverified-api";
     await page.goto(`/invitations/accept?token=${token}`);
@@ -307,7 +317,6 @@ test.describe("Accept invitation flow (/invitations/accept)", () => {
     await expectNoAxeViolations(page);
     await page.getByRole("button", { name: "Sign out to switch account" }).click();
     await expect(page).toHaveURL(/\/login\?returnTo=/);
-    expect(pageErrors).toEqual([]);
 
     // 5. Non-401 /me error -> "Invitation unavailable" + "Go to workspace" -> /runs
     meFails = true;
@@ -338,5 +347,6 @@ test.describe("Accept invitation flow (/invitations/accept)", () => {
     await page.getByLabel("Password").fill("ValidPassword123!");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/runs$/);
+    expect(pageErrors).toEqual([]);
   });
 });
