@@ -3,16 +3,15 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- S-008a API keys schema, management API, ingest Bearer auth & fail-open rate limits (`planning/slices/S-008a-api-keys-api.md`), branch `feat/s-008a-api-keys-api`.
+- S-008b Web `/settings/api-keys` management UI, show-once dialog & reporter snippet (`planning/slices/S-008b-api-keys-ui.md`), branch `feat/s-008b-api-keys-ui`.
 
 ## Next
-- S-008b Web `/settings/api-keys` management page, show-once key dialog & reporter snippet (completes **P03-S05**).
 - P03-S06 Tenant Isolation & Security Hardening (audit log table + full route isolation matrix).
 
 ## Later
 - Re-plan the remaining work by outcome at the end of Phase 03 (playbook Step 4), starting with
   M1 "first live run": sign up → project → API key → reporter → live run on staging.
-  (S-001 orgs PR #13; S-002 projects PR #15; CI/audit PR #17; S-003 purge PR #18; S-004a/b PRs #19/#20; S-005 RBAC/members PR #21; S-006 invitations API PR #22; S-007a members settings PR #23; S-007b invitation accept PR #24.)
+  (S-001 orgs PR #13; S-002 projects PR #15; CI/audit PR #17; S-003 purge PR #18; S-004a/b PRs #19/#20; S-005 RBAC/members PR #21; S-006 invitations API PR #22; S-007a members settings PR #23; S-007b invitation accept PR #24; S-008a API keys API PR #25.)
 
 ## Owner actions outstanding
 - Add repo secrets `STAGING_DIRECT_URL`, `RENDER_DEPLOY_HOOK_URL` and repo variable `STAGING_API_URL`
