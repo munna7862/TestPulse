@@ -16,6 +16,7 @@ describe("[SC-AUTH-021] sanitizeReturnTo", () => {
     ["/settings/profile?linked=github", "/settings/profile?linked=github"],
     ["/runs#fragment", "/runs"],
     ["/runs/../settings", "/settings"],
+    ["/invitations/accept?token=abc123", "/invitations/accept?token=abc123"],
   ])("keeps allow-listed path %s", (input, expected) => {
     expect(sanitizeReturnTo(input)).toBe(expected);
   });
