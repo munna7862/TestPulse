@@ -71,10 +71,10 @@
 
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SC-KEY-001 | An Admin creates an API key | Response contains the `tp_live_…` plaintext once; the database holds only the hash and prefix | I | FR-KEY-01 | packages/shared/src/api/api-keys.test.ts, apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts |
-| SC-KEY-002 | A Member or Viewer tries to create a key | 403 | I | FR-KEY-01 | apps/api/test/api-keys/api-keys.acceptance.test.ts |
-| SC-KEY-003 | Keys are listed | Name, prefix, creator, `lastUsedAt`, and status only; never the hash or plaintext | I | FR-KEY-02 | packages/shared/src/api/api-keys.test.ts, apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts |
-| SC-KEY-004 | A key is revoked, then used | The next ingest request gets 401 immediately (no cache delay) | I | FR-KEY-02 | apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts |
+| SC-KEY-001 | An Admin creates an API key | Response contains the `tp_live_…` plaintext once; the database holds only the hash and prefix | I | FR-KEY-01 | packages/shared/src/api/api-keys.test.ts, apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts, apps/web/src/lib/api-keys.acceptance.test.ts, apps/web/src/lib/s008b-review.acceptance.test.ts, apps/web/e2e/api-keys-settings.spec.ts |
+| SC-KEY-002 | A Member or Viewer tries to create a key | 403 | I | FR-KEY-01 | apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/web/src/lib/api-keys.acceptance.test.ts, apps/web/e2e/api-keys-settings.spec.ts |
+| SC-KEY-003 | Keys are listed | Name, prefix, creator, `lastUsedAt`, and status only; never the hash or plaintext | I | FR-KEY-02 | packages/shared/src/api/api-keys.test.ts, apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts, apps/web/src/lib/api-keys.acceptance.test.ts, apps/web/src/lib/s008b-review.acceptance.test.ts, apps/web/e2e/api-keys-settings.spec.ts |
+| SC-KEY-004 | A key is revoked, then used | The next ingest request gets 401 immediately (no cache delay) | I | FR-KEY-02 | apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts, apps/web/src/lib/api-keys.acceptance.test.ts, apps/web/e2e/api-keys-settings.spec.ts |
 | SC-KEY-005 | A valid key calls a non-ingest route (e.g. `GET /api/v1/orgs`) | 401 | I | FR-KEY-03 | apps/api/test/api-keys/api-keys.acceptance.test.ts |
 | SC-KEY-006 | Project A's key is used against Project B's run ID | 404; runs started with A's key always belong to A | I | FR-KEY-03 | apps/api/test/api-keys/api-keys.acceptance.test.ts, apps/api/test/api-keys/s008a-review.acceptance.test.ts |
 | SC-KEY-007 | A key exceeds its rate limit | 429 `RATE_LIMITED` with `Retry-After`; other keys are unaffected | I | FR-KEY-04 | apps/api/test/api-keys/api-keys.acceptance.test.ts |
@@ -270,8 +270,8 @@
 | SC-UX-001 | The component catalog is rendered in both themes | Every primitive appears; no axe critical/serious violations; visual snapshots match | E | FR-UX-01 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-002 | The page loads with a dark system preference | The first paint uses dark tokens (no flash) | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
 | SC-UX-003 | The user picks a theme, reloads, then logs in on another device | Choice persists locally and (from P09-S02) across devices | E | FR-UX-02 | apps/web/e2e/catalog.spec.ts |
-| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts |
-| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts |
+| SC-UX-004 | Each key screen is forced into loading, empty, error, read-only (Viewer), and plan-limit states | Each state renders as designed in P01-S02 | CT | FR-UX-03 | packages/ui/src/index.test.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts, apps/web/e2e/api-keys-settings.spec.ts |
+| SC-UX-005 | Every page is scanned with axe-core in both themes | 0 critical/serious violations | E | FR-UX-04 | apps/web/e2e/catalog.spec.ts, apps/web/e2e/members-settings.spec.ts, apps/web/e2e/invitation-accept.spec.ts, apps/web/e2e/api-keys-settings.spec.ts |
 | SC-UX-006 | The quarantine workflow and live run view are used keyboard-only and with a screen reader | Completable; focus visible; live-region announcements are throttled and meaningful | M | FR-UX-04 | — |
 | SC-UX-007 | `prefers-reduced-motion: reduce` is set | Non-essential animations are disabled | E | FR-UX-05 | — |
 

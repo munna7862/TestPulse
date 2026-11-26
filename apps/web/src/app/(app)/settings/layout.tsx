@@ -8,6 +8,7 @@ const settingsLinks = [
   { href: "/settings/profile", label: "Profile" },
   { href: "/settings/project", label: "Project" },
   { href: "/settings/members", label: "Members" },
+  { href: "/settings/api-keys", label: "API keys" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
