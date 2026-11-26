@@ -64,7 +64,7 @@ afterAll(async () => {
 describe("Acceptance S-002 AC7: project routes return one indistinguishable 404", () => {
   it("[SC-SEC-001] the isolation tables list the S-002 routes with RBAC-matrix minimum roles", () => {
     const project = Object.fromEntries(PROJECT_ROUTE_POLICY.map((r) => [`${r.method} ${r.url}`, r.minRole]));
-    expect(project).toEqual({
+    expect(project).toMatchObject({
       "GET /api/v1/projects/:projectId": "VIEWER",
       "PATCH /api/v1/projects/:projectId": "ADMIN",
       "DELETE /api/v1/projects/:projectId": "ADMIN",

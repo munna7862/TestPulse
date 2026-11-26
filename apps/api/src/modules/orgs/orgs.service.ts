@@ -170,7 +170,14 @@ export class OrgService {
         where: { userId: targetUserId, role: "ADMIN" },
         data: { role: "OWNER" },
       });
-      if (promoted.count !== 1) throw new OrgError(409, "The member's role changed; try again.");
+      if (promoted.count !== 1) {
+        const latest = await tx.orgMember.findFirst({ where: { userId: targetUserId }, select: { role: true } });
+        if (!latest) throw new OrgError(404, "Member not found.");
+        if (latest.role !== "ADMIN") {
+          throw new OrgError(400, "Ownership can only be transferred to another member who is an Admin.");
+        }
+        throw new OrgError(409, "The member's role changed; try again.");
+      }
     });
     return this.get({ ...ctx, role: "ADMIN" });
   }

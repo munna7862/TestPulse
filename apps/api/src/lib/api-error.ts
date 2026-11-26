@@ -6,7 +6,7 @@ import type { ApiErrorCode } from "@testpulse/shared";
  */
 export class ApiError extends Error {
   constructor(
-    readonly statusCode: 400 | 403 | 404 | 409,
+    readonly statusCode: 400 | 401 | 403 | 404 | 409,
     message: string,
     readonly code?: ApiErrorCode,
     readonly details?: Record<string, unknown>,

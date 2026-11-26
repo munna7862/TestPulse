@@ -46,10 +46,10 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-KEY-01 | Generate project API key (Admin+), plaintext shown once, hash stored | P03-S05 | SC-KEY-001, SC-KEY-002 | Planned |
-| FR-KEY-02 | List keys (prefix + metadata only) and revoke (immediate) | P03-S05 | SC-KEY-003, SC-KEY-004 | Planned |
-| FR-KEY-03 | API key authentication limited to `/api/v1/ingest/*` of its own project | P03-S05 | SC-KEY-005, SC-KEY-006 | Planned |
-| FR-KEY-04 | Per-key and per-project ingestion rate limits | P03-S05, P04-S06 | SC-KEY-007 | Planned |
+| FR-KEY-01 | Generate project API key (Admin+), plaintext shown once, hash stored | P03-S05 | SC-KEY-001, SC-KEY-002 | In progress |
+| FR-KEY-02 | List keys (prefix + metadata only) and revoke (immediate) | P03-S05 | SC-KEY-003, SC-KEY-004 | In progress |
+| FR-KEY-03 | API key authentication limited to `/api/v1/ingest/*` of its own project | P03-S05 | SC-KEY-005, SC-KEY-006 | In progress |
+| FR-KEY-04 | Per-key and per-project ingestion rate limits | P03-S05, P04-S06 | SC-KEY-007 | In progress |
 
 ## ING — Ingestion
 

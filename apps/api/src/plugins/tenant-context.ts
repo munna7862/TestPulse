@@ -67,6 +67,9 @@ export const PROJECT_ROUTE_POLICY: readonly OrgRoutePolicy[] = [
   policyEntry("GET", "/api/v1/projects/:projectId", "project.read"),
   policyEntry("PATCH", "/api/v1/projects/:projectId", "project.update"),
   policyEntry("DELETE", "/api/v1/projects/:projectId", "project.delete"),
+  policyEntry("GET", "/api/v1/projects/:projectId/api-keys", "apiKey.manage"),
+  policyEntry("POST", "/api/v1/projects/:projectId/api-keys", "apiKey.manage"),
+  policyEntry("DELETE", "/api/v1/projects/:projectId/api-keys/:keyId", "apiKey.manage"),
 ];
 
 interface TenantScope {

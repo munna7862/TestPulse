@@ -11,6 +11,7 @@ import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
 import type { RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
+import { apiKeyRoutes } from "./modules/api-keys";
 import { invitationRoutes } from "./modules/invitations";
 import { orgRoutes } from "./modules/orgs";
 import { projectRoutes } from "./modules/projects";
@@ -148,6 +149,7 @@ export async function buildApp({
     const onMailError = (error: unknown) => app.log.error({ err: error }, "background mail delivery failed");
     await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
     await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
+    await app.register(apiKeyRoutes({ db: activeDb }));
     await app.register(
       invitationRoutes({
         db: activeDb,

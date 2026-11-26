@@ -10,6 +10,7 @@ export {
 } from "./tenant-scope";
 export { OAuthProvider, OrgRole, PlanTier, VerificationTokenType } from "./generated/prisma/enums";
 export type {
+  ApiKey,
   OAuthAccount,
   Organization,
   OrgMember,
