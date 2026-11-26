@@ -419,11 +419,14 @@ function OrgMembersPanel({ org, onOrgLeft }: { org: Org; onOrgLeft: () => void }
           if (!removeTarget) return;
           const targetId = removeTarget.userId;
           void runAction(`remove:${targetId}`, "We couldn't remove that member.", async () => {
-            await membersClient.removeMember(org.id, targetId);
-            setState((p) =>
-              p.status === "ready" ? { ...p, members: p.members.filter((m) => m.userId !== targetId) } : p,
-            );
-            setRemoveTarget(null);
+            try {
+              await membersClient.removeMember(org.id, targetId);
+              setState((p) =>
+                p.status === "ready" ? { ...p, members: p.members.filter((m) => m.userId !== targetId) } : p,
+              );
+            } finally {
+              setRemoveTarget(null);
+            }
           });
         }}
       />
@@ -438,11 +441,14 @@ function OrgMembersPanel({ org, onOrgLeft }: { org: Org; onOrgLeft: () => void }
         onConfirm={() => {
           if (!currentUserId) return;
           void runAction("leave", "We couldn't complete leaving this organization.", async () => {
-            await membersClient.removeMember(org.id, currentUserId);
-            writeStoredId(STORAGE_ORG_KEY, null);
-            writeStoredId(STORAGE_PROJECT_KEY, null);
-            setLeaveOpen(false);
-            onOrgLeft();
+            try {
+              await membersClient.removeMember(org.id, currentUserId);
+              writeStoredId(STORAGE_ORG_KEY, null);
+              writeStoredId(STORAGE_PROJECT_KEY, null);
+              onOrgLeft();
+            } finally {
+              setLeaveOpen(false);
+            }
           });
         }}
       />
