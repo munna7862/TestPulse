@@ -63,7 +63,7 @@ export function formatApiKeyError(error: unknown, fallback: string): string {
  * Always reads credentials from `process.env.TESTPULSE_API_KEY` so plaintext secrets are never committed.
  */
 export function buildReporterSnippet(framework: ReporterFramework, projectName?: string): string {
-  const safeName = projectName?.replace(/[\r\n]/g, " ").trim();
+  const safeName = projectName?.replace(/[\r\n\u2028\u2029]/g, " ").trim();
   const comment = safeName ? `// Configure @testpulse/reporter for ${safeName}\n` : "";
   if (framework === "playwright") {
     return `${comment}import { defineConfig } from "@playwright/test";

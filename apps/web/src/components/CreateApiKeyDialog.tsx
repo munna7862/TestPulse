@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CreatedApiKey } from "@testpulse/shared";
 import { Check, Copy, KeyRound } from "lucide-react";
 import {
@@ -44,9 +44,27 @@ export function CreateApiKeyDialog({ open, onOpenChange, projectId, projectName,
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
   const [framework, setFramework] = useState<ReporterFramework>("playwright");
+  const sessionSeqRef = useRef(0);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      sessionSeqRef.current += 1;
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = null;
+      }
+    };
+  }, [projectId]);
 
   function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && submitting) return;
     if (!nextOpen) {
+      sessionSeqRef.current += 1;
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = null;
+      }
       setName("");
       setPreset("never");
       setSubmitting(false);
@@ -66,20 +84,26 @@ export function CreateApiKeyDialog({ open, onOpenChange, projectId, projectName,
       return;
     }
 
+    const seq = sessionSeqRef.current;
+    const targetProjectId = projectId;
     setSubmitting(true);
     setError(null);
     try {
       const expiresAt = buildExpiresAtIso(preset);
-      const result = await apiKeysClient.createApiKey(projectId, {
+      const result = await apiKeysClient.createApiKey(targetProjectId, {
         name: name.trim(),
         ...(expiresAt ? { expiresAt } : {}),
       });
+      if (seq !== sessionSeqRef.current) return;
       setCreated(result);
       onCreated(result);
     } catch (err) {
+      if (seq !== sessionSeqRef.current) return;
       setError(formatApiKeyError(err, "We couldn't create that API key right now. Please try again."));
     } finally {
-      setSubmitting(false);
+      if (seq === sessionSeqRef.current) {
+        setSubmitting(false);
+      }
     }
   }
 
@@ -88,7 +112,8 @@ export function CreateApiKeyDialog({ open, onOpenChange, projectId, projectName,
     try {
       await navigator.clipboard.writeText(created.plaintextKey);
       setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedKey(false), 2000);
     } catch {
       // Clipboard may be unavailable in restricted contexts; user can still select manually.
     }

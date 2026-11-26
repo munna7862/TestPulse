@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApiKey, ApiKeyStatus, CreatedApiKey } from "@testpulse/shared";
 import { KeyRound, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import {
@@ -64,6 +64,11 @@ export function ApiKeysManagement() {
   const canManage = activeOrg ? canManageApiKeys(activeOrg.role) : false;
   const projectId = activeOrg && activeProject && canManage ? activeProject.id : "";
   const targetFetchKey = projectId ? `${projectId}:${reloadTick}` : "";
+  const activeProjectIdRef = useRef(projectId);
+
+  useEffect(() => {
+    activeProjectIdRef.current = projectId;
+  }, [projectId]);
 
   useEffect(() => {
     if (!projectId || !targetFetchKey) return;
@@ -93,6 +98,7 @@ export function ApiKeysManagement() {
   const keys = loading || !targetFetchKey ? [] : listState.keys;
 
   function handleCreated(created: CreatedApiKey) {
+    if (!activeProject || created.projectId !== activeProject.id) return;
     // Retain only metadata fields in table state; plaintextKey stays strictly inside the open reveal dialog.
     const metadata: ApiKey = {
       id: created.id,
@@ -117,19 +123,23 @@ export function ApiKeysManagement() {
 
   async function handleConfirmRevoke() {
     if (!activeProject || !revokeTarget) return;
+    const targetProjectId = activeProject.id;
+    const targetKeyId = revokeTarget.id;
     setRevoking(true);
     setRevokeError(null);
     try {
-      await apiKeysClient.revokeApiKey(activeProject.id, revokeTarget.id);
+      await apiKeysClient.revokeApiKey(targetProjectId, targetKeyId);
+      if (activeProjectIdRef.current !== targetProjectId) return;
       const revokedAt = new Date().toISOString();
       setListState((prev) => ({
         ...prev,
         keys: prev.keys.map((item) =>
-          item.id === revokeTarget.id ? { ...item, revokedAt, status: "REVOKED" as const } : item,
+          item.id === targetKeyId ? { ...item, revokedAt, status: "REVOKED" as const } : item,
         ),
       }));
       setRevokeTarget(null);
     } catch (error) {
+      if (activeProjectIdRef.current !== targetProjectId) return;
       setRevokeError(formatApiKeyError(error, "We couldn't revoke this API key right now. Please try again."));
     } finally {
       setRevoking(false);
@@ -293,6 +303,7 @@ export function ApiKeysManagement() {
       </Card>
 
       <CreateApiKeyDialog
+        key={activeProject.id}
         open={createOpen}
         onOpenChange={setCreateOpen}
         projectId={activeProject.id}
@@ -303,6 +314,7 @@ export function ApiKeysManagement() {
       <Dialog
         open={revokeTarget !== null}
         onOpenChange={(open) => {
+          if (!open && revoking) return;
           if (!open) {
             setRevokeTarget(null);
             setRevokeError(null);
