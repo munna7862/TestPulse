@@ -16,6 +16,7 @@ import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import type { Mailer } from "../../lib/mailer";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
+import { recordAuditEvent } from "../audit";
 import { generateRandomToken, hashVerificationToken } from "../auth/tokens";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -183,6 +184,15 @@ export class InvitationService {
         include: { invitedBy: { select: { name: true } } },
       });
 
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "invitation.created",
+        targetType: "invitation",
+        targetId: row.id,
+        metadata: { email: normalizedEmail, role: body.role },
+      });
+
       return { invitation: toInvitation(row), orgName: org.name };
     });
 
@@ -231,6 +241,15 @@ export class InvitationService {
       });
       if (updated.count !== 1) throw new ApiError(409, "Invitation status changed; try again.");
 
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "invitation.resent",
+        targetType: "invitation",
+        targetId: row.id,
+        metadata: { email: row.email, role: row.role },
+      });
+
       return { invitation: toInvitation({ ...row, expiresAt }), orgName: org.name };
     });
 
@@ -249,7 +268,7 @@ export class InvitationService {
       await this.lockOrgAndCheckInviter(tx, ctx);
       const row = await tx.invitation.findFirst({
         where: { id: invitationId },
-        select: { acceptedAt: true, revokedAt: true },
+        select: { email: true, acceptedAt: true, revokedAt: true },
       });
       if (!row || row.revokedAt !== null) throw new ApiError(404, NOT_FOUND);
       if (row.acceptedAt !== null) throw new ApiError(409, "This invitation has already been accepted.");
@@ -259,6 +278,15 @@ export class InvitationService {
         data: { revokedAt: now },
       });
       if (revoked.count !== 1) throw new ApiError(409, "Invitation status changed; try again.");
+
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "invitation.revoked",
+        targetType: "invitation",
+        targetId: invitationId,
+        metadata: { email: row.email },
+      });
     });
   }
 
@@ -331,6 +359,15 @@ export class InvitationService {
         }
         throw error;
       }
+
+      await recordAuditEvent(tx, {
+        orgId: inv.orgId,
+        actorUserId: user.id,
+        action: "invitation.accepted",
+        targetType: "invitation",
+        targetId: inv.id,
+        metadata: { role },
+      });
 
       return {
         id: org.id,

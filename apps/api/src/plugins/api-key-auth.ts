@@ -107,6 +107,13 @@ export function createApiKeyAuthHook({
       apiKeyId: record.id,
     };
     request.apiKeyContext = ctx;
+    const apiKeyLog = request.log.child({
+      orgId: ctx.orgId,
+      projectId: ctx.projectId,
+      apiKeyId: ctx.apiKeyId,
+    });
+    request.log = apiKeyLog;
+    reply.log = apiKeyLog;
 
     if (rateLimitStore) {
       let retryAfterMs = 0;

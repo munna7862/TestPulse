@@ -1,13 +1,35 @@
-/** Secret-bearing fields that must never reach logs (docs/security/security-model.md §7). */
-export const LOG_REDACT_PATHS = [
+const SECRET_LOG_FIELDS = [
+  "password",
+  "passwordHash",
+  "token",
+  "refreshToken",
+  "accessToken",
+  "tokenHash",
+  "apiKey",
+  "plaintextKey",
+  "keyHash",
+  "secret",
+  "codeVerifier",
+] as const;
+
+const HEADER_REDACT_PATHS = [
   "req.headers.authorization",
   "req.headers.cookie",
   'res.headers["set-cookie"]',
-  "*.password",
-  "*.token",
-  "*.apiKey",
-  "*.plaintextKey",
-  "*.secret",
+  "headers.authorization",
+  "headers.cookie",
+  "*.headers.authorization",
+  "*.headers.cookie",
+  "*.*.headers.authorization",
+  "*.*.headers.cookie",
+] as const;
+
+/** Secret-bearing fields that must never reach logs (docs/security/security-model.md §7). */
+export const LOG_REDACT_PATHS: string[] = [
+  ...HEADER_REDACT_PATHS,
+  ...SECRET_LOG_FIELDS,
+  ...SECRET_LOG_FIELDS.map((field) => `*.${field}`),
+  ...SECRET_LOG_FIELDS.map((field) => `*.*.${field}`),
 ];
 
 const OAUTH_PATH_PREFIX = "/api/v1/auth/oauth/";

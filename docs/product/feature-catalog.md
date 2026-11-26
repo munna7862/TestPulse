@@ -199,9 +199,9 @@
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | FR-SEC-01 | Tenant isolation on every route (404 cross-tenant, 403 role) | P03-S06, all | SC-SEC-001, SC-SEC-002, SC-SEC-003 | In progress |
-| FR-SEC-02 | Tenant-scoped DB client blocks unscoped/cross-tenant operations | P02-S03, P04-S01 | SC-SEC-004 | Planned |
+| FR-SEC-02 | Tenant-scoped DB client blocks unscoped/cross-tenant operations | P02-S03, P04-S01 | SC-SEC-004 | Done |
 | FR-SEC-03 | Security headers (API helmet; web CSP/HSTS) and CORS allow-list | P03-S06 | SC-SEC-005 | Planned |
-| FR-SEC-04 | Secret-free logs (redaction) and audit events | P03-S06 | SC-SEC-006, SC-SEC-007 | Planned |
+| FR-SEC-04 | Secret-free logs (redaction) and audit events | P03-S06 | SC-SEC-006, SC-SEC-007 | Done |
 | FR-SEC-05 | Untrusted content rendered safely (titles, stacks, ANSI, comments) | P05-S03, P06-S03 | SC-SEC-008 | Planned |
 | FR-SEC-06 | Dependency audit and secret scanning in CI | P02-S05, P10-S04 | SC-SEC-011 | Planned |
 

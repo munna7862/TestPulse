@@ -15,6 +15,7 @@ import {
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
 import type { TenantRequestContext } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
+import { recordAuditEvent } from "../audit";
 
 /** Org domain error; the shared error handler maps its status to the envelope code. */
 export class OrgError extends ApiError {
@@ -98,8 +99,11 @@ export class OrgService {
   }
 
   /** 403 while the org is live (the caller's role changed), 404 once it is gone. */
-  private async refusal(ctx: TenantRequestContext): Promise<OrgError> {
-    const live = await createTenantDb(this.db, ctx).organization.count({ where: { deletedAt: null } });
+  private async refusal(
+    ctx: TenantRequestContext,
+    reader: Pick<ReturnType<typeof createTenantDb>, "organization"> = createTenantDb(this.db, ctx),
+  ): Promise<OrgError> {
+    const live = await reader.organization.count({ where: { deletedAt: null } });
     return live === 1
       ? new OrgError(403, "Your role does not allow this action.")
       : new OrgError(404, "Organization not found.");
@@ -116,11 +120,20 @@ export class OrgService {
 
   /** Soft delete: every org route returns 404 from now on; the purge job (S-003) removes the data. */
   async softDelete(ctx: TenantRequestContext): Promise<void> {
-    const { count } = await createTenantDb(this.db, ctx).organization.updateMany({
-      where: this.stillAllowed(ctx),
-      data: { deletedAt: new Date() },
+    await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      const { count } = await tx.organization.updateMany({
+        where: this.stillAllowed(ctx),
+        data: { deletedAt: new Date() },
+      });
+      if (count !== 1) throw await this.refusal(ctx, tx);
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "org.deleted",
+        targetType: "organization",
+        targetId: ctx.orgId,
+      });
     });
-    if (count !== 1) throw await this.refusal(ctx);
     if (this.queueClient) {
       try {
         await this.queueClient.enqueue("tenant.purge-org", { orgId: ctx.orgId }, { jobId: `purge-org_${ctx.orgId}` });
@@ -146,14 +159,18 @@ export class OrgService {
   }
 
   /**
-   * Owner → Admin and Admin → Owner in one transaction. The conditional demotion locks the Owner's row, so a
-   * concurrent transfer waits, re-checks `role = OWNER`, matches nothing and is rejected: exactly one Owner remains.
+   * Owner → Admin and Admin → Owner in one transaction. Locks the live Organization row first so concurrent
+   * soft-deletes and concurrent transfers serialize cleanly (`deletedAt IS NULL`), then atomically swaps roles.
    */
   async transferOwnership(ctx: TenantRequestContext, targetUserId: string): Promise<Org> {
     if (targetUserId === ctx.userId) {
       throw new OrgError(400, "Ownership can only be transferred to another member who is an Admin.");
     }
     await createTenantDb(this.db, ctx).$transaction(async (tx) => {
+      const lockedOrg = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Organization" WHERE "id" = ${ctx.orgId} AND "deletedAt" IS NULL FOR UPDATE`;
+      if (lockedOrg.length !== 1) throw new OrgError(404, "Organization not found.");
+
       const demoted = await tx.orgMember.updateMany({
         where: { userId: ctx.userId, role: "OWNER" },
         data: { role: "ADMIN" },
@@ -178,17 +195,26 @@ export class OrgService {
         }
         throw new OrgError(409, "The member's role changed; try again.");
       }
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "org.ownership_transferred",
+        targetType: "organization",
+        targetId: ctx.orgId,
+        metadata: { previousOwnerId: ctx.userId, newOwnerId: targetUserId },
+      });
     });
     return this.get({ ...ctx, role: "ADMIN" });
   }
 
   private async requireLiveOrgAndRole(
-    tx: Pick<ReturnType<typeof createTenantDb>, "organization" | "orgMember">,
+    tx: Pick<ReturnType<typeof createTenantDb>, "$queryRaw" | "orgMember">,
     ctx: TenantRequestContext,
     action?: PermissionAction,
   ): Promise<void> {
-    const liveOrg = await tx.organization.findFirst({ where: { deletedAt: null }, select: { id: true } });
-    if (!liveOrg) throw new OrgError(404, "Organization not found.");
+    const lockedOrg = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Organization" WHERE "id" = ${ctx.orgId} AND "deletedAt" IS NULL FOR UPDATE`;
+    if (lockedOrg.length !== 1) throw new OrgError(404, "Organization not found.");
     if (!action) return;
     const allowed = await tx.orgMember.count({
       where: { userId: ctx.userId, role: { in: [...rolesWithPermission(action)] } },
@@ -244,6 +270,15 @@ export class OrgService {
       });
       if (updated.count !== 1) throw new OrgError(409, "The member's role changed; try again.");
 
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: "member.role_changed",
+        targetType: "org_member",
+        targetId: targetUserId,
+        metadata: { previousRole: target.role, newRole },
+      });
+
       return {
         previousRole: target.role,
         member: {
@@ -289,6 +324,14 @@ export class OrgService {
         where: { userId: targetUserId, role: { not: "OWNER" } },
       });
       if (deleted.count !== 1) throw new OrgError(409, "The member's role changed; try again.");
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: isSelf ? "member.left" : "member.removed",
+        targetType: "org_member",
+        targetId: targetUserId,
+        metadata: { previousRole: target.role },
+      });
       return target.role;
     });
 

@@ -46,7 +46,7 @@ erDiagram
 ² `Notification` is additionally filtered by `userId = current user`.
 ³ `NotificationPreference.projectId` is nullable (null = global for the user). It is filtered by `userId`, plus a membership check on `projectId`.
 
-ApiKey lookup during authentication uses `systemDb` by `keyHash` (unique). This is the only pre-tenant read of a tenant table, and it is reviewed as such.
+All `systemDb` reads and pre-tenant lookups (`ApiKey` lookup by `keyHash`, `resolveProject` by caller `userId`, `OrgService.create` / `listForUser`, `InvitationService.accept`, and `sweepSoftDeletedTenants` discovery) follow [ADR-006](../architecture/adr-006-tenant-isolation.md) and are audited statically by `[SC-SEC-004]`.
 
 ## 3. Constraints & indexes
 

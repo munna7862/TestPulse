@@ -172,7 +172,7 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
 
     // SC-AUTH-024
     app.get(
-      "/",
+      "/api/v1/me/oauth-accounts",
       {
         preHandler: [middleware.authenticateUser],
         schema: { response: { 200: apiSuccess(ListOAuthAccountsResponseSchema) } },
@@ -186,7 +186,7 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
 
     // SC-AUTH-019, SC-AUTH-023: starting a link requires a verified email (ADR-005 §7)
     app.post(
-      "/:provider/link",
+      "/api/v1/me/oauth-accounts/:provider/link",
       {
         preHandler: [middleware.validateCsrf, middleware.authenticateUser, middleware.requireVerifiedEmail],
         schema: {
@@ -209,7 +209,7 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
 
     // SC-AUTH-024
     app.delete(
-      "/:id",
+      "/api/v1/me/oauth-accounts/:id",
       {
         preHandler: [middleware.validateCsrf, middleware.authenticateUser],
         schema: {
@@ -228,6 +228,6 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
 
   return async (app) => {
     await app.register(publicRoutes, { prefix: "/api/v1/auth/oauth" });
-    await app.register(accountRoutes, { prefix: "/api/v1/me/oauth-accounts" });
+    await app.register(accountRoutes);
   };
 }

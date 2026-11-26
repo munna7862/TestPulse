@@ -11,6 +11,7 @@ import {
 } from "@testpulse/shared";
 import { ApiError } from "../../lib/api-error";
 import { projectIdOf, type TenantRequestContext } from "../../plugins/tenant-context";
+import { recordAuditEvent } from "../audit";
 
 const BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const BASE62_KEY_LENGTH = 43; // ceil(256 / log2(62)) = 43 chars encodes full 32-byte entropy cleanly.
@@ -151,7 +152,7 @@ export class ApiKeyService {
 
     const row = await createTenantDb(this.db, ctx).$transaction(async (tx) => {
       await this.lockOrgAndVerifyManageAccess(tx, ctx, projectId);
-      return tx.apiKey.create({
+      const created = await tx.apiKey.create({
         data: {
           orgId: ctx.orgId,
           projectId,
@@ -163,6 +164,16 @@ export class ApiKeyService {
         },
         select: API_KEY_PUBLIC_SELECT,
       });
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        projectId,
+        actorUserId: ctx.userId,
+        action: "api_key.created",
+        targetType: "api_key",
+        targetId: created.id,
+        metadata: { name: created.name, prefix: created.prefix },
+      });
+      return created;
     });
 
     return { ...toApiKey(row, now), plaintextKey };
@@ -183,6 +194,14 @@ export class ApiKeyService {
         data: { revokedAt: now },
       });
       if (updated.count !== 1) throw new ApiError(404, NOT_FOUND);
+      await recordAuditEvent(tx, {
+        orgId: ctx.orgId,
+        projectId,
+        actorUserId: ctx.userId,
+        action: "api_key.revoked",
+        targetType: "api_key",
+        targetId: keyId,
+      });
     });
   }
 }

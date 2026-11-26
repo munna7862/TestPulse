@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import sensible from "@fastify/sensible";
 import { getSystemDb, type PrismaClient } from "@testpulse/db";
-import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
+import Fastify, { LogController, type FastifyInstance, type FastifyRequest } from "fastify";
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from "fastify-type-provider-zod";
 import type { ApiEnv } from "./env";
 import { ConsoleMailer, type Mailer } from "./lib/mailer";
@@ -27,6 +27,10 @@ export interface BuildAppOptions {
   mailer?: Mailer;
   /** Disable request logging in tests. */
   logger?: boolean;
+  /** Optional log stream override (primarily for request logging tests). */
+  loggerStream?: NodeJS.WritableStream;
+  /** Optional observer invoked for every non-HEAD HTTP route registered on the instance. */
+  onRoute?: (route: { method: string; url: string }) => void;
   /** Auth rate-limit counters. server.ts passes a Redis store; defaults to per-process memory. */
   rateLimitStore?: RateLimitStore;
   /** Producer queue client for async background jobs (e.g. soft-delete purge). */
@@ -39,6 +43,8 @@ export async function buildApp({
   db: injectedDb,
   mailer: injectedMailer,
   logger = true,
+  loggerStream,
+  onRoute,
   rateLimitStore,
   queueClient,
 }: BuildAppOptions): Promise<FastifyInstance> {
@@ -46,6 +52,7 @@ export async function buildApp({
     logger: logger
       ? {
           level: env.LOG_LEVEL,
+          ...(loggerStream ? { stream: loggerStream } : {}),
           redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" },
           serializers: {
             // Same shape as the Fastify default, minus secret-bearing query strings (OAuth code and state).
@@ -67,8 +74,18 @@ export async function buildApp({
         : env.TRUST_PROXY,
     bodyLimit: 1_048_576,
     requestIdHeader: "x-request-id",
+    logController: new LogController({ requestIdLogLabel: "requestId" }),
     genReqId: () => `req_${crypto.randomUUID()}`,
   }).withTypeProvider<ZodTypeProvider>();
+
+  if (onRoute) {
+    app.addHook("onRoute", (route) => {
+      const methods = Array.isArray(route.method) ? route.method : [route.method];
+      for (const method of methods) {
+        onRoute({ method, url: route.url });
+      }
+    });
+  }
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);

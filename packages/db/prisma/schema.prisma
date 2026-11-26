@@ -113,6 +113,7 @@ model Organization {
   invitations Invitation[]
   projects    Project[]
   apiKeys     ApiKey[]
+  auditEvents AuditEvent[]
 }
 
 /// Org-scoped. Single-use team invitation bound to normalized lowercase email with 7-day expiry.
@@ -195,4 +196,21 @@ model ApiKey {
 
   @@index([projectId, revokedAt])
   @@index([orgId])
+}
+
+/// Org-scoped append-only security audit trail (master plan §5.1, docs/database/schema.md).
+model AuditEvent {
+  id            String       @id @default(uuid(7))
+  orgId         String
+  projectId     String?
+  actorUserId   String?
+  actorApiKeyId String?
+  action        String
+  targetType    String
+  targetId      String
+  metadata      Json         @default("{}")
+  createdAt     DateTime     @default(now())
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
 }
