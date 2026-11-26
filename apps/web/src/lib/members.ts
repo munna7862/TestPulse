@@ -7,9 +7,11 @@ import {
   CreateInvitationBodySchema,
   type Invitation,
   InvitationSchema,
+  type Org,
   type OrgMember,
   OrgMemberSchema,
   type OrgRole,
+  OrgSchema,
   PLAN_LIMITS,
   type PlanTier,
 } from "@testpulse/shared";
@@ -43,6 +45,7 @@ export interface MembersClient {
   revokeInvitation: (orgId: string, id: string) => Promise<void>;
   changeMemberRole: (orgId: string, userId: string, role: AssignableOrgRole) => Promise<OrgMember>;
   removeMember: (orgId: string, userId: string) => Promise<void>;
+  acceptInvitation: (token: string) => Promise<Org>;
 }
 
 /** Evaluates organization member and invitation UI capabilities from the shared RBAC matrix. */
@@ -98,6 +101,12 @@ export function validateRoleChangeInput(role: string): ValidationResult<Assignab
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: "Choose a valid member role." };
 }
 
+/** Builds a relative `/invitations/accept` path preserving a trimmed token safely. */
+export function buildInvitationAcceptPath(token: string): string {
+  const trimmed = token.trim();
+  return trimmed ? `/invitations/accept?token=${encodeURIComponent(trimmed)}` : "/invitations/accept";
+}
+
 const MEMBER_ERROR_COPY: Readonly<Record<string, string>> = {
   PLAN_LIMIT_REACHED: "You have reached your plan's member limit. Upgrade your plan or revoke a pending invite.",
   CONFLICT: "That person is already a member or already has a pending invitation.",
@@ -115,7 +124,28 @@ export function formatMemberActionError(error: unknown, fallback: string): strin
   return fallback;
 }
 
-/** Typed API client for organization members and pending invitations. */
+const ACCEPT_ERROR_COPY: Readonly<Record<string, string>> = {
+  INVALID_TOKEN: "This invitation link is invalid or belongs to a removed workspace.",
+  INVITATION_EXPIRED: "This invitation has expired. Ask an organization admin to send a new link.",
+  INVITATION_REVOKED: "This invitation was revoked. Ask an organization admin for a new invitation.",
+  EMAIL_NOT_VERIFIED: "Verify your email address before accepting this invitation.",
+  FORBIDDEN: "This invitation was sent to a different email address than the account currently signed in.",
+  CONFLICT: "This invitation has already been accepted or you are already a member.",
+  RATE_LIMITED: "Too many invitation acceptance attempts. Please wait a little while and try again.",
+  UNAUTHENTICATED: "Sign in or create an account to accept this invitation.",
+};
+
+/** Maps invitation acceptance errors to structured code + safe copy. */
+export function formatInviteAcceptError(error: unknown): { code: string; message: string } {
+  const code =
+    error instanceof ApiClientError ? error.error.code : error instanceof AuthApiError ? error.code : "UNKNOWN_ERROR";
+  return {
+    code,
+    message: ACCEPT_ERROR_COPY[code] ?? "We couldn't accept this invitation right now. Please try again.",
+  };
+}
+
+/** Typed API client for organization members and invitations. */
 export function createMembersClient(options?: ApiClientOptions): MembersClient {
   const req = createApiClient(options);
   return {
@@ -163,6 +193,8 @@ export function createMembersClient(options?: ApiClientOptions): MembersClient {
         method: "DELETE",
         schema: z.undefined(),
       }),
+    acceptInvitation: (token) =>
+      req({ path: "/api/v1/invitations/accept", method: "POST", body: { token }, schema: OrgSchema }),
   };
 }
 
