@@ -99,6 +99,8 @@ function AcceptInvitationContent() {
     setBusy(true);
     try {
       await authClient.logout();
+    } catch {
+      // Still route to sign-in so the user can switch accounts even if logout fails.
     } finally {
       setBusy(false);
       router.push(`/login${authQuery}`);
