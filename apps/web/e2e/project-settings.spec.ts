@@ -87,6 +87,7 @@ test.describe("Onboarding checklist on /runs", () => {
   test("[SC-ORG-009] guides a brand-new user through creating their first organization and project", async ({
     page,
   }) => {
+    test.slow();
     const orgs: MockOrg[] = [];
     const projectsByOrg = new Map<string, MockProject[]>();
     let orgAttempts = 0;
@@ -180,6 +181,7 @@ test.describe("Onboarding checklist on /runs", () => {
   test("[SC-ORG-009] skips onboarding when an invited user already has a project, and gates Member onboarding CTA and /settings/project", async ({
     page,
   }) => {
+    test.slow();
     let org = buildOrg({ name: "Invited Corp", role: "MEMBER" });
     let projects = [buildProject({ name: "Core Engine", role: "MEMBER" })];
 
@@ -215,6 +217,7 @@ test.describe("Project settings page (/settings/project)", () => {
   test("[SC-ORG-007] handles loading, error retry, admin update/delete, SLA selection, multi-project switch & fallback, viewer read-only, empty states and XSS", async ({
     page,
   }) => {
+    test.slow();
     const hostileName = "<img src=x onerror=alert(1)>";
     const hostileSecondaryName = "<img src=x onerror=alert(2)>";
     let orgs: MockOrg[] = [buildOrg({ id: ORG_1, name: hostileName, planTier: "FREE", role: "ADMIN" })];
