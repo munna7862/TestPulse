@@ -62,6 +62,6 @@ All code in `apps/api/src/**/*.ts` outside `createTenantDb(db, ctx)` is audited 
   - `plugins/tenant-context.ts` (`resolveProject` — `OrgMember` scoped by caller `userId` and active non-deleted org/project).
   - `plugins/api-key-auth.ts` (`ApiKey` lookup by SHA-256 `keyHash` before `orgId`/`projectId` are known).
   - `modules/orgs/orgs.service.ts` (`OrgService.create` — creates new tenant + `OWNER` row; `OrgService.listForUser` — scoped by caller `userId`; plus `Organization FOR UPDATE` row locks on `ctx.orgId` during `transferOwnership`, `changeMemberRole`, and `removeMember`).
-  - `modules/invitations/invitations.service.ts` (`InvitationService.accept` — verifies signed single-use token hash and email match before adding `OrgMember` under an `Organization FOR UPDATE` lock; `create`/`resend`/`revoke` use `Organization FOR UPDATE` on `ctx.orgId`).
+  - `modules/invitations/invitations.service.ts` (`InvitationService.accept` — verifies SHA-256 hash of single-use random 32-byte token and email match before adding `OrgMember` under an `Organization FOR UPDATE` lock; `create`/`resend`/`revoke` use `Organization FOR UPDATE` on `ctx.orgId`).
   - `modules/projects/projects.service.ts` & `modules/api-keys/api-keys.service.ts` (`Organization FOR UPDATE` row locks strictly predicated on `id = ctx.orgId`).
   - `queues/purge.ts` (`sweepSoftDeletedTenants` — job discovery via `systemDb`, delegating every delete to `createTenantDb`).

@@ -17,6 +17,7 @@ import { buildApp } from "../../src/app";
 import { loadApiEnv } from "../../src/env";
 import { TestMailer } from "../../src/lib/mailer";
 import { ApiKeyService } from "../../src/modules/api-keys/api-keys.service";
+import { recordAuditEvent } from "../../src/modules/audit";
 import { InvitationService } from "../../src/modules/invitations/invitations.service";
 import { OrgService } from "../../src/modules/orgs/orgs.service";
 import { ProjectService } from "../../src/modules/projects/projects.service";
@@ -183,9 +184,14 @@ describe("Review S-009a: route classification edge cases & strict DB access audi
     });
 
     const org1All = await db1.auditEvent.findMany();
-    expect(org1All.every((row) => row.orgId === org1)).toBe(true);
-    expect(org1All.some((row) => row.orgId === org2)).toBe(false);
+    expect(org1All).toHaveLength(1);
+    expect(org1All[0]?.orgId).toBe(org1);
     expect(await db1.auditEvent.findMany({ where: { orgId: org2 } })).toEqual([]);
+
+    const org2All = await db2.auditEvent.findMany();
+    expect(org2All).toHaveLength(1);
+    expect(org2All[0]?.orgId).toBe(org2);
+    expect(await db2.auditEvent.findMany({ where: { orgId: org1 } })).toEqual([]);
 
     await expect(
       db1.auditEvent.createMany({
@@ -197,7 +203,7 @@ describe("Review S-009a: route classification edge cases & strict DB access audi
     ).rejects.toThrow(/Cross-tenant write blocked/i);
   });
 
-  it("[SC-SEC-001] [SC-SEC-002] verifies 401 unauthenticated, malformed ID 404, and allowSelfParam self-leave across routes", async () => {
+  it("[SC-SEC-001] [SC-SEC-002] verifies 401 unauthenticated, missing/deleted/orphan/malformed ID 404, and allowSelfParam self-leave across routes", async () => {
     const owner = await createUser(app, testDb.db, "s009a-iso-owner@example.com");
     const member = await createUser(app, testDb.db, "s009a-iso-member@example.com");
     const orgId = (
@@ -208,20 +214,51 @@ describe("Review S-009a: route classification edge cases & strict DB access audi
       await callAs(app, owner, "POST", `/api/v1/orgs/${orgId}/projects`, { name: "Matrix Proj" })
     ).json<{ data: { id: string } }>().data.id;
 
-    for (const route of [...ORG_ROUTE_POLICY, ...PROJECT_ROUTE_POLICY]) {
-      const targetUrl = route.url
-        .replace(":orgId", orgId)
-        .replace(":projectId", projectId)
-        .replace(/:[A-Za-z]+/g, () => crypto.randomUUID());
-      const unauth = await callAs(app, null, route.method, targetUrl);
-      expect(unauth.statusCode, `401 on ${route.method} ${route.url}`).toBe(401);
+    const deletedProjId = (
+      await callAs(app, owner, "POST", `/api/v1/orgs/${orgId}/projects`, { name: "Deleted Matrix Proj" })
+    ).json<{ data: { id: string } }>().data.id;
+    await testDb.db.project.update({ where: { id: deletedProjId }, data: { deletedAt: new Date() } });
 
-      const malformed = route.url
-        .replace(":orgId", "not-a-uuid")
-        .replace(":projectId", "not-a-uuid")
-        .replace(/:[A-Za-z]+/g, "bad-id");
-      const notFound = await callAs(app, owner, route.method, malformed);
-      expect(notFound.statusCode, `404 malformed on ${route.method} ${route.url}`).toBe(404);
+    const deletedOrgId = (
+      await callAs(app, owner, "POST", "/api/v1/orgs", { name: "Deleted Matrix Org", slug: "deleted-matrix-org" })
+    ).json<{ data: { id: string } }>().data.id;
+    const orphanProjectId = (
+      await callAs(app, owner, "POST", `/api/v1/orgs/${deletedOrgId}/projects`, { name: "Orphan Matrix Proj" })
+    ).json<{ data: { id: string } }>().data.id;
+    await testDb.db.organization.update({ where: { id: deletedOrgId }, data: { deletedAt: new Date() } });
+
+    for (const route of ORG_ROUTE_POLICY) {
+      const validUrl = route.url.replace(":orgId", orgId).replace(/:[A-Za-z]+/g, () => crypto.randomUUID());
+      expect((await callAs(app, null, route.method, validUrl)).statusCode, `401 on ${route.method} ${route.url}`).toBe(
+        401,
+      );
+
+      for (const badOrgId of [crypto.randomUUID(), "not-a-uuid", deletedOrgId]) {
+        const res = await callAs(
+          app,
+          owner,
+          route.method,
+          route.url.replace(":orgId", badOrgId).replace(/:[A-Za-z]+/g, () => crypto.randomUUID()),
+        );
+        expect(res.statusCode, `404 (${badOrgId}) on ${route.method} ${route.url}`).toBe(404);
+      }
+    }
+
+    for (const route of PROJECT_ROUTE_POLICY) {
+      const validUrl = route.url.replace(":projectId", projectId).replace(/:[A-Za-z]+/g, () => crypto.randomUUID());
+      expect((await callAs(app, null, route.method, validUrl)).statusCode, `401 on ${route.method} ${route.url}`).toBe(
+        401,
+      );
+
+      for (const badProjectId of [crypto.randomUUID(), "not-a-uuid", deletedProjId, orphanProjectId]) {
+        const res = await callAs(
+          app,
+          owner,
+          route.method,
+          route.url.replace(":projectId", badProjectId).replace(/:[A-Za-z]+/g, () => crypto.randomUUID()),
+        );
+        expect(res.statusCode, `404 (${badProjectId}) on ${route.method} ${route.url}`).toBe(404);
+      }
     }
 
     // allowSelfParam lets a Member leave their own org while removing others returns 403
@@ -248,6 +285,7 @@ describe("Review S-009a: AuditEvent field fidelity, softDelete/lock races & OAut
     const owner = await createUser(app, testDb.db, "s009a-fields-owner@example.com");
     const admin = await createUser(app, testDb.db, "s009a-fields-admin@example.com");
     const member = await createUser(app, testDb.db, "s009a-fields-member@example.com");
+    const invitee = await createUser(app, testDb.db, "s009a-fields-invitee@example.com");
 
     const org = await orgService.create(owner.id, { name: "Field Fidelity Org", slug: "field-fidelity-org" });
     await testDb.db.organization.update({ where: { id: org.id }, data: { planTier: "PRO" } });
@@ -269,9 +307,18 @@ describe("Review S-009a: AuditEvent field fidelity, softDelete/lock races & OAut
     await invitationService.resend(adminCtx, "Admin", inv.id);
     await invitationService.revoke(adminCtx, inv.id);
 
-    await orgService.changeMemberRole(adminCtx, member.id, "VIEWER");
+    const invAccept = await invitationService.create(adminCtx, "Admin", {
+      email: invitee.email,
+      role: "MEMBER",
+    });
+    const acceptToken = mailer.getLastEmail()?.token ?? "";
+    await invitationService.accept({ id: invitee.id, email: invitee.email }, acceptToken);
 
-    // Simulate caller demoted before transactional softDelete write -> 403 & zero project.deleted event
+    await orgService.changeMemberRole(adminCtx, member.id, "VIEWER");
+    await orgService.removeMember({ orgId: org.id, userId: invitee.id, role: "MEMBER", minRole: "VIEWER" }, invitee.id);
+    await orgService.removeMember(adminCtx, member.id);
+
+    // Caller demoted between preValidation and write -> 403 & zero spurious AuditEvents
     await testDb.db.orgMember.update({
       where: { orgId_userId: { orgId: org.id, userId: admin.id } },
       data: { role: "VIEWER" },
@@ -279,6 +326,15 @@ describe("Review S-009a: AuditEvent field fidelity, softDelete/lock races & OAut
     await expect(projectService.softDelete({ ...projCtx, minRole: "ADMIN" })).rejects.toMatchObject({
       statusCode: 403,
     });
+    const extraAdmin = await createUser(app, testDb.db, "s009a-extra-admin@example.com");
+    await testDb.db.orgMember.create({ data: { orgId: org.id, userId: extraAdmin.id, role: "ADMIN" } });
+    await expect(orgService.changeMemberRole(adminCtx, extraAdmin.id, "VIEWER")).rejects.toMatchObject({
+      statusCode: 403,
+    });
+    await expect(orgService.removeMember(adminCtx, extraAdmin.id)).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      orgService.transferOwnership({ orgId: org.id, userId: admin.id, role: "OWNER", minRole: "OWNER" }, extraAdmin.id),
+    ).rejects.toMatchObject({ statusCode: 403 });
 
     // Restore ADMIN, delete project cleanly, then retry softDelete -> 404 & still single project.deleted event
     await testDb.db.orgMember.update({
@@ -317,6 +373,10 @@ describe("Review S-009a: AuditEvent field fidelity, softDelete/lock races & OAut
     await expect(
       orgService.transferOwnership({ orgId: org.id, userId: admin.id, role: "OWNER", minRole: "OWNER" }, owner.id),
     ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(orgService.changeMemberRole(adminCtx, extraAdmin.id, "VIEWER")).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    await expect(orgService.removeMember(adminCtx, extraAdmin.id)).rejects.toMatchObject({ statusCode: 404 });
 
     const events = await testDb.db.auditEvent.findMany({
       where: { orgId: org.id },
@@ -349,47 +409,128 @@ describe("Review S-009a: AuditEvent field fidelity, softDelete/lock races & OAut
       orgId: org.id,
       projectId: project.id,
       actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "api_key",
       targetId: createdKey.id,
+      metadata: {},
     });
 
-    expect(events.find((e) => e.action === "invitation.created")).toMatchObject({
+    expect(events.find((e) => e.action === "invitation.created" && e.targetId === inv.id)).toMatchObject({
+      orgId: org.id,
+      projectId: null,
       actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "invitation",
       targetId: inv.id,
       metadata: { email: "fidelity-invitee@example.com", role: "MEMBER" },
     });
     expect(events.find((e) => e.action === "invitation.resent")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "invitation",
       targetId: inv.id,
       metadata: { email: "fidelity-invitee@example.com", role: "MEMBER" },
     });
     expect(events.find((e) => e.action === "invitation.revoked")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "invitation",
       targetId: inv.id,
       metadata: { email: "fidelity-invitee@example.com" },
     });
+    expect(events.find((e) => e.action === "invitation.accepted")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: invitee.id,
+      actorApiKeyId: null,
+      targetType: "invitation",
+      targetId: invAccept.id,
+      metadata: { role: "MEMBER" },
+    });
+    expect(events.filter((e) => e.action === "member.role_changed")).toHaveLength(1);
     expect(events.find((e) => e.action === "member.role_changed")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
       actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "org_member",
       targetId: member.id,
       metadata: { previousRole: "MEMBER", newRole: "VIEWER" },
     });
+    expect(events.filter((e) => e.action === "member.left")).toHaveLength(1);
+    expect(events.find((e) => e.action === "member.left")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: invitee.id,
+      actorApiKeyId: null,
+      targetType: "org_member",
+      targetId: invitee.id,
+      metadata: { previousRole: "MEMBER" },
+    });
+    expect(events.filter((e) => e.action === "member.removed")).toHaveLength(1);
+    expect(events.find((e) => e.action === "member.removed")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: admin.id,
+      actorApiKeyId: null,
+      targetType: "org_member",
+      targetId: member.id,
+      metadata: { previousRole: "VIEWER" },
+    });
     expect(events.filter((e) => e.action === "project.deleted")).toHaveLength(1);
     expect(events.find((e) => e.action === "project.deleted")).toMatchObject({
+      orgId: org.id,
       projectId: project.id,
       actorUserId: admin.id,
+      actorApiKeyId: null,
       targetType: "project",
       targetId: project.id,
+      metadata: {},
     });
     expect(events.filter((e) => e.action === "org.ownership_transferred")).toHaveLength(1);
     expect(events.find((e) => e.action === "org.ownership_transferred")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
       actorUserId: owner.id,
+      actorApiKeyId: null,
       targetType: "organization",
       targetId: org.id,
       metadata: { previousOwnerId: owner.id, newOwnerId: admin.id },
     });
     expect(events.filter((e) => e.action === "org.deleted")).toHaveLength(1);
+    expect(events.find((e) => e.action === "org.deleted")).toMatchObject({
+      orgId: org.id,
+      projectId: null,
+      actorUserId: admin.id,
+      actorApiKeyId: null,
+      targetType: "organization",
+      targetId: org.id,
+      metadata: {},
+    });
+
+    // Mid-transaction failure rolls back both the domain mutation and the appended AuditEvent
+    const rollbackOrg = await orgService.create(owner.id, { name: "Rollback Safe", slug: "rollback-safe" });
+    await expect(
+      createTenantDb(testDb.db, { orgId: rollbackOrg.id }).$transaction(async (tx) => {
+        await tx.organization.updateMany({ where: { id: rollbackOrg.id }, data: { name: "Mutated Then Aborted" } });
+        await recordAuditEvent(tx, {
+          orgId: rollbackOrg.id,
+          actorUserId: owner.id,
+          action: "org.deleted",
+          targetType: "organization",
+          targetId: rollbackOrg.id,
+        });
+        throw new Error("Simulated mid-transaction failure");
+      }),
+    ).rejects.toThrow("Simulated mid-transaction failure");
+
+    const unchanged = await testDb.db.organization.findUnique({ where: { id: rollbackOrg.id } });
+    expect(unchanged?.name).toBe("Rollback Safe");
+    expect(await testDb.db.auditEvent.count({ where: { orgId: rollbackOrg.id } })).toBe(0);
   });
 
   it("[SC-SEC-006] strips OAuth callback code and state query parameters inside buildApp Pino logs", async () => {
