@@ -1,14 +1,18 @@
 "use client";
 
+import { sanitizeReturnTo } from "@testpulse/shared";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input } from "@testpulse/ui";
 import { SocialSignInButtons } from "@/components/SocialSignInButtons";
 import { ApiError, authClient } from "@/lib/auth-client";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawReturnTo = searchParams.get("returnTo");
+  const safeReturnTo = sanitizeReturnTo(rawReturnTo);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +25,7 @@ export default function LoginPage() {
 
     try {
       await authClient.login({ email, password });
-      router.push("/runs");
+      router.push(safeReturnTo);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -107,12 +111,31 @@ export default function LoginPage() {
 
           <p className="text-xs text-center text-surface-muted">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-primary-link font-medium hover:underline">
+            <Link
+              href={rawReturnTo ? `/register?returnTo=${encodeURIComponent(safeReturnTo)}` : "/register"}
+              className="text-primary-link font-medium hover:underline"
+            >
               Create an account
             </Link>
           </p>
         </CardFooter>
       </form>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <Card className="shadow-lg border-surface-border text-center">
+          <CardHeader>
+            <CardTitle as="h1">Loading...</CardTitle>
+          </CardHeader>
+        </Card>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

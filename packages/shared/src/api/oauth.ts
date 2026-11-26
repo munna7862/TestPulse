@@ -71,7 +71,7 @@ export type UnlinkOAuthAccountResponse = z.infer<typeof UnlinkOAuthAccountRespon
 export const DEFAULT_RETURN_TO = "/runs";
 
 /** Path prefixes of the web app that a post-login redirect may target. Extend as new areas ship. */
-export const ALLOWED_RETURN_TO_PREFIXES: readonly string[] = ["/runs", "/settings"];
+export const ALLOWED_RETURN_TO_PREFIXES: readonly string[] = ["/runs", "/settings", "/invitations/accept"];
 
 const MAX_RETURN_TO_LENGTH = 512;
 // A placeholder origin only used to detect inputs that parse to a different origin than "relative".
