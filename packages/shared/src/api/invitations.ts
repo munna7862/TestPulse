@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EmailSchema, TokenStringSchema } from "./auth";
+import { EmailSchema } from "./auth";
 import { apiSuccess } from "./envelope";
 import { AssignableOrgRoleSchema } from "./orgs";
 
@@ -13,7 +13,7 @@ export const CreateInvitationBodySchema = z.object({
 export type CreateInvitationBody = z.infer<typeof CreateInvitationBodySchema>;
 
 export const AcceptInvitationBodySchema = z.object({
-  token: TokenStringSchema,
+  token: z.string(),
 });
 export type AcceptInvitationBody = z.infer<typeof AcceptInvitationBodySchema>;
 

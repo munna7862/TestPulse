@@ -243,7 +243,7 @@
 | ID | Given / When | Then | Level | FR | Automated by |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | SC-PLAN-001 | A Free org creates its 3rd project | 403 `PLAN_LIMIT_REACHED`; the UI shows the upgrade (contact/waitlist) modal | I | FR-PLAN-01 | apps/api/test/projects/projects.acceptance.test.ts (API 403; the upgrade modal lands in S-004) |
-| SC-PLAN-002 | A Free org with 2 members and 1 pending invite sends another invite | 403 `PLAN_LIMIT_REACHED` | I | FR-PLAN-01 | — |
+| SC-PLAN-002 | A Free org with 2 members and 1 pending invite sends another invite | 403 `PLAN_LIMIT_REACHED` | I | FR-PLAN-01 | apps/api/test/invitations/s006-review.acceptance.test.ts |
 | SC-PLAN-003 | The usage endpoint is called before and after the quota is exceeded | Correct used/limit values; the over-quota banner shows | I | FR-PLAN-02, FR-ING-07 | — |
 | SC-PLAN-004 | A Free project has `retentionDays = 30` | Effective retention is 7 days; only older raw data is deleted, in chunks; daily aggregates are kept | I | FR-PLAN-03 | — |
 

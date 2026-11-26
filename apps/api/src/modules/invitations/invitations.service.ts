@@ -9,6 +9,7 @@ import {
   type OrgRole,
   type PlanTier,
   rolesWithPermission,
+  TokenStringSchema,
 } from "@testpulse/shared";
 import type { ApiEnv } from "../../env";
 import { ApiError, isUniqueViolation } from "../../lib/api-error";
@@ -263,18 +264,41 @@ export class InvitationService {
 
   /**
    * Accepts an invitation for the authenticated verified user. Uses the unscoped `db` client (ADR-006
-   * token-lookup exception) because the invitee is not yet a member of the target organization.
+   * token-lookup exception) because the invitee is not yet a member of the target organization, and locks
+   * the `Organization` row `FOR UPDATE` before re-reading/claiming the invitation so concurrent quota checks,
+   * token rotations (`resend`), and org soft-deletes serialize cleanly.
    */
   async accept(user: { id: string; email: string }, rawToken: string): Promise<Org> {
-    const tokenHash = hashVerificationToken(rawToken);
+    const parsedToken = TokenStringSchema.safeParse(rawToken);
+    if (!parsedToken.success) {
+      throw new ApiError(400, "This invitation link is invalid.", "INVALID_TOKEN");
+    }
+    const tokenHash = hashVerificationToken(parsedToken.data);
     const now = this.now();
 
     return this.db.$transaction(async (tx) => {
-      const inv = await tx.invitation.findFirst({
+      const initial = await tx.invitation.findFirst({
         where: { tokenHash },
-        include: { org: true },
+        select: { id: true, orgId: true },
       });
-      if (!inv || inv.org.deletedAt !== null) {
+      if (!initial) {
+        throw new ApiError(400, "This invitation link is invalid.", "INVALID_TOKEN");
+      }
+
+      const lockedOrg = await tx.$queryRaw<
+        { id: string; name: string; slug: string; planTier: PlanTier; createdAt: Date }[]
+      >`
+        SELECT "id", "name", "slug", "planTier", "createdAt"
+        FROM "Organization"
+        WHERE "id" = ${initial.orgId} AND "deletedAt" IS NULL
+        FOR UPDATE`;
+      const org = lockedOrg[0];
+      if (!org) {
+        throw new ApiError(400, "This invitation link is invalid.", "INVALID_TOKEN");
+      }
+
+      const inv = await tx.invitation.findUnique({ where: { id: initial.id } });
+      if (!inv || inv.tokenHash !== tokenHash) {
         throw new ApiError(400, "This invitation link is invalid.", "INVALID_TOKEN");
       }
       if (inv.revokedAt !== null) {
@@ -292,7 +316,7 @@ export class InvitationService {
       const role = asAssignableRole(inv.role);
 
       const claimed = await tx.invitation.updateMany({
-        where: { id: inv.id, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
+        where: { id: inv.id, tokenHash, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
         data: { acceptedAt: now },
       });
       if (claimed.count !== 1) {
@@ -309,12 +333,12 @@ export class InvitationService {
       }
 
       return {
-        id: inv.org.id,
-        name: inv.org.name,
-        slug: inv.org.slug,
-        planTier: inv.org.planTier,
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        planTier: org.planTier,
         role,
-        createdAt: inv.org.createdAt.toISOString(),
+        createdAt: org.createdAt.toISOString(),
       };
     });
   }
