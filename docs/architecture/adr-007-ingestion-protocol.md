@@ -29,6 +29,7 @@ filePath   = path relative to the repository root, with "\" replaced by "/", no 
 runnerProject = Playwright project name / Vitest workspace project name, or "" if none
 ```
 The same function lives in `@testpulse/shared` and is used by the reporter (when sending) and the API (when re-normalizing defensively).
+Identity fields must encode as UTF-8 without replacement and cannot contain NUL. Each title segment must be nonempty. The shared helper preserves the separator before an empty title path.
 
 ### Renames and moves (Q6)
 A renamed or moved test produces a **new** test case; history does not carry over. This is a documented v1 limitation. Manual "merge test cases" is a post-MVP backlog item.

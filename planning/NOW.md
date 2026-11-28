@@ -3,10 +3,10 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- [S-010 tenant-scoped run storage](slices/S-010-tenant-scoped-run-storage.md) is in progress. It is the first slice in the [M1 roadmap](roadmap.md).
+- [S-011 test identity and result storage](slices/S-011-test-identity-result-storage.md) is in progress. S-010 run storage merged in [PR #30](https://github.com/munna7862/TestPulse/pull/30).
 
 ## Next
-- Verify the S-010 migration and Prisma isolation, then review the slice before opening its PR.
+- Verify S-011 and open its PR, then review the published changes in a fresh session and push any fixes to that PR.
 
 ## Later
 - Prove the first live run locally, then reproduce it on staging. S-009b merged in [PR #29](https://github.com/munna7862/TestPulse/pull/29).

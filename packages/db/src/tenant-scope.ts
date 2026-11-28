@@ -78,16 +78,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Prisma query extensions scope only the root operation. Require the TestRun delegate for
-// relation selections, filters, counts and nested mutations that would otherwise bypass it.
-function usesRunRelation(args: unknown, insideProject: boolean): boolean {
-  if (Array.isArray(args)) return args.some((entry) => usesRunRelation(entry, insideProject));
+const EXECUTION_MODELS = new Set(["TestRun", "TestSuite", "TestCase", "TestResult"]);
+const EXECUTION_COLLECTIONS = new Set(["testRuns", "testSuites", "testCases", "testResults"]);
+const EXECUTION_PARENTS = new Set(["project", "projects", "run", "suite", "testCase"]);
+
+// Prisma extensions scope root operations. Use a scoped execution delegate for collection
+// selections, filters, counts, and mutations that would otherwise bypass it.
+function usesExecutionRelation(args: unknown, includesExecutionCounts: boolean, allowScalarCount = false): boolean {
+  if (Array.isArray(args)) return args.some((entry) => usesExecutionRelation(entry, includesExecutionCounts));
   if (!isRecord(args)) return false;
   return Object.entries(args).some(([key, value]) => {
     if (key === "metadata") return false; // AuditEvent JSON is data, not a Prisma relation.
-    if (key === "testRuns") return value !== false;
-    if (insideProject && key === "_count" && value === true) return true;
-    return usesRunRelation(value, insideProject || key === "project" || key === "projects");
+    if (EXECUTION_COLLECTIONS.has(key)) return value !== false;
+    if (includesExecutionCounts && key === "_count" && value === true && !allowScalarCount) return true;
+    return usesExecutionRelation(value, includesExecutionCounts || EXECUTION_PARENTS.has(key));
   });
 }
 
@@ -115,8 +119,12 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
   }
 
   const base = isRecord(args) ? args : {};
-  if (usesRunRelation(base, model === "Project")) {
-    throw new TenantScopeError("Access TestRun through the project-scoped TestRun delegate.");
+  const isExecutionModel = EXECUTION_MODELS.has(model);
+  const scalarCount = operation === "aggregate" || operation === "groupBy";
+  if (usesExecutionRelation(base, model === "Project" || (isExecutionModel && model !== "TestResult"), scalarCount)) {
+    throw new TenantScopeError(
+      "Access TestRun, TestSuite, TestCase, and TestResult through their project-scoped delegates.",
+    );
   }
 
   // Parent deletions can reach runs through database cascades even without a relation argument.
@@ -127,7 +135,7 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
   if (operation === "updateMany" || operation === "updateManyAndReturn") {
     if (
       isRecord(base.data) &&
-      ((model === "TestRun" && "projectId" in base.data) ||
+      ((isExecutionModel && "projectId" in base.data) ||
         (model === "Project" && ("orgId" in base.data || "id" in base.data)))
     ) {
       throw new TenantScopeError(`${model} ownership cannot be reassigned.`);
@@ -149,8 +157,8 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
     }
     const stamp = (row: unknown): Record<string, unknown> => {
       if (!isRecord(row)) throw new TenantScopeError(`Invalid data for ${model}.${operation}.`);
-      if (model === "TestRun" && "project" in row) {
-        throw new TenantScopeError("TestRun ownership is set by project context.");
+      if (isExecutionModel && Object.keys(row).some((key) => EXECUTION_PARENTS.has(key))) {
+        throw new TenantScopeError(`${model} ownership is set by project context. Use scalar parent IDs.`);
       }
       if (row[field] !== undefined && row[field] !== value) {
         throw new TenantScopeError(`Cross-tenant write blocked on ${model}.${operation}.`);
