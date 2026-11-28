@@ -48,6 +48,8 @@ erDiagram
 
 All `systemDb` reads and pre-tenant lookups (`ApiKey` lookup by `keyHash`, `resolveProject` by caller `userId`, `OrgService.create` / `listForUser`, `InvitationService.accept`, and `sweepSoftDeletedTenants` discovery) follow [ADR-006](../architecture/adr-006-tenant-isolation.md) and are audited statically by `[SC-SEC-004]`.
 
+Use the project-scoped `testRun` delegate for run access. Prisma's `Project.testRuns` back-reference is blocked on the scoped client, including nested filters, counts, and mutations. Select individual relation counts explicitly on projects. Run ownership comes from the tenant context and remains fixed on updates. Project-scoped deletes of a parent project affect only the bound project. Organization-wide purges use an organization context.
+
 ## 3. Constraints & indexes
 
 | Table | Unique | Indexes | Notes |
@@ -78,7 +80,9 @@ All `systemDb` reads and pre-tenant lookups (`ApiKey` lookup by `keyHash`, `reso
 
 ## 4. Additional run fields (from PRD §6 and the ingestion contract)
 
-`TestRun` also stores `runner` (`playwright`/`vitest`/`other`), `reporterVersion`, `expectedTestCount` (sum over distinct shards), `quarantinedFailedCount`, `quarantineUnblocked` (boolean, set when a reporter in non-blocking mode reports that it unblocked CI), and `shardOutcomes` (JSON of `shardIndex → outcome`, or a child table if the implementation prefers).
+S-010 adds `TestRun` and `RunStatus` through an additive migration. The PostgreSQL acceptance suite exercises the migration on a clean database and on Phase 03 rows, checks the three run indexes and both project-local unique keys, and verifies the hard-delete cascade. `runnerVersion` is optional and preserves the runner metadata supplied by the ingestion contract.
+
+`TestRun` stores `runner` (`playwright`/`vitest`/`other`), `reporterVersion`, `expectedTestCount` (sum over distinct shards), `quarantinedFailedCount`, and `quarantineUnblocked` (set when a reporter in non-blocking mode reports that it unblocked CI). The shard lifecycle slice will define how to store completion outcomes by shard.
 
 ## 5. Cascades & deletion
 

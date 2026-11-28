@@ -29,7 +29,9 @@ function withDatabase(url: string, database: string): string {
   return parsed.toString();
 }
 
-async function applyMigrations(databaseUrl: string): Promise<void> {
+type BeforeMigration = (name: string, client: pg.Client) => Promise<void>;
+
+async function applyMigrations(databaseUrl: string, beforeMigration?: BeforeMigration): Promise<void> {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
   try {
@@ -38,6 +40,7 @@ async function applyMigrations(databaseUrl: string): Promise<void> {
       .map((entry) => entry.name)
       .sort();
     for (const dir of dirs) {
+      await beforeMigration?.(dir, client);
       await client.query(readFileSync(path.join(migrationsDir, dir, "migration.sql"), "utf8"));
     }
   } finally {
@@ -46,7 +49,7 @@ async function applyMigrations(databaseUrl: string): Promise<void> {
 }
 
 /** Drops and recreates a process-unique database, applies migrations, and returns its URL. */
-export async function createFreshTestDatabase(): Promise<string> {
+export async function createFreshTestDatabase(beforeMigration?: BeforeMigration): Promise<string> {
   const adminUrl = inject("pgAdminUrl");
   const suffix = `${process.pid}_${process.env.VITEST_POOL_ID ?? "0"}_${crypto.randomBytes(3).toString("hex")}`;
   const database = `tp_test_${suffix}`;
@@ -61,7 +64,7 @@ export async function createFreshTestDatabase(): Promise<string> {
   }
   const url = withDatabase(adminUrl, database);
   try {
-    await applyMigrations(url);
+    await applyMigrations(url, beforeMigration);
   } catch (error) {
     await dropTestDatabase(url).catch(() => undefined);
     throw error;

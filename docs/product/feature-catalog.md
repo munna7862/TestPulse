@@ -55,7 +55,7 @@
 
 | ID | Feature | Sprint(s) | Scenarios | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| FR-ING-01 | Start run, idempotent on `externalRunId`; atomic `runNumber` | P04-S02 | SC-ING-001, SC-ING-002 | Planned |
+| FR-ING-01 | Start run, idempotent on `externalRunId`; atomic `runNumber` | P04-S01, P04-S02 | SC-ING-001, SC-ING-002, SC-ING-016, SC-ING-017 | In progress |
 | FR-ING-02 | Shards join one run and complete independently | P04-S02 | SC-ING-003, SC-ING-008, SC-ING-015 | Planned |
 | FR-ING-03 | Result batches (≤1,000 items, ≤5 MB) upserted idempotently | P04-S02 | SC-ING-004, SC-ING-005, SC-ING-006 | Planned |
 | FR-ING-04 | Run completion computes final status and enqueues analysis + domain events | P04-S02 | SC-ING-007, SC-ING-008 | Planned |

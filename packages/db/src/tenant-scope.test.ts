@@ -9,9 +9,9 @@ describe("tenant scope rules", () => {
     expect(scoped).toEqual({ where: { AND: [{ projectId: "prj_b" }, { projectId: "prj_a" }] } });
   });
 
-  it("[SC-SEC-004] adds a filter when none is given, for reads and bulk writes", () => {
+  it("[SC-SEC-004] adds an organization filter when none is given in an organization context", () => {
     for (const operation of ["findFirst", "findMany", "count", "aggregate", "groupBy", "updateMany", "deleteMany"]) {
-      expect(scopeTenantArgs("Project", operation, {}, ctx)).toEqual({ where: { orgId: "org_a" } });
+      expect(scopeTenantArgs("Project", operation, {}, { orgId: ctx.orgId })).toEqual({ where: { orgId: "org_a" } });
     }
   });
 

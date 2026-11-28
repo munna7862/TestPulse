@@ -8,7 +8,7 @@ export {
   type TenantContext,
   TenantScopeError,
 } from "./tenant-scope";
-export { OAuthProvider, OrgRole, PlanTier, VerificationTokenType } from "./generated/prisma/enums";
+export { OAuthProvider, OrgRole, PlanTier, RunStatus, VerificationTokenType } from "./generated/prisma/enums";
 export type {
   ApiKey,
   OAuthAccount,
@@ -16,6 +16,7 @@ export type {
   OrgMember,
   Project,
   Session,
+  TestRun,
   User,
   VerificationToken,
 } from "./generated/prisma/client";
