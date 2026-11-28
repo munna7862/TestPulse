@@ -172,6 +172,9 @@ model Project {
   org             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   apiKeys         ApiKey[]
   testRuns        TestRun[]
+  testSuites      TestSuite[]
+  testCases       TestCase[]
+  testResults     TestResult[]
 
   @@unique([orgId, slug])
   @@index([orgId])
@@ -187,11 +190,11 @@ enum RunStatus {
 
 /// Project-scoped test execution. Run numbers are allocated by the ingestion service.
 model TestRun {
-  id                     String    @id @default(uuid(7))
+  id                     String       @id @default(uuid(7))
   projectId              String
   runNumber              Int
   externalRunId          String
-  status                 RunStatus @default(RUNNING)
+  status                 RunStatus    @default(RUNNING)
   branch                 String
   commitSha              String
   ciProvider             String
@@ -201,28 +204,108 @@ model TestRun {
   runnerVersion          String?
   reporterVersion        String
   shardTotal             Int
-  shardsCompleted        Int       @default(0)
+  shardsCompleted        Int          @default(0)
   expectedTestCount      Int?
-  totalCount             Int       @default(0)
-  passedCount            Int       @default(0)
-  failedCount            Int       @default(0)
-  skippedCount           Int       @default(0)
-  flakyCount             Int       @default(0)
-  quarantinedFailedCount Int       @default(0)
-  quarantineUnblocked    Boolean   @default(false)
+  totalCount             Int          @default(0)
+  passedCount            Int          @default(0)
+  failedCount            Int          @default(0)
+  skippedCount           Int          @default(0)
+  flakyCount             Int          @default(0)
+  quarantinedFailedCount Int          @default(0)
+  quarantineUnblocked    Boolean      @default(false)
   startedAt              DateTime
   finishedAt             DateTime?
   lastActivityAt         DateTime
   durationMs             Int?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  project                Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testResults            TestResult[]
 
+  @@unique([projectId, id])
   @@unique([projectId, runNumber])
   @@unique([projectId, externalRunId])
   @@index([projectId, createdAt])
   @@index([projectId, branch, createdAt])
   @@index([status, lastActivityAt])
+}
+
+enum ResultStatus {
+  PASSED
+  FAILED
+  SKIPPED
+  FLAKY
+}
+
+enum FlakyState {
+  STABLE
+  SUSPECTED
+  FLAKY
+}
+
+model TestSuite {
+  id        String     @id @default(uuid(7))
+  projectId String
+  filePath  String
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases TestCase[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, filePath])
+}
+
+model TestCase {
+  id            String       @id @default(uuid(7))
+  projectId     String
+  suiteId       String
+  identifier    String
+  title         String
+  titlePath     String[]
+  runnerProject String?
+  tags          String[]     @default([])
+  labels        String[]     @default([])
+  lastStatus    ResultStatus
+  lastSeenAt    DateTime
+  flakyState    FlakyState   @default(STABLE)
+  flakyScore    Int          @default(0)
+  lastFlakyAt   DateTime?
+  isQuarantined Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite         TestSuite    @relation(fields: [projectId, suiteId], references: [projectId, id], onDelete: Cascade, onUpdate: Restrict)
+  testResults   TestResult[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, identifier])
+  @@index([projectId, flakyState])
+  @@index([projectId, isQuarantined])
+  @@index([suiteId])
+}
+
+model TestResult {
+  id           String       @id @default(uuid(7))
+  projectId    String
+  runId        String
+  testCaseId   String
+  status       ResultStatus
+  retryCount   Int
+  durationMs   Int
+  errorMessage String?
+  stackTrace   String?
+  shardIndex   Int
+  createdAt    DateTime     @default(now())
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run          TestRun      @relation(fields: [projectId, runId], references: [projectId, id], onDelete: Cascade, onUpdate: Restrict)
+  testCase     TestCase     @relation(fields: [projectId, testCaseId], references: [projectId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([runId, testCaseId])
+  @@index([runId, status])
+  @@index([testCaseId, createdAt])
+  @@index([projectId, createdAt])
 }
 
 /// Project-scoped CI API key (master plan §5, security model §2.5). Plaintext is never stored; SHA-256 hash only.

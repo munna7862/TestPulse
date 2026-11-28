@@ -8,5 +8,6 @@ export * from "./api/orgs";
 export * from "./api/projects";
 export * from "./api/web-proxy";
 export * from "./env/parse-env";
+export * from "./fingerprint";
 export * from "./permissions";
 export * from "./plans";

@@ -57,9 +57,9 @@
 | :--- | :--- | :--- | :--- | :--- |
 | FR-ING-01 | Start run, idempotent on `externalRunId`; atomic `runNumber` | P04-S01, P04-S02 | SC-ING-001, SC-ING-002, SC-ING-016, SC-ING-017 | In progress |
 | FR-ING-02 | Shards join one run and complete independently | P04-S02 | SC-ING-003, SC-ING-008, SC-ING-015 | Planned |
-| FR-ING-03 | Result batches (≤1,000 items, ≤5 MB) upserted idempotently | P04-S02 | SC-ING-004, SC-ING-005, SC-ING-006 | Planned |
+| FR-ING-03 | Result batches (≤1,000 items, ≤5 MB) upserted idempotently | P04-S01, P04-S02 | SC-ING-004, SC-ING-005, SC-ING-006, SC-ING-018, SC-ING-019 | In progress |
 | FR-ING-04 | Run completion computes final status and enqueues analysis + domain events | P04-S02 | SC-ING-007, SC-ING-008 | Planned |
-| FR-ING-05 | Cross-platform test fingerprinting and auto-discovery of suites/cases | P04-S03 | SC-ING-009, SC-ING-010, SC-ING-011 | Planned |
+| FR-ING-05 | Cross-platform test fingerprinting and auto-discovery of suites/cases | P04-S01, P04-S03 | SC-ING-009, SC-ING-010, SC-ING-011, SC-ING-018, SC-ING-019 | In progress |
 | FR-ING-06 | Ingest quarantine list for reporters | P04-S02, P06-S02 | SC-ING-012 | Planned |
 | FR-ING-07 | Monthly run quota per org (`429 QUOTA_EXCEEDED`) | P04-S06 | SC-ING-013, SC-PLAN-003 | Planned |
 | FR-ING-08 | Stale-run reaper (`TIMED_OUT` after 30 min inactivity) | P04-S06 | SC-ING-014 | Planned |
