@@ -1,9 +1,10 @@
 import { existsSync } from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 import { checkDatabase, createPrismaClient } from "@testpulse/db";
 import { buildApp } from "./app";
 import { loadApiEnv } from "./env";
 import { checkRedis, createRedis } from "./lib/redis";
-import { RedisRateLimitStore } from "./modules/auth/rate-limiter";
+import { RedisRateLimitStore, type RateLimitStore } from "./modules/auth/rate-limiter";
 import { createQueueClient } from "./queues/registry";
 import { startWorkers, type WorkerHandle } from "./worker";
 
@@ -31,29 +32,48 @@ limiterRedis?.connect().catch((error: unknown) => {
   console.error("Rate-limit Redis connection failed; auth routes return 503 until it recovers", error);
 });
 
+const rateLimitStore: RateLimitStore | undefined = limiterRedis
+  ? new RedisRateLimitStore(limiterRedis)
+  : env.NODE_ENV === "production"
+    ? { hit: () => Promise.reject(new Error("REDIS_URL is not configured")) }
+    : undefined;
+
 const app = await buildApp({
   env,
   ...(db ? { db } : {}),
   ...(queueClient ? { queueClient } : {}),
-  ...(limiterRedis ? { rateLimitStore: new RedisRateLimitStore(limiterRedis) } : {}),
+  ...(rateLimitStore ? { rateLimitStore } : {}),
   health: {
     ...(db ? { database: () => checkDatabase(db) } : {}),
     ...(redis ? { redis: () => checkRedis(redis) } : {}),
   },
 });
 
-let workers: WorkerHandle | undefined;
-if (env.RUN_WORKERS_IN_PROCESS) {
-  workers = await startWorkers({ log: app.log, redisUrl: env.REDIS_URL, ...(db ? { db } : {}) });
+const workerStartupAbort = new AbortController();
+let workerStartup: Promise<WorkerHandle | undefined> | undefined;
+async function startInProcessWorkers(): Promise<WorkerHandle | undefined> {
+  const { signal } = workerStartupAbort;
+  while (!signal.aborted) {
+    try {
+      return await startWorkers({ log: app.log, redisUrl: env.REDIS_URL, signal, ...(db ? { db } : {}) });
+    } catch (error) {
+      if (signal.aborted) return undefined;
+      app.log.warn({ err: error }, "worker startup failed; retrying");
+      await delay(5_000, undefined, { signal }).catch(() => undefined);
+    }
+  }
+  return undefined;
 }
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
+  workerStartupAbort.abort();
   app.log.info({ signal }, "shutting down");
   try {
     await app.close();
+    const workers = await workerStartup;
     await workers?.close();
     await queueClient?.close();
     await db?.$disconnect();
@@ -71,3 +91,4 @@ process.once("SIGTERM", () => void shutdown("SIGTERM"));
 process.once("SIGINT", () => void shutdown("SIGINT"));
 
 await app.listen({ host: env.HOST, port: env.PORT });
+if (env.RUN_WORKERS_IN_PROCESS && !shuttingDown) workerStartup = startInProcessWorkers();

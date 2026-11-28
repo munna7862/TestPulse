@@ -1,4 +1,3 @@
-import rateLimit from "@fastify/rate-limit";
 import {
   apiSuccess,
   ListOAuthAccountsResponseSchema,
@@ -20,6 +19,7 @@ import type { ApiEnv } from "../../../env";
 import { registerAuthErrorHandler } from "../auth-error-handler";
 import { createAuthMiddleware } from "../auth.middleware";
 import { AuthError, type AuthService } from "../auth.service";
+import { byIp, MemoryRateLimitStore, rateLimitHook, type RateLimitStore } from "../rate-limiter";
 import { setAuthCookies } from "../tokens";
 import { OAuthFlowError, type OAuthService } from "./oauth.service";
 import { createProviderClient, type OAuthProviderClient, ProviderError } from "./providers";
@@ -29,6 +29,7 @@ export interface OAuthRoutesOptions {
   authService: AuthService;
   oauthService: OAuthService;
   env: ApiEnv;
+  rateLimitStore?: RateLimitStore;
 }
 
 /** Where users land after a settings-initiated link (also the default `returnTo` for that flow). */
@@ -45,7 +46,12 @@ function parseProvider(value: string): OAuthProvider {
  * - `GET /auth/oauth/:provider/start` and `/callback` — public, rate limited, redirect-based.
  * - `GET /me/oauth-accounts`, `POST /me/oauth-accounts/:provider/link`, `DELETE /me/oauth-accounts/:id`.
  */
-export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptions): FastifyPluginAsyncZod {
+export function oauthRoutes({
+  authService,
+  oauthService,
+  env,
+  rateLimitStore = new MemoryRateLimitStore(),
+}: OAuthRoutesOptions): FastifyPluginAsyncZod {
   const isProduction = env.NODE_ENV === "production";
   const webBase = env.WEB_ORIGIN.replace(/\/+$/, "");
   const codec = createStateCodec(env.JWT_ACCESS_SECRET);
@@ -92,15 +98,12 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
   const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     registerAuthErrorHandler(app);
 
-    await app.register(rateLimit, {
-      max: env.OAUTH_RATE_LIMIT_PER_MINUTE,
-      timeWindow: "1 minute",
-      keyGenerator: (request) => request.ip,
-      errorResponseBuilder: (_request, context) =>
-        Object.assign(new Error(`Too many requests. Try again in ${Math.ceil(context.ttl / 1000)} seconds.`), {
-          statusCode: 429,
-        }),
-    });
+    app.addHook(
+      "onRequest",
+      rateLimitHook(rateLimitStore, [
+        { bucket: "oauth", max: env.OAUTH_RATE_LIMIT_PER_MINUTE, windowMs: 60_000, key: byIp },
+      ]),
+    );
 
     // SC-AUTH-013, SC-AUTH-021, SC-AUTH-022
     app.get(
@@ -168,7 +171,7 @@ export function oauthRoutes({ authService, oauthService, env }: OAuthRoutesOptio
 
   const accountRoutes: FastifyPluginAsyncZod = async (app) => {
     registerAuthErrorHandler(app);
-    const middleware = createAuthMiddleware(authService.db, env);
+    const middleware = createAuthMiddleware(authService.db, env, rateLimitStore);
 
     // SC-AUTH-024
     app.get(

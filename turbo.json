@@ -39,7 +39,7 @@
     "test:contract": {
       "dependsOn": ["^build"],
       "cache": false,
-      "env": ["REDIS_URL", "CI"]
+      "env": ["DATABASE_URL_TEST", "REDIS_URL", "CI"]
     },
     "test:e2e": {
       "dependsOn": ["^build"],

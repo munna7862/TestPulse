@@ -12,6 +12,7 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteOptions } from "fastify";
 import type { ApiEnv } from "../env";
 import { createAuthMiddleware } from "../modules/auth/auth.middleware";
+import type { RateLimitStore } from "../modules/auth/rate-limiter";
 
 /** Every route under this prefix is org-scoped and must appear in ORG_ROUTE_POLICY. */
 export const ORG_ROUTE_PREFIX = "/api/v1/orgs/:orgId";
@@ -299,8 +300,12 @@ async function resolveProject(db: PrismaClient, params: unknown, userId: string)
  * Resolves the tenant and the caller's role into `request.tenantContext` (master plan §7.2). Outsiders, missing,
  * malformed and soft-deleted tenants all get the same 404; members below the route's minimum role get 403.
  */
-export function createTenantContextHook(db: PrismaClient, env: ApiEnv): TenantHookFactory {
-  const auth = createAuthMiddleware(db, env);
+export function createTenantContextHook(
+  db: PrismaClient,
+  env: ApiEnv,
+  rateLimitStore?: RateLimitStore,
+): TenantHookFactory {
+  const auth = createAuthMiddleware(db, env, rateLimitStore);
   return (policy) => {
     const project = policy.url.startsWith(PROJECT_ROUTE_PREFIX);
     const notFound = project ? "Project not found." : "Organization not found.";

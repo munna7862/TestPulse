@@ -12,7 +12,7 @@ The provider redirects the browser back to:
 <OAUTH_REDIRECT_BASE_URL or WEB_ORIGIN>/api/v1/auth/oauth/<provider>/callback
 ```
 
-In the free profile the web app proxies `/api/*` to the API (same-origin rewrite), so the callback goes **through the web origin**. That keeps the state cookie and session cookies first-party (`HttpOnly; Secure; SameSite=Lax`, host-only). `OAUTH_REDIRECT_BASE_URL` is only needed if a deployment calls the API on its own host (paid profile option, decided in P10-S06); leave it unset otherwise.
+In the free profile the web app forwards `/api/*` to the API, so the callback goes **through the web origin**. That keeps the state cookie and session cookies first-party (`HttpOnly; Secure; SameSite=Lax`, host-only). Set `OAUTH_REDIRECT_BASE_URL` if a deployment calls the API on its own host (paid profile option, decided in P10-S06).
 
 | Environment | Web origin | Callback URL to register |
 | :--- | :--- | :--- |

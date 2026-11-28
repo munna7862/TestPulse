@@ -22,7 +22,7 @@
 ## 2. Test Scenarios Register
 
 ### [SC-OPS-002] Free-Profile Staging /api Proxy & First-Party Cookies
-- **Given:** Web application running with Next.js rewrite configuration (`apps/web/next.config.ts`) targeting `API_INTERNAL_URL`
+- **Given:** Web application running with the Next.js `/api` route targeting `API_INTERNAL_URL`
 - **When:** Browser issues requests to `/api/*`
 - **Then:** Next.js proxies the call to the API server; responses preserve set-cookie headers as first-party on the web domain.
 - **Level:** End-to-End / Integration (`E` / `I`)

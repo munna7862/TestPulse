@@ -248,7 +248,7 @@ TestPulse runs on the **free profile** for the whole of product development (Pha
 | Workers | Run **in-process** in the API service (`RUN_WORKERS_IN_PROCESS=true`) | Separate worker service (`node dist/worker.js`) |
 | PostgreSQL | Neon free (≈0.5 GB per project; autosuspend) | Neon paid (PITR backups) or equivalent |
 | Redis | Render Key Value free (≈25 MB, no persistence, internal network) | Persistent, fixed-price Redis co-located with the API |
-| REST + cookies | Next.js rewrites proxy `/api/:path*` → API, so cookies are first-party on the web origin | `api.<domain>` on the same registrable domain (custom domain) |
+| REST + cookies | A Next.js route handler forwards `/api/:path*` to the runtime `API_INTERNAL_URL`, so cookies are first-party on the web origin | `api.<domain>` on the same registrable domain (custom domain) |
 | WebSocket | Browser connects directly to the Render URL with a ticket; `transports: ["websocket"]` | Same, on `api.<domain>` |
 | Email | Console transport, or Resend free (sends only to verified/owner addresses until a domain is verified) | Resend/SMTP with a verified sending domain (SPF, DKIM, DMARC) |
 | Errors / uptime | Sentry free; optional scheduled GitHub Actions ping | Sentry paid as needed; uptime monitoring and alerting |
@@ -259,7 +259,7 @@ TestPulse runs on the **free profile** for the whole of product development (Pha
 2. **Cold starts are expected.** The reporter allows a long first-request timeout (60 s) and retries. The web app shows a "waking up the server" state instead of an error.
 3. **Performance targets (§10) are verified locally or in CI service containers** during the free period. Hosted free-tier numbers are not acceptance evidence; they are re-verified on paid infrastructure in P10-S06.
 4. **No real customers or commercial use** on the free profile. Use synthetic or demo data only, and treat the Neon free storage cap as a hard limit (short retention on staging).
-5. **Rate limiting behind the proxy:** with `trustProxy` configured for the web host, derive the client IP from `x-forwarded-for`. Ingestion limits rely on API keys, not IPs.
+5. **Rate limiting behind the proxy.** The API uses the validated Vercel client address after verifying the HTTPS web proxy handoff ([ADR-008](../../docs/architecture/adr-008-verified-web-proxy.md)). For direct API calls and unverified handoffs, use `request.ip` under the API host's `TRUST_PROXY` setting. Ingestion limits use API keys and projects.
 6. Free-tier terms change. Verify current limits when executing P02-S05, and record them in `docs/ops/free-tier-deployment.md`.
 
 ---

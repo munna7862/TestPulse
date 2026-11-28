@@ -25,7 +25,7 @@
 | FR-AUTH-06 | Password reset (request + confirm), revoking existing sessions | P03-S01 | SC-AUTH-011, SC-AUTH-012 | Done |
 | FR-AUTH-07 | Google and GitHub OAuth sign-in (PKCE + state) | P03-S02 | SC-AUTH-013, SC-AUTH-014, SC-AUTH-021, SC-AUTH-022, SC-AUTH-025, SC-AUTH-026 | Done |
 | FR-AUTH-08 | Safe OAuth account linking (verified emails only) | P03-S02 | SC-AUTH-015, SC-AUTH-016, SC-AUTH-023, SC-AUTH-024 | Done |
-| FR-AUTH-09 | Auth rate limiting (per IP and per account) | P03-S01, P03-S06 | SC-AUTH-017 | In progress |
+| FR-AUTH-09 | Auth rate limiting (per IP, per account, and per authenticated user) | P03-S01, P03-S06 | SC-AUTH-017, SC-SEC-012 | In progress |
 | FR-AUTH-10 | CSRF protection for cookie-authenticated mutations (Origin check) | P03-S01 | SC-AUTH-018 | Done |
 
 ## ORG — Organizations, projects, membership
@@ -200,7 +200,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | FR-SEC-01 | Tenant isolation on every route (404 cross-tenant, 403 role) | P03-S06, all | SC-SEC-001, SC-SEC-002, SC-SEC-003 | In progress |
 | FR-SEC-02 | Tenant-scoped DB client blocks unscoped/cross-tenant operations | P02-S03, P04-S01 | SC-SEC-004 | Done |
-| FR-SEC-03 | Security headers (API helmet; web CSP/HSTS) and CORS allow-list | P03-S06 | SC-SEC-005 | Planned |
+| FR-SEC-03 | Security headers (API Helmet, web CSP/HSTS) and CORS allow-list | P03-S06 | SC-SEC-005 | In progress |
 | FR-SEC-04 | Secret-free logs (redaction) and audit events | P03-S06 | SC-SEC-006, SC-SEC-007 | Done |
 | FR-SEC-05 | Untrusted content rendered safely (titles, stacks, ANSI, comments) | P05-S03, P06-S03 | SC-SEC-008 | Planned |
 | FR-SEC-06 | Dependency audit and secret scanning in CI | P02-S05, P10-S04 | SC-SEC-011 | Planned |

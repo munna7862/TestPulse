@@ -14,6 +14,7 @@ import type { ApiEnv } from "../../env";
 import type { Mailer } from "../../lib/mailer";
 import { tenantContextOf } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
+import { registerAuthErrorHandler } from "../auth/auth-error-handler";
 import { createAuthMiddleware } from "../auth/auth.middleware";
 import { byIp, MemoryRateLimitStore, type RateLimitStore, rateLimitHook } from "../auth/rate-limiter";
 import { InvitationService } from "./invitations.service";
@@ -48,6 +49,7 @@ export function invitationRoutes({
   onMailError,
 }: InvitationRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
+    registerAuthErrorHandler(app);
     const service = new InvitationService({
       db,
       mailer,
@@ -56,7 +58,7 @@ export function invitationRoutes({
       ...(onEnqueueError ? { onEnqueueError } : {}),
       ...(onMailError ? { onMailError } : {}),
     });
-    const auth = createAuthMiddleware(db, env);
+    const auth = createAuthMiddleware(db, env, rateLimitStore);
     const limitAccept = rateLimitHook(rateLimitStore, [
       { bucket: "invite-accept", max: 20, windowMs: 60 * 60_000, key: byIp },
     ]);

@@ -14,7 +14,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `DATABASE_URL` (S) | A | `postgresql://…-pooler…/testpulse?sslmode=require` | Pooled; runtime client via `@prisma/adapter-pg` |
 | `DIRECT_URL` (S) | A T | `postgresql://…/testpulse?sslmode=require` | Direct; used by `prisma.config.ts` for migrations |
 | `DATABASE_URL_TEST` (S) | T | `postgresql://postgres:postgres@localhost:5432/testpulse_test` | Schema-per-worker test harness |
-| `REDIS_URL` (S) | A T | `redis://localhost:6379` | Optional locally (unit tests use `ioredis-mock`); required for `test:contract` |
+| `REDIS_URL` (S) | A T | `redis://localhost:6379` | Required for production auth and `test:contract`. Local API runs can use in-memory rate limits |
 | `RUN_WORKERS_IN_PROCESS` | A | `true` (free) | Start BullMQ workers inside the API process |
 | `PORT` | A | `4000` | Render injects it |
 | `LOG_LEVEL` | A | `info` | pino |
@@ -26,7 +26,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `WEB_ORIGIN` | A | `https://testpulse-staging.vercel.app` | CORS and CSRF allow-list; OAuth redirects |
 | `APP_URL` | A | `https://testpulse-staging.vercel.app` | Base URL for verification and password-reset email links; defaults to `WEB_ORIGIN` |
 | `API_PUBLIC_URL` | A | `https://testpulse-api.onrender.com` | Used in dashboard links for the reporter and GitHub summaries |
-| `API_INTERNAL_URL` | W | `https://testpulse-api.onrender.com` | Target of the `/api/:path*` rewrite |
+| `API_INTERNAL_URL` | W | `https://testpulse-api.onrender.com` | Server runtime target of the `/api/:path*` forwarding route. Verified client addresses require HTTPS |
 | `NEXT_PUBLIC_SOCKET_URL` | W | `https://testpulse-api.onrender.com` | Direct WebSocket endpoint (ticket auth) |
 | `NEXT_PUBLIC_APP_URL` | W | `https://testpulse-staging.vercel.app` | Canonical URLs, OG tags |
 | `TRUST_PROXY` | A | `1` | Proxies allowed to set X-Forwarded-For: `false`, a hop count (`1` = Render's load balancer only), or comma-separated trusted IPs/CIDRs. `true` is rejected at startup because it lets clients spoof their IP |
@@ -48,7 +48,7 @@ Legend: **W** = apps/web, **A** = apps/api (server and in-process workers), **T*
 | `AUTH_RATE_LIMIT_RECOVERY_PER_HOUR` | A | Default `20`. Register, resend, forgot/reset and verify-email requests per IP per hour |
 | `AUTH_RATE_LIMIT_RECOVERY_PER_EMAIL_PER_HOUR` | A | Default `5`. Register, resend and forgot requests per email per hour |
 | `AUTH_GENERIC_RESPONSE_MIN_MS` | A | Default `250` (`0` when `NODE_ENV=test`). Minimum time for register/resend/forgot responses so timing cannot reveal accounts (ADR-005 §9) |
-| `TRUST_PROXY` (note) | A | Auth rate limits key on `request.ip`, which follows `TRUST_PROXY`. Counters live in Redis when `REDIS_URL` is set (a separate fail-fast client, 500 ms per command); auth routes return 503 when Redis is unreachable. Behind the Vercel `/api` rewrite, per-IP keys are Vercel's egress IPs until G8 adds a verified proxy header |
+| `WEB_PROXY_SHARED_SECRET` (S) | W A | Matching server-only values on Vercel and Render. Generate from at least 32 random bytes and encode as base64url. Without a verified assertion, API IP limits use `request.ip` under `TRUST_PROXY`. See [ADR-008](../architecture/adr-008-verified-web-proxy.md) |
 | `WEBHOOK_SECRET_ENCRYPTION_KEY` (S) | A | 32-byte base64 key for AES-256-GCM |
 | `UNSUBSCRIBE_SIGNING_SECRET` (S) | A | HMAC for unsubscribe links |
 

@@ -96,10 +96,11 @@ export class RateLimitUnavailableError extends Error {
   }
 }
 
-/** Per-IP key. `request.ip` honours X-Forwarded-For only for the proxy hops configured in TRUST_PROXY. */
+/** Per-IP key uses a verified web-proxy address or Fastify's configured direct-request trust boundary. */
 // IPv6 clients are keyed by /64 (one customer allocation) and IPv4-mapped addresses as plain IPv4, so rotating
 // addresses inside one block cannot dodge the limit.
-export const byIp = (request: FastifyRequest): string => `ip:${normalizeIP(request.ip, 64)}`;
+export const byIp = (request: FastifyRequest): string =>
+  `ip:${normalizeIP(request.verifiedClientIp ?? request.ip, 64)}`;
 
 /** Per-account key from the request body. Emails are normalised like the service does, then hashed (no PII in Redis). */
 export function byEmail(request: FastifyRequest): string | undefined {
@@ -111,7 +112,7 @@ export function byEmail(request: FastifyRequest): string | undefined {
 }
 
 /** Builds a preHandler that applies every rule. Runs after body validation, so per-email rules can read the body. */
-export function rateLimitHook(store: RateLimitStore, rules: readonly RateLimitRule[]) {
+export function rateLimitHook(store: RateLimitStore, rules: readonly RateLimitRule[], { failOpen = false } = {}) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     let retryAfterMs = 0;
     for (const rule of rules) {
@@ -121,6 +122,10 @@ export function rateLimitHook(store: RateLimitStore, rules: readonly RateLimitRu
       try {
         result = await store.hit(`${rule.bucket}:${key}`, rule.windowMs);
       } catch (error) {
+        if (failOpen) {
+          request.log.warn({ err: error }, "rate-limit store unavailable; continuing request");
+          continue;
+        }
         request.log.error({ err: error }, "rate-limit store unavailable; failing closed");
         throw new RateLimitUnavailableError();
       }

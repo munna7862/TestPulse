@@ -18,12 +18,14 @@ import type { ApiEnv } from "../../env";
 import { tenantContextOf } from "../../plugins/tenant-context";
 import type { QueueClient } from "../../queues/registry";
 import { createAuthMiddleware } from "../auth/auth.middleware";
+import type { RateLimitStore } from "../auth/rate-limiter";
 import { OrgService } from "./orgs.service";
 
 export interface OrgRoutesOptions {
   db: PrismaClient;
   env: ApiEnv;
   queueClient?: QueueClient;
+  rateLimitStore?: RateLimitStore;
   onEnqueueError?: (error: unknown) => void;
 }
 
@@ -36,10 +38,16 @@ function authUserOf(request: FastifyRequest): User {
  * Organization routes (docs/api/rest-api.md §2). Routes under /api/v1/orgs/:orgId get authentication, CSRF and
  * tenant resolution from the tenant-context hook, which registerTenantRouteGuard attaches from ORG_ROUTE_POLICY.
  */
-export function orgRoutes({ db, env, queueClient, onEnqueueError }: OrgRoutesOptions): FastifyPluginAsyncZod {
+export function orgRoutes({
+  db,
+  env,
+  queueClient,
+  onEnqueueError,
+  rateLimitStore,
+}: OrgRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
     const service = new OrgService(db, queueClient, onEnqueueError);
-    const auth = createAuthMiddleware(db, env);
+    const auth = createAuthMiddleware(db, env, rateLimitStore);
 
     app.post(
       "/api/v1/orgs",

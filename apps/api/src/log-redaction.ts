@@ -1,3 +1,5 @@
+import { WEB_PROXY_SECRET_HEADER } from "@testpulse/shared";
+
 const SECRET_LOG_FIELDS = [
   "password",
   "passwordHash",
@@ -22,6 +24,7 @@ const HEADER_REDACT_PATHS = [
   "*.headers.cookie",
   "*.*.headers.authorization",
   "*.*.headers.cookie",
+  ...["headers", "req.headers", "*.headers", "*.*.headers"].map((path) => `${path}["${WEB_PROXY_SECRET_HEADER}"]`),
 ] as const;
 
 /** Secret-bearing fields that must never reach logs (docs/security/security-model.md §7). */

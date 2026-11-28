@@ -54,3 +54,9 @@
 - **Given:** API with `@fastify/helmet`, strict CORS allow-list, Redis-backed rate limits, and Next.js 16 `proxy.ts` CSP/HSTS headers.
 - **When:** Inspecting API & web HTTP responses, foreign `Origin` preflight/requests, Redis multi-instance rate-limit bursts, `npm audit --audit-level=high`, and Gitleaks CI.
 - **Then:** API & web responses include hardened security headers with unique per-request CSP nonces on HTML pages; foreign origins receive no CORS allow headers; Redis limits enforce across stores; `npm audit` and Gitleaks report zero violations.
+
+### [SC-AUTH-017] [SC-AUTH-025] [SC-SEC-012] Proxy trust and shared request budgets (S-009b)
+
+- **Given:** Two API instances share a rate-limit store and the hosted web proxy is configured with an upstream verification credential.
+- **When:** Two verified proxy clients sign in through one egress address, a direct API request supplies an unverified proxy assertion, OAuth requests cross instances, or the rate-limit store becomes unavailable.
+- **Then:** The API uses separate budgets for verified client addresses and falls back to the direct request address for an unverified assertion. OAuth start and callback share one budget and return `503` on store failure. Authenticated REST enforces a per-user budget and continues during the outage.
