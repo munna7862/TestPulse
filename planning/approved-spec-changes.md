@@ -6,3 +6,4 @@ root), so the approval is visible in the PR diff. Remove the line in the same PR
 
 | File | Approved by / when | Why |
 | --- | --- | --- |
+| packages/db/test/run-storage.acceptance.test.ts | Owner, 2026-11-28 | Supply the existing audit target type and assert PostgreSQL uniqueness using Prisma's adapter error shape. |

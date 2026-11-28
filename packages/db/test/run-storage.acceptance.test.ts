@@ -22,8 +22,8 @@ it("[SC-ING-016] migrates populated Phase 03 data and installs run status and in
         VALUES ('existing-project', 'existing-org', 'Existing', 'existing', 7, now());
       INSERT INTO "ApiKey" (id, "orgId", "projectId", name, prefix, "keyHash", "createdById", "updatedAt")
         VALUES ('key', 'existing-org', 'existing-project', 'Existing', 'fixture', 'fixture-hash', 'owner', now());
-      INSERT INTO "AuditEvent" (id, "orgId", "projectId", action, "targetId")
-        VALUES ('event', 'existing-org', 'existing-project', 'project.created', 'existing-project');
+      INSERT INTO "AuditEvent" (id, "orgId", "projectId", action, "targetType", "targetId")
+        VALUES ('event', 'existing-org', 'existing-project', 'project.created', 'Project', 'existing-project');
     `);
   });
   const db = createPrismaClient(upgradeUrl);
@@ -65,8 +65,20 @@ it("[SC-ING-017] enforces both project-local identities and cascades only the de
     VALUES (${id}, ${projectId}, ${runNumber}, ${externalRunId}, 'main', 'abc1234', 'local', 'playwright', '0.0.0', 1, now(), now(), now())
   `;
   await insert("first-run", first.id, 1, "ci-1");
-  await expect(insert("duplicate-external", first.id, 2, "ci-1")).rejects.toMatchObject({ meta: { code: "23505" } });
-  await expect(insert("duplicate-number", first.id, 1, "ci-2")).rejects.toMatchObject({ meta: { code: "23505" } });
+  await expect(insert("duplicate-external", first.id, 2, "ci-1")).rejects.toMatchObject({
+    meta: {
+      driverAdapterError: {
+        cause: { originalCode: "23505", constraint: { index: "TestRun_projectId_externalRunId_key" } },
+      },
+    },
+  });
+  await expect(insert("duplicate-number", first.id, 1, "ci-2")).rejects.toMatchObject({
+    meta: {
+      driverAdapterError: {
+        cause: { originalCode: "23505", constraint: { index: "TestRun_projectId_runNumber_key" } },
+      },
+    },
+  });
   await insert("second-run", second.id, 1, "ci-1");
   await db.project.delete({ where: { id: first.id } });
   expect(await db.$queryRaw`SELECT id FROM "TestRun"`).toEqual([{ id: "second-run" }]);
