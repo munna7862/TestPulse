@@ -67,13 +67,13 @@ it("[SC-ING-019] enforces identity, same-project references, and isolated cascad
         'INSERT INTO "TestSuite" (id, "projectId", "filePath", name, "updatedAt") VALUES ($1, $2, $3, $4, now())',
         [id, projectId, "tests/a.spec.ts", "Suite"],
       );
-    const testCase = (id: string, projectId: string, suiteId: string) =>
+    const testCase = (id: string, projectId: string, suiteId: string, identifier = "identity") =>
       client.query(
         `
       INSERT INTO "TestCase" (id, "projectId", "suiteId", identifier, title, "titlePath", "lastStatus", "lastSeenAt", "updatedAt")
-      VALUES ($1, $2, $3, 'identity', 'Test', ARRAY['Test'], 'PASSED', now(), now())
+      VALUES ($1, $2, $3, $4, 'Test', ARRAY['Test'], 'PASSED', now(), now())
     `,
-        [id, projectId, suiteId],
+        [id, projectId, suiteId, identifier],
       );
     const result = (id: string, projectId: string, runId: string, caseId: string) =>
       client.query(
@@ -100,7 +100,9 @@ it("[SC-ING-019] enforces identity, same-project references, and isolated cascad
       code: "23505",
       constraint: "TestResult_runId_testCaseId_key",
     });
-    await expect(testCase("mismatched-case", "project-a", "suite-project-sibling")).rejects.toMatchObject({
+    await expect(
+      testCase("mismatched-case", "project-a", "suite-project-sibling", "mismatched-identity"),
+    ).rejects.toMatchObject({
       code: "23503",
     });
     await expect(result("mismatched-run", "project-a", "run-project-sibling", "case-project-a")).rejects.toMatchObject({

@@ -6,3 +6,4 @@ root), so the approval is visible in the PR diff. Remove the line in the same PR
 
 | File | Approved by / when | Why |
 | --- | --- | --- |
+| packages/db/test/test-result-storage.acceptance.test.ts | Owner, 2026-11-28 | Give the malformed suite-reference fixture a distinct fingerprint so PostgreSQL reaches the foreign-key assertion. |
