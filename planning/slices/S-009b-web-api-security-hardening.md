@@ -20,7 +20,7 @@ Phase 04 owns ingestion endpoints and final ingestion limits. G9 owns email prov
 
 ## Contracts touched (read only these sections)
 
-[Master plan §4.4](../master/TestPulse_Master_Plan.md#44-deployment-profiles), §7 and §10, [ADR-005](../../docs/architecture/adr-005-auth-and-sessions.md), [security model §§5–7](../../docs/security/security-model.md#5-rate-limiting-redis-backed-password-auth-uses-modulesauthrate-limiterts-oauth-uses-fastifyrate-limit), and the [P03-S06 test catalog](../../docs/testing/test_cases_catalog_P03_S06.md). Record any change to the canonical proxy contract in an ADR and update §4.4 in the same PR. Record verified configuration and behavior in the environment catalog, security model, and P03-S06 walkthrough.
+[Master plan §4.4](../master/TestPulse_Master_Plan.md#44-deployment-profiles), §7 and §10, [ADR-005](../../docs/architecture/adr-005-auth-and-sessions.md), [security model §§5–7](../../docs/security/security-model.md#5-rate-limiting), and the [P03-S06 test catalog](../../docs/testing/test_cases_catalog_P03_S06.md). Record any change to the canonical proxy contract in an ADR and update §4.4 in the same PR. Record verified configuration and behavior in the environment catalog, security model, and P03-S06 walkthrough.
 
 ## Risks to test explicitly
 

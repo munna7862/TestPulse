@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
 import sensible from "@fastify/sensible";
 import { getSystemDb, type PrismaClient } from "@testpulse/db";
@@ -9,7 +10,7 @@ import type { ApiEnv } from "./env";
 import { ConsoleMailer, type Mailer } from "./lib/mailer";
 import { LOG_REDACT_PATHS, redactRequestUrl } from "./log-redaction";
 import { AuthService, authRoutes } from "./modules/auth";
-import type { RateLimitStore } from "./modules/auth/rate-limiter";
+import { MemoryRateLimitStore, type RateLimitStore } from "./modules/auth/rate-limiter";
 import { OAuthService, oauthRoutes } from "./modules/auth/oauth";
 import { apiKeyRoutes } from "./modules/api-keys";
 import { invitationRoutes } from "./modules/invitations";
@@ -17,6 +18,7 @@ import { orgRoutes } from "./modules/orgs";
 import { projectRoutes } from "./modules/projects";
 import { registerErrorHandling } from "./plugins/error-handler";
 import { createTenantContextHook, registerTenantRouteGuard } from "./plugins/tenant-context";
+import { registerVerifiedProxy } from "./plugins/verified-proxy";
 import type { QueueClient } from "./queues/registry";
 import { type HealthDependencies, healthRoutes } from "./routes/health";
 
@@ -31,7 +33,7 @@ export interface BuildAppOptions {
   loggerStream?: NodeJS.WritableStream;
   /** Optional observer invoked for every non-HEAD HTTP route registered on the instance. */
   onRoute?: (route: { method: string; url: string }) => void;
-  /** Auth rate-limit counters. server.ts passes a Redis store; defaults to per-process memory. */
+  /** Shared rate-limit counters. server.ts supplies Redis in hosted environments. */
   rateLimitStore?: RateLimitStore;
   /** Producer queue client for async background jobs (e.g. soft-delete purge). */
   queueClient?: QueueClient;
@@ -45,7 +47,7 @@ export async function buildApp({
   logger = true,
   loggerStream,
   onRoute,
-  rateLimitStore,
+  rateLimitStore = new MemoryRateLimitStore(),
   queueClient,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
@@ -96,6 +98,7 @@ export async function buildApp({
 
   await app.register(sensible);
   registerErrorHandling(app);
+  registerVerifiedProxy(app, env.WEB_PROXY_SHARED_SECRET);
 
   let activeDb: PrismaClient | undefined = injectedDb;
   if (!activeDb && env.DATABASE_URL) {
@@ -107,7 +110,7 @@ export async function buildApp({
   }
 
   // Before any route: every route under /api/v1/orgs/:orgId must be in the isolation table (master plan §7.2).
-  registerTenantRouteGuard(app, activeDb ? createTenantContextHook(activeDb, env) : undefined);
+  registerTenantRouteGuard(app, activeDb ? createTenantContextHook(activeDb, env, rateLimitStore) : undefined);
 
   await app.register(cookie);
   await app.register(jwt, {
@@ -118,19 +121,13 @@ export async function buildApp({
     },
   });
 
+  await app.register(helmet, { contentSecurityPolicy: false, strictTransportSecurity: env.NODE_ENV === "production" });
+  const webOrigin = new URL(env.WEB_ORIGIN).origin;
   await app.register(cors, {
-    origin: (origin, cb) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server)
-      if (!origin) return cb(null, true);
-      const allowed = new Set([
-        env.WEB_ORIGIN.replace(/\/$/, ""),
-        `http://${env.HOST}:${env.PORT}`,
-        `http://localhost:${env.PORT}`,
-        `http://127.0.0.1:${env.PORT}`,
-      ]);
-      cb(null, allowed.has(origin.replace(/\/$/, "")));
-    },
+    origin: (origin, callback) => callback(null, origin === webOrigin),
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+    strictPreflight: true,
   });
 
   const notConfigured = async () => "not_configured" as const;
@@ -155,16 +152,15 @@ export async function buildApp({
       onMailError: (error) => app.log.error({ err: error }, "background mail delivery failed"),
     });
 
-    if (!rateLimitStore && env.NODE_ENV === "production") {
-      app.log.warn("REDIS_URL is not set: auth rate limits are per process and reset on restart");
-    }
-    await app.register(authRoutes({ authService, env, ...(rateLimitStore ? { rateLimitStore } : {}) }), {
+    await app.register(authRoutes({ authService, env, rateLimitStore }), {
       prefix: "/api/v1/auth",
     });
-    await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env }));
+    await app.register(oauthRoutes({ authService, oauthService: new OAuthService(activeDb), env, rateLimitStore }));
     const onEnqueueError = (error: unknown) => app.log.error({ err: error }, "failed to enqueue background job");
     const onMailError = (error: unknown) => app.log.error({ err: error }, "background mail delivery failed");
-    await app.register(orgRoutes({ db: activeDb, env, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
+    await app.register(
+      orgRoutes({ db: activeDb, env, rateLimitStore, ...(queueClient ? { queueClient, onEnqueueError } : {}) }),
+    );
     await app.register(projectRoutes({ db: activeDb, ...(queueClient ? { queueClient, onEnqueueError } : {}) }));
     await app.register(apiKeyRoutes({ db: activeDb }));
     await app.register(
@@ -173,7 +169,7 @@ export async function buildApp({
         mailer,
         env,
         onMailError,
-        ...(rateLimitStore ? { rateLimitStore } : {}),
+        rateLimitStore,
         ...(queueClient ? { queueClient, onEnqueueError } : {}),
       }),
     );

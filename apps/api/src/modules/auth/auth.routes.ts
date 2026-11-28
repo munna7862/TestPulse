@@ -47,11 +47,11 @@ export function authRoutes({
 }: AuthRoutesOptions): FastifyPluginAsyncZod {
   return async (app) => {
     const isProduction = env.NODE_ENV === "production";
-    const middleware = createAuthMiddleware(authService.db, env);
+    const middleware = createAuthMiddleware(authService.db, env, rateLimitStore);
 
     registerAuthErrorHandler(app);
 
-    // Security model §5. Per-IP keys use request.ip, which trusts X-Forwarded-For only per TRUST_PROXY.
+    // Security model §5 defines both per-IP and per-account budgets.
     const loginIp = { bucket: "login", max: env.AUTH_RATE_LIMIT_LOGIN_PER_MINUTE, windowMs: MINUTE, key: byIp };
     const loginEmail = {
       bucket: "login",
@@ -224,7 +224,7 @@ export function authRoutes({
     app.post(
       "/logout",
       {
-        preHandler: [middleware.validateCsrf, middleware.authenticateUser],
+        preHandler: [middleware.validateCsrf, middleware.authenticateSession],
         schema: {
           response: {
             200: apiSuccess(LogoutResponseSchema),
@@ -247,7 +247,7 @@ export function authRoutes({
     app.post(
       "/logout-all",
       {
-        preHandler: [middleware.validateCsrf, middleware.authenticateUser],
+        preHandler: [middleware.validateCsrf, middleware.authenticateSession],
         schema: {
           response: {
             200: apiSuccess(LogoutResponseSchema),

@@ -14,6 +14,7 @@ if (!hasRedis) {
 
 export default defineConfig({
   test: {
+    globalSetup: hasRedis ? ["../../packages/db/test/global-setup.ts"] : [],
     include: hasRedis ? ["test/**/*.contract.test.ts"] : [],
     passWithNoTests: !hasRedis,
     testTimeout: 30_000,

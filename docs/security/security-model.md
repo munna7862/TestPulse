@@ -96,19 +96,22 @@ See ADR-006 (five layers). Code-review checklist for every PR touching data acce
 - [ ] New route registered in the isolation table with its expected 404/403 behavior.
 - [ ] Socket events and jobs carry tenant IDs and never leak across rooms.
 
-## 5. Rate limiting (Redis-backed; password auth uses `modules/auth/rate-limiter.ts`, OAuth uses `@fastify/rate-limit`)
+## 5. Rate limiting
 
 | Category | Key | Initial limit (tune in P03-S06 / P04-S06) | On Redis outage |
 | :--- | :--- | :--- | :--- |
 | Login | IP **and** email | 10/min per IP; 5/15 min per email | Fail closed (503) |
 | Register / resend / forgot | IP and email | 5/hour per email; 20/hour per IP | Fail closed |
 | OAuth start/callback | IP | 30/min | Fail closed |
+| Invitation acceptance | IP | 20/hour | Fail closed |
 | Ingestion | API key **and** project | Sized for batching: ≥ 5 req/s per key, burst 20 | Fail **open** (CI safety; quota checks use the DB) |
 | Authenticated REST | user | 600/min | Fail open with logging |
 | Realtime ticket | user | 30/min | Fail closed |
 | Webhook test / redeliver | project | 10/min | Fail closed |
 
-The client IP comes from `x-forwarded-for` with `trustProxy` limited to the known proxy hops (`TRUST_PROXY=1`: Render's load balancer). `true` is rejected because it trusts client-written entries. Behind the Vercel rewrite the trusted entry is Vercel's egress IP; a verified proxy header (task.md G8) would allow per-client keys there.
+`modules/auth/rate-limiter.ts` shares counters in Redis across API instances. The hosted API returns `503` on fail-closed routes when the store is unconfigured or unavailable. Authenticated REST and ingestion continue and log the failure. Exhausted budgets return `429 RATE_LIMITED` with `Retry-After`. Logout and logout-all authenticate the session and check CSRF without spending the REST budget, so users can revoke sessions after exhausting it.
+
+For hosted web requests the API uses the client address verified by the [web proxy handoff](../architecture/adr-008-verified-web-proxy.md). Other requests derive their rate-limit address from `request.ip` using the normal `TRUST_PROXY` boundary (`1` on Render). Requests from the same IPv6 `/64` share a budget. The shared proxy credential stays in the provider secret stores and is redacted from request logs.
 
 ## 6. Web security
 
@@ -116,7 +119,7 @@ The client IP comes from `x-forwarded-for` with `trustProxy` limited to the know
 | :--- | :--- | :--- |
 | CORS | Allow-list `WEB_ORIGIN` only, `credentials: true` | n/a |
 | CSRF | `Origin` check on cookie-authenticated mutations + `SameSite=Lax` | Same-origin `/api` calls |
-| Headers | `@fastify/helmet` (no CSP needed for JSON), `X-Content-Type-Options`, `Referrer-Policy` | Nonce-based CSP via `proxy.ts`: `default-src 'self'`; `connect-src 'self' <socket origin> <sentry>`; `frame-ancestors 'none'`; HSTS (production) |
+| Headers | `@fastify/helmet`, `X-Content-Type-Options`, `Referrer-Policy`, production HSTS | `proxy.ts` generates a nonce per production document and applies it to Next.js and the theme bootstrap script. The policy permits same-origin and configured socket connections. `frame-ancestors 'none'` and HSTS apply to production page responses |
 | Untrusted content | Size caps; never interpolate into HTML | Render as text; strip ANSI; sanitize restricted Markdown (no raw HTML, `rel="noopener noreferrer nofollow"` on links, only http(s)/mailto) |
 | Errors | Central handler maps to error codes; no stack traces or DB messages to clients | Error boundaries show a request ID |
 

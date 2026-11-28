@@ -11,7 +11,7 @@ Use the **free profile** described in master plan §4.4 and [`docs/ops/free-tier
 
 | Concern | Choice |
 | :--- | :--- |
-| Web | Vercel Hobby (Next.js); `/api/:path*` rewrite to the API so cookies are first-party |
+| Web | Vercel Hobby (Next.js). The `/api/:path*` route forwards to the API so cookies are first-party. |
 | API + gateway + workers | One Render free web service; `RUN_WORKERS_IN_PROCESS=true` |
 | PostgreSQL | Neon free (pooled URL at runtime; direct URL for migrations) |
 | Redis | Render Key Value free (internal, non-persistent) |
@@ -20,6 +20,8 @@ Use the **free profile** described in master plan §4.4 and [`docs/ops/free-tier
 | CI/CD | GitHub Actions; Render deploy hook; Vercel Git integration |
 
 Application code must work unchanged in the paid profile. The differences are configuration only: `DEPLOYMENT_PROFILE`, `RUN_WORKERS_IN_PROCESS`, cookie domain, API and socket URLs, and transports.
+
+[ADR-008](adr-008-verified-web-proxy.md) specifies the hosted rewrite and verified client-address handoff.
 
 ## Consequences
 - **Positive:** $0 cloud cost; the architecture becomes resilient to sleep, cold starts, and Redis loss (catch-up-safe jobs, idempotency), which also hardens production.

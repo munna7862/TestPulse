@@ -14,9 +14,8 @@ Sprint sub-tasks are expanded from each sprint file at kick-off. Open decisions 
 ## 🚦 Active Sprint State
 
 - **Current Active Phase:** Phase 03: Authentication & Multi-Tenancy
-- **Current Active Sprint:** P03-S03: Organization & Project CRUD and Membership
-- **Assigned Personas:** Lead `role-backend-engineer`, `role-frontend-engineer`; reviewers `role-security-engineer`, `role-sdet-architect`
-- **Current Status:** H1b (PR #12) and Step 2 (PR #11) merged. P03-S03 runs as slices: S-001 orgs and tenant context merged (PR #13); next S-002 projects, then S-003 purge job, S-004 web. Per-slice metrics in `planning/metrics.md`.
+- **Current Active Sprint:** P03-S06: Tenant Isolation Security Hardening & Audit
+- **Current Status:** S-009a merged in [PR #27](https://github.com/munna7862/TestPulse/pull/27). [S-009b](planning/slices/S-009b-web-api-security-hardening.md) is in progress.
 - **Decisions:** Phase 01 closed Q1, Q2, Q4, Q5, Q6 (master plan D-16…D-20). Only Q3 (paid hosting) remains, owned by P10-S06.
 - **Hosting:** free-tier profile until feature-complete (master plan §4.4)
 - **Traceability:** [feature catalog](docs/product/feature-catalog.md) (FR IDs) · [scenario catalog](docs/testing/scenario-catalog.md) (SC IDs)
@@ -32,7 +31,7 @@ Work is only `[x]` when its PR is merged with green required checks. Agents neve
 - [/] **G5 · P03-S01** Timing enumeration (ADR-005 §9, T11). PR #10 fixed login; register (2 ms vs 48 ms), resend and forgot still leaked. Fixed in slice H1b.
 - [x] **G6 · P03-S01** Refresh-token rotation is not atomic; concurrent reuse skips family revocation (SC-AUTH-009). Resolved in [PR #10](https://github.com/munna7862/TestPulse/pull/10); confirmed by independent review (20/20 races).
 - [/] **G7 · P03-S01** Verify-email and password-reset tokens could be used several times concurrently (review: 5 of 5 resets succeeded with one token); refresh treated any DB error as token reuse. Fixed in slice H1b.
-- [ ] **G8 · security model §5** Behind the Vercel `/api` rewrite, per-IP auth limits key on Vercel's egress IP (`TRUST_PROXY=1` is the only setting that cannot be spoofed when the API host is called directly). Add a secret header set by the Vercel rewrite and trust X-Forwarded-For only when it is present. Also move the OAuth limiter (in-memory `@fastify/rate-limit`) to the shared Redis store. → P03-S06.
+- [/] **G8 · security model §5** Verify the hosted web client address per [ADR-008](docs/architecture/adr-008-verified-web-proxy.md) and move OAuth rate limits to the shared Redis store. S-009b covers implementation and verification.
 - [ ] **G9 · P03-S01** No real mail transport exists; in production the console mailer now withholds tokens, so verification and reset emails are not delivered. Add a provider (free tier) before staging users. → before P10-S05.
 
 ## 🧭 Delivery process changes (docs/process/ai-delivery-playbook.html §6)

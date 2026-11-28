@@ -25,6 +25,7 @@ export interface StartWorkersOptions {
   /** Key prefix for BullMQ (tests use a unique prefix). */
   prefix?: string;
   now?: () => Date;
+  signal?: AbortSignal;
 }
 
 function isJobName(name: string): name is JobName {
@@ -44,7 +45,9 @@ export async function startWorkers({
   processors = defaultProcessors,
   prefix = "tp",
   now = () => new Date(),
+  signal,
 }: StartWorkersOptions): Promise<WorkerHandle> {
+  signal?.throwIfAborted();
   if (!redisUrl) {
     log.warn("REDIS_URL is not set: background workers are disabled");
     return { close: async () => undefined };
@@ -85,6 +88,8 @@ export async function startWorkers({
     log.error({ err: error }, "queue error");
   });
 
+  const abortStartup = () => connection.disconnect();
+  signal?.addEventListener("abort", abortStartup, { once: true });
   try {
     await Promise.all([
       systemQueue.upsertJobScheduler(HEARTBEAT_SCHEDULER_ID, { every: 60_000 }, { name: "system.heartbeat", data: {} }),
@@ -95,9 +100,11 @@ export async function startWorkers({
       ),
     ]);
   } catch (error) {
-    await Promise.allSettled([...workers.map((worker) => worker.close()), client.close()]);
     connection.disconnect();
+    await Promise.allSettled([...workers.map((worker) => worker.close(true)), client.close()]);
     throw error;
+  } finally {
+    signal?.removeEventListener("abort", abortStartup);
   }
 
   log.info({ queues: QUEUES }, "workers started");

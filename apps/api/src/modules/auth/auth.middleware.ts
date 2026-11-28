@@ -1,6 +1,7 @@
 import type { PrismaClient, User } from "@testpulse/db";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ApiEnv } from "../../env";
+import { rateLimitHook, type RateLimitStore } from "./rate-limiter";
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "./tokens";
 
 export interface FastifyAuthContext {
@@ -15,7 +16,14 @@ declare module "fastify" {
   }
 }
 
-export function createAuthMiddleware(db: PrismaClient, env: ApiEnv) {
+export function createAuthMiddleware(db: PrismaClient, env: ApiEnv, rateLimitStore?: RateLimitStore) {
+  const limitRest =
+    rateLimitStore &&
+    rateLimitHook(
+      rateLimitStore,
+      [{ bucket: "rest", max: 600, windowMs: 60_000, key: (request) => request.authUser?.id }],
+      { failOpen: true },
+    );
   /**
    * PreHandler checking Origin header on cookie-authenticated mutations (SC-AUTH-018; ADR-005 §5).
    */
@@ -66,7 +74,7 @@ export function createAuthMiddleware(db: PrismaClient, env: ApiEnv) {
   /**
    * PreHandler authenticating user via tp_access cookie or Authorization Bearer header.
    */
-  async function authenticateUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async function authenticateSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     let token: string | undefined = request.cookies[ACCESS_COOKIE_NAME];
 
     if (!token && request.headers.authorization?.startsWith("Bearer ")) {
@@ -126,6 +134,11 @@ export function createAuthMiddleware(db: PrismaClient, env: ApiEnv) {
     }
   }
 
+  async function authenticateUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    await authenticateSession(request, reply);
+    if (!reply.sent) await limitRest?.(request, reply);
+  }
+
   /**
    * Guard requiring verified email (SC-AUTH-019; ADR-005 §7).
    */
@@ -153,6 +166,7 @@ export function createAuthMiddleware(db: PrismaClient, env: ApiEnv) {
 
   return {
     validateCsrf,
+    authenticateSession,
     authenticateUser,
     requireVerifiedEmail,
   };

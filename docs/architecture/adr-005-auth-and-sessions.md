@@ -13,7 +13,7 @@ The REST API, the Socket.IO gateway, and the workers all need one notion of iden
    - `tp_access`: JWT (HS256, `JWT_ACCESS_SECRET`), 15 min. Claims: `sub`, `sid` (session ID), `iat`, `exp`. Roles are **not** in the token; they are resolved per request from `OrgMember`, so role changes take effect immediately.
    - `tp_refresh`: 32 random bytes, stored as `HMAC-SHA256(JWT_REFRESH_SECRET, token)` in `Session.refreshTokenHash`; 30 days, sliding; `Path=/api/v1/auth`.
    - Rotation on every refresh. Reuse of a rotated token → revoke the whole `familyId`.
-4. **Cookies:** `HttpOnly; Secure; SameSite=Lax`, host-only on the origin that serves `/api`. In the free profile that is the web origin, through the Next.js rewrite. In the paid profile, the app either keeps the same-origin rewrite or calls `api.<domain>` directly with CORS credentials (decided in P10-S06; both are same-site).
+4. **Cookies:** `HttpOnly; Secure; SameSite=Lax`, host-only on the origin that serves `/api`. The free profile serves them on the web origin through the [Next.js forwarding route](adr-008-verified-web-proxy.md). In the paid profile, the app either keeps same-origin forwarding or calls `api.<domain>` directly with CORS credentials (decided in P10-S06; both are same-site).
 5. **CSRF:** `SameSite=Lax`, plus an `Origin` header check against `WEB_ORIGIN` on all cookie-authenticated non-GET requests. API-key routes ignore cookies entirely.
 6. **WebSocket:** single-use 60-second tickets (ADR-002); never tokens in URLs.
 7. **Email verification is required** before accepting invitations, linking OAuth by email, or creating an org. Unverified users can only verify, resend, or log out.

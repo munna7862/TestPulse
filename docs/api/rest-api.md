@@ -17,6 +17,7 @@
 | Timestamps | ISO-8601 UTC strings |
 | Errors | `VALIDATION_ERROR` 400 · `INVALID_TOKEN` 400 · `INVITATION_EXPIRED` 400 · `INVITATION_REVOKED` 400 · `UNAUTHENTICATED` 401 · `FORBIDDEN` 403 · `EMAIL_NOT_VERIFIED` 403 · `PLAN_LIMIT_REACHED` 403 · `NOT_FOUND` 404 · `CONFLICT` 409 · `RATE_LIMITED` 429 · `QUOTA_EXCEEDED` 429 · `INTERNAL` 500 |
 | Request ID | Every response carries `x-request-id`; errors include it so users can quote it |
+| Request limits | Authenticated REST uses a 600/min per-user budget, with logout and logout-all available for session revocation. An exhausted budget returns `429 RATE_LIMITED` with `Retry-After`. OAuth shares a 30/min per-IP budget across start and callback and returns `503 SERVICE_UNAVAILABLE` if Redis cannot check it |
 | Versioning | Breaking changes → `/api/v2`. Additive changes are allowed in v1 |
 
 ## 2. Route map

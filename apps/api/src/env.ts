@@ -1,4 +1,4 @@
-import { booleanString, DeploymentProfile, parseEnv } from "@testpulse/shared";
+import { booleanString, DeploymentProfile, parseEnv, WebProxySecretSchema } from "@testpulse/shared";
 import { z } from "zod";
 
 /**
@@ -83,6 +83,7 @@ export const ApiEnvSchema = z
       }),
     DATABASE_URL: z.string().min(1).optional(),
     REDIS_URL: z.string().min(1).optional(),
+    WEB_PROXY_SHARED_SECRET: WebProxySecretSchema.optional(),
     GIT_COMMIT_SHA: z.string().optional(),
     GOOGLE_CLIENT_ID: optionalSecret,
     GOOGLE_CLIENT_SECRET: optionalSecret,
@@ -142,6 +143,7 @@ export function loadApiEnv(source: Record<string, string | undefined> = process.
     ...source,
     WEB_ORIGIN: webOrigin,
     APP_URL: appUrl,
+    WEB_PROXY_SHARED_SECRET: nonBlank(source.WEB_PROXY_SHARED_SECRET),
     GIT_COMMIT_SHA: source.GIT_COMMIT_SHA ?? source.RENDER_GIT_COMMIT,
     // Keep unit and integration suites fast; tests that check the floor set it explicitly.
     AUTH_GENERIC_RESPONSE_MIN_MS: source.AUTH_GENERIC_RESPONSE_MIN_MS ?? (source.NODE_ENV === "test" ? "0" : undefined),

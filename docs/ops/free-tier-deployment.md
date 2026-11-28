@@ -41,7 +41,7 @@ Accounts are created by a **human**. Agents never sign up for services or enter 
      - Start: `node apps/api/dist/server.js`
      - Health check path: `/health`
      - Env: `NODE_ENV=production`, `DEPLOYMENT_PROFILE=free`, `RUN_WORKERS_IN_PROCESS=true`, `WEB_ORIGIN=https://<web>.vercel.app`, plus the secrets from `docs/ops/environment.md`.
-3. **Vercel:** import the repository with root `apps/web`. Set `API_INTERNAL_URL=https://<api>.onrender.com` (the rewrite target) and `NEXT_PUBLIC_SOCKET_URL=https://<api>.onrender.com`.
+3. **Vercel:** import the repository with root `apps/web`. Set `API_INTERNAL_URL=https://<api>.onrender.com` (the server runtime forwarding target) and `NEXT_PUBLIC_SOCKET_URL=https://<api>.onrender.com`. Generate a server-only `WEB_PROXY_SHARED_SECRET` with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"` and set the same value on Vercel and Render for the staging environment. Keep Vercel's system environment variables enabled so the web proxy can identify the host runtime.
 4. **OAuth apps (Google, GitHub):** set the callback URLs to `https://<web>.vercel.app/api/v1/auth/oauth/<provider>/callback`. The callback goes through the same-origin proxy.
 5. **GitHub Actions:** the `deploy-staging` workflow runs `prisma migrate deploy` against `DIRECT_URL`, then triggers the Render deploy hook. Vercel deploys through its Git integration.
 6. **Sentry (deferred, not wired in code yet):** create projects `web` and `api`, and set `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`.
@@ -53,10 +53,10 @@ Accounts are created by a **human**. Agents never sign up for services or enter 
 | `DEPLOYMENT_PROFILE` | `free` | `paid` |
 | `RUN_WORKERS_IN_PROCESS` | `true` | `false` (separate worker service) |
 | Cookie domain (`COOKIE_DOMAIN`) | unset (host-only on the web origin, via the proxy) | `.<domain>` or host-only on `api.<domain>`, per ADR-005 |
-| `API_INTERNAL_URL` (web rewrite target) | `https://<api>.onrender.com` | `https://api.<domain>` (or the rewrite is removed) |
+| `API_INTERNAL_URL` (web forwarding target) | `https://<api>.onrender.com` | `https://api.<domain>` (when the web app forwards API requests) |
 | `NEXT_PUBLIC_SOCKET_URL` | `https://<api>.onrender.com` | `https://api.<domain>` |
 | Socket transports | `["websocket"]` | `["websocket"]`, or polling with sticky sessions |
-| `trustProxy` | the web host's proxy hops | the load balancer's hops |
+| `TRUST_PROXY` | `1` for Render's load balancer. The web forwarding route uses the verified assertion in [ADR-008](../architecture/adr-008-verified-web-proxy.md) | the load balancer's hops |
 
 ## 5. Known behaviors during the free period (not bugs)
 
