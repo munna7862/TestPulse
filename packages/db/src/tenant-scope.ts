@@ -78,6 +78,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Prisma query extensions scope only the root operation. Require the TestRun delegate for
+// relation selections, filters, counts and nested mutations that would otherwise bypass it.
+function usesRunRelation(args: unknown, insideProject: boolean): boolean {
+  if (Array.isArray(args)) return args.some((entry) => usesRunRelation(entry, insideProject));
+  if (!isRecord(args)) return false;
+  return Object.entries(args).some(([key, value]) => {
+    if (key === "metadata") return false; // AuditEvent JSON is data, not a Prisma relation.
+    if (key === "testRuns") return value !== false;
+    if (insideProject && key === "_count" && value === true) return true;
+    return usesRunRelation(value, insideProject || key === "project" || key === "projects");
+  });
+}
+
 /**
  * Returns new operation arguments with the tenant constraint applied, or throws `TenantScopeError`.
  * Filters are combined with AND so a caller-supplied filter can never widen the scope.
@@ -102,10 +115,31 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
   }
 
   const base = isRecord(args) ? args : {};
+  if (usesRunRelation(base, model === "Project")) {
+    throw new TenantScopeError("Access TestRun through the project-scoped TestRun delegate.");
+  }
+
+  // Parent deletions can reach runs through database cascades even without a relation argument.
+  if (operation === "deleteMany" && model === "Organization" && ctx.projectId) {
+    throw new TenantScopeError("Organization deletion requires an organization-wide context.");
+  }
+
+  if (operation === "updateMany" || operation === "updateManyAndReturn") {
+    if (
+      isRecord(base.data) &&
+      ((model === "TestRun" && "projectId" in base.data) ||
+        (model === "Project" && ("orgId" in base.data || "id" in base.data)))
+    ) {
+      throw new TenantScopeError(`${model} ownership cannot be reassigned.`);
+    }
+  }
 
   if (FILTERED_OPERATIONS.has(operation)) {
     const where = base.where;
-    const constraint = { [field]: value };
+    const constraint = {
+      [field]: value,
+      ...(model === "Project" && operation === "deleteMany" && ctx.projectId ? { id: ctx.projectId } : {}),
+    };
     return { ...base, where: isRecord(where) ? { AND: [where, constraint] } : constraint };
   }
 
@@ -115,6 +149,9 @@ export function scopeTenantArgs(model: string, operation: string, args: unknown,
     }
     const stamp = (row: unknown): Record<string, unknown> => {
       if (!isRecord(row)) throw new TenantScopeError(`Invalid data for ${model}.${operation}.`);
+      if (model === "TestRun" && "project" in row) {
+        throw new TenantScopeError("TestRun ownership is set by project context.");
+      }
       if (row[field] !== undefined && row[field] !== value) {
         throw new TenantScopeError(`Cross-tenant write blocked on ${model}.${operation}.`);
       }

@@ -3,10 +3,10 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- [S-010 tenant-scoped run storage](slices/S-010-tenant-scoped-run-storage.md) brief awaits owner approval. It is the first slice in the [M1 roadmap](roadmap.md).
+- [S-010 tenant-scoped run storage](slices/S-010-tenant-scoped-run-storage.md) is in progress. It is the first slice in the [M1 roadmap](roadmap.md).
 
 ## Next
-- After approval, write and commit the PostgreSQL acceptance tests while they fail for the expected reasons, then implement S-010.
+- Verify the S-010 migration and Prisma isolation, then review the slice before opening its PR.
 
 ## Later
 - Prove the first live run locally, then reproduce it on staging. S-009b merged in [PR #29](https://github.com/munna7862/TestPulse/pull/29).

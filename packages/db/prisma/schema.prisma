@@ -171,9 +171,58 @@ model Project {
   updatedAt       DateTime     @updatedAt
   org             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   apiKeys         ApiKey[]
+  testRuns        TestRun[]
 
   @@unique([orgId, slug])
   @@index([orgId])
+}
+
+enum RunStatus {
+  RUNNING
+  PASSED
+  FAILED
+  CANCELLED
+  TIMED_OUT
+}
+
+/// Project-scoped test execution. Run numbers are allocated by the ingestion service.
+model TestRun {
+  id                     String    @id @default(uuid(7))
+  projectId              String
+  runNumber              Int
+  externalRunId          String
+  status                 RunStatus @default(RUNNING)
+  branch                 String
+  commitSha              String
+  ciProvider             String
+  ciJobUrl               String?
+  environment            String?
+  runner                 String
+  runnerVersion          String?
+  reporterVersion        String
+  shardTotal             Int
+  shardsCompleted        Int       @default(0)
+  expectedTestCount      Int?
+  totalCount             Int       @default(0)
+  passedCount            Int       @default(0)
+  failedCount            Int       @default(0)
+  skippedCount           Int       @default(0)
+  flakyCount             Int       @default(0)
+  quarantinedFailedCount Int       @default(0)
+  quarantineUnblocked    Boolean   @default(false)
+  startedAt              DateTime
+  finishedAt             DateTime?
+  lastActivityAt         DateTime
+  durationMs             Int?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  project                Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, runNumber])
+  @@unique([projectId, externalRunId])
+  @@index([projectId, createdAt])
+  @@index([projectId, branch, createdAt])
+  @@index([status, lastActivityAt])
 }
 
 /// Project-scoped CI API key (master plan §5, security model §2.5). Plaintext is never stored; SHA-256 hash only.
