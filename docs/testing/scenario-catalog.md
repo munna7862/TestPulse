@@ -262,6 +262,7 @@
 | SC-SEC-009 | Webhook URLs targeting 127.0.0.1, 10.0.0.0/8, 169.254.169.254, `[::1]`, a DNS-rebinding host, or a redirect to a private IP | All blocked | I | FR-WH-04 | — |
 | SC-SEC-010 | A CSV export contains a cell beginning with `=`, `+`, `-`, or `@` | The cell is prefixed with `'` | U | FR-QUA-07, FR-ANL-05 | — |
 | SC-SEC-011 | A dependency with a high-severity advisory or a committed secret is introduced | CI fails (`npm audit --audit-level=high`, gitleaks) | M | FR-SEC-06 | — |
+| SC-SEC-012 | One authenticated user exceeds the REST budget across API instances, or the shared store is unavailable | Over-budget requests return 429 with `Retry-After`, other users keep their own budgets, and requests continue with logging during the outage | I | FR-AUTH-09 | apps/api/test/security/web-api-security.acceptance.test.ts |
 
 ## UX — Design system, states, accessibility
 

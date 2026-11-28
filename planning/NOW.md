@@ -3,10 +3,10 @@
 Current focus for agent sessions. Keep it under ~40 lines; history lives in git and `task.md`.
 
 ## Now
-- S-009a `AuditEvent`, tenant-scoped logging & route isolation audit (`planning/slices/S-009a-audit-isolation-logging.md`), branch `feat/s-009a-audit-isolation-logging`.
+- [S-009b web and API security hardening](slices/S-009b-web-api-security-hardening.md) is approved and in progress. S-009a audit recording, tenant-scoped logging and route isolation audit merged in [PR #27](https://github.com/munna7862/TestPulse/pull/27).
 
 ## Next
-- S-009b Security headers (Helmet, CORS, Next.js `proxy.ts` nonce CSP), Redis rate limiting & `docs/security/` update.
+- Verify S-009b with API, real Redis, and production-browser checks, then run independent review.
 
 ## Later
 - Re-plan the remaining work by outcome at the end of Phase 03 (playbook Step 4), starting with
