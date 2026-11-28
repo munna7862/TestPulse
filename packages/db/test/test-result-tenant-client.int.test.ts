@@ -105,6 +105,16 @@ it("[SC-SEC-004] uses the scoped Prisma delegates and confines suite cascades to
     SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'TestCase_suiteId_idx'
   `;
   expect(indexes[0]?.indexdef).toMatch(/\("suiteId"\)$/);
+  const caseArrays = await db.$queryRaw<{ column_name: string; is_nullable: string }[]>`
+    SELECT column_name, is_nullable FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'TestCase' AND column_name IN ('labels', 'tags', 'titlePath')
+    ORDER BY column_name
+  `;
+  expect(caseArrays).toEqual([
+    { column_name: "labels", is_nullable: "NO" },
+    { column_name: "tags", is_nullable: "NO" },
+    { column_name: "titlePath", is_nullable: "NO" },
+  ]);
   await expect(tenant.testSuite.deleteMany({ where: { id: other.suite.id } })).resolves.toEqual({ count: 0 });
   await expect(tenant.testSuite.deleteMany({ where: { id: own.suite.id } })).resolves.toEqual({ count: 1 });
   expect(await tenant.testResult.count()).toBe(0);
